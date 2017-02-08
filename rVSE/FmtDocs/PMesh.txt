@@ -1,0 +1,13 @@
+[Vertices][Faces]
+
+Vertices:
+[VertsCount:1]{VertsCount+1[Vertex]}
+
+Vertex:
+[X:4F][Y:4F][Z:4F][Normal.X:4F][Normal.Y:4F][Normal.Z:4F][U:4F][V:4F]
+
+Faces:
+[FacesCount:2]{FacesCount[Face]}
+
+Face:
+[Vert1:2][Vert2:2][Vert3:2]

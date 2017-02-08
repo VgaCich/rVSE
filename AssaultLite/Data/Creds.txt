@@ -1,0 +1,24 @@
+	Assault Lite
+	~~~~~~~~
+
+	A game made for "MiniGames" competition by mirgames.ru
+	Technology demo
+
+	Concept & Design:
+	~~~~~~~~~~~~
+	Vga
+
+	Programming:
+	~~~~~~~~~
+	Vga
+	MIV
+
+	Art:
+	~~~
+	Vga
+
+	Powered by VS Engine (c) VgaSoft, 2005-2016
+	Texture generation by SynTex (c) VgaSoft, 2007-2009
+	Parts based on eXgine Lite by XProger
+
+	(c) VgaSoft, 2007-2016

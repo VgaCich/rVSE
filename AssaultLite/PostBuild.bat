@@ -1,0 +1,1 @@
+Tools\Compress\BestCompress.exe AssaultLite.exe

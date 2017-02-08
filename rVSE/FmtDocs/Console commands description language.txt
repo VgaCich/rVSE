@@ -1,0 +1,32 @@
+Command:
+<command> [parameter1] [parameter2] ... [parameterN]
+
+Parameter:
+[?]Name=<type>[type-specific options]
+?: optional parameter (must not be followed by non-optional parameters)
+
+Types:
+
+s: string (no spaces or in quotes)
+Options:
+  *: till end of cmdline (spaces/quotes ignored)
+
+i: integer
+Options:
+  <minval>:<maxval>: limits
+
+f: float
+Options:
+  <minval>:<maxval>: limits
+
+e: enum
+Options:
+  <val1>:<val2>:...:<valN>: possible values (required)
+
+Examples:
+
+echo msg=s*
+resolution resx=i640:65536 resy=i480:65536 refrate=?i0:200
+fullscreen val=i0:1
+fullscreen val=eoff:on
+quit

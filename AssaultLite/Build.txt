@@ -1,0 +1,44 @@
+Для компиляции потребуются библиотеки:
+1) AvL, частично. Качать эти файлы:
+http://vgasoft.googlecode.com/svn/AvL/AvL.pas
+http://vgasoft.googlecode.com/svn/AvL/avlMath.pas
+http://vgasoft.googlecode.com/svn/AvL/avlUtils.pas
+http://vgasoft.googlecode.com/svn/AvL/avlClasses.pas
+http://vgasoft.googlecode.com/svn/AvL/avlSyncObjs.pas
+http://vgasoft.googlecode.com/svn/AvL/avlVectors.pas
+http://vgasoft.googlecode.com/svn/AvL/avlIStreamAdapter.pas
+2) Замены системных модулей, для Delphi 7 качать здесь:
+http://vgasoft.googlecode.com/svn/AvL/SysDCU-D7.7z
+В настройках проекта предполагается, что замены установлены в $(DELPHI)\Lib\sysdcu
+С другими заменами возможно потребуется закомментировать модуль SysSfIni в секции uses файла AssaultLite.dpr
+3) SynTex:
+http://vgasoft.googlecode.com/svn/SynTex
+В настройках предполагается, что SynTex расположен в ..\SynTex
+4) Заголовки DirectX от Clootie:
+http://clootie.ru
+http://sourceforge.net/projects/delphi-dx9sdk
+
+Сборка:
+1) Откройте группу проектов Tools\Tools.bpg, скомпилируйте все (Project->Build All) (для компиляции редактора моделей PMEdit потребуется установить компоненты из Tools\PMEdit\Components, для сборки Assault Lite редактор не требуется)
+2) Выполните скрипт PreBuild.bat
+3) Откройте проект AssaultLite.dpr и скомпилируйте его
+4) Выполните скрипт PostBuild.bat
+5) Для уборки мусора выполните скрипт clean.bat
+
+Дефайны:
+
+VSE_DEBUG - сборка отладочной версии движка VSE, отключается останов движка при исключениях в пользовательском коде
+VSE_LOG - включить лог
+VSE_CONSOLE - включить консоль
+SYNTEX_USELOG - включить лог в SynTex'е
+DEBUGMEM - отладка памяти (требуется FastMM)
+PM_DRAWNORMALS - рисовать нормали у моделей
+VSE_ESC_EXIT - принудительный выход по escape
+VSE_USE_SNAPSHOT_KEY - сохранение скриншота по нажатию кнопки Print Screen
+
+Рабочий набор дефайнов:
+VSE_DEBUG;DEBUGMEM;VSE_LOG;VSE_CONSOLE;SYNTEX_USELOG
+
+Релизный набор дефайнов:
+VSE_USE_SNAPSHOT_KEY (минимальный размер)
+VSE_LOG;VSE_CONSOLE;SYNTEX_USELOG (с логом и консолью)

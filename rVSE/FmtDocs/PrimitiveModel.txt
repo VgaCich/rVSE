@@ -1,0 +1,80 @@
+Extension: vpm
+File consists of chunks tree
+
+TODO: Collision info
+
+Chunk format:
+
+[ChunkType:1][ChunkSize:2][ChunkData:vary]{optionally[SubChunk]}
+
+Chunk types and hierarchy:
+
+Model=77
++-ModelObject=1
+| +-ObjectPrimitive=2
+| +-ObjectMesh=3 //Only one chunk per object
+| +-sub ModelObjects
++-Material=6
++-other ModelObjects
++-other Materials
+
+Transform:
+
+  [TranslateX:2][TranslateY:2][TranslateZ:2][Yaw:1][Pitch:1][Roll:1][ScaleX:2][ScaleY:2][ScaleZ:2]
+
+UVRect:
+  [OrigU:1][OrigV:1][SizeU:1][SizeV:1]
+
+UVCircle:
+  [CenterU:1][CenterV:1][Radius:1]
+
+Chunks formats:
+
+  Model:
+  []
+  
+  ModelObject:
+  [ObjID:4][Transform][MaterialID:1]
+  
+  ObjectPrimitive:
+  [PrimitiveType:1][Transform][Flags:Byte][PrimitiveParams:vary]
+  Common flags:
+    $20: InvertNormals
+    $80: TexInfo
+  
+  ObjectMesh:
+  [VerticesCount:1][FacesCount:2][Flags:1][Transform]{VerticesCount+1[Vertex:3..7]}{FacesCount[Face:3]}
+    Flags:
+      $01: HasNormals
+      $02: HasUV
+  
+    Vertex:
+    [X:1][Y:1][Z:1][if Flags and HasNormals[Phi:1][Theta:1]][if Flags and HasUV[U:1][V:1]]
+
+    Face:
+    [Vertex0:1][Vertex1:1][Vertex2:1]
+
+  Material:
+  [ID:1][TexNameLen:1][TexName:TexNameLen][Diffuse:4][Specular:4][Ambient:4][Emission:4][Shininess:1]
+
+Primitives format:
+
+  PrimitiveCube=0:
+  [if Flags and TexInfo{3[UVRect]}]
+  Flags:
+    $01: TexSplitUDSides
+    $02: TexSplitRLSides
+    $04: TexSplitFBSides
+
+  PrimitiveSphere=1:
+  [Slices:1][Stacks:1][SlicesSector:1][StacksSector:1][if Flags and TexInfo[UVRect]]
+  Flags:
+    $40: Smooth
+
+  PrimitiveCone=2:
+  [TRadius:1][BRadius:1][Slices:1][SlicesSector:1][UVSide:UVRect][UVBaseT:UVCircle][UVBaseB:UVCircle]
+  Flags:
+    $40: Smooth
+
+  PrimitiveTorus=3:
+  PrimitiveTube=4:

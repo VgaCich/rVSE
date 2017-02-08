@@ -1,0 +1,115 @@
+Camera movement - $Fwd$, $Bwd$, $SLeft$, $SRight$
+Accelerate - $SpdUp$
+Decelerate - $SpdDn$
+Exit to menu - Escape
+
+There's no gameplay so no need in further explanations
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- AssaultLite.dpr			51 lines
+- FastMM4Options.inc			292 lines
+- GamePlayer.pas			76 lines
+- GameUnit.pas			112 lines
+- GDIPAPI.inc			146 lines
+- MemPak.inc			1684 lines
+- oglExtensions.pas			276 lines
+- Sky.pas			61 lines
+- snd.pas			775 lines
+- s_ogg.pas			396 lines
+- StateGame.pas			248 lines
+- StateGame.Stereo.pas			300 lines
+- StateLoad.pas			145 lines
+- StateMenu.pas			605 lines
+- StateStart.pas			236 lines
+- dsound.inc			132 lines
+- dsufmod.inc			82 lines
+- SndTest.dpr			28 lines
+- USound.pas			111 lines
+- BestCompress.dpr			87 lines
+- MemPak.dpr			87 lines
+- PMBuild.pas			2276 lines
+- devTabs.pas			1433 lines
+- FPSpin.pas			304 lines
+- SDDialog.pas			70 lines
+- cfg.pas			40 lines
+- eXgine.pas			475 lines
+- com.pas			346 lines
+- eng.pas			267 lines
+- eXgine.dpr			73 lines
+- g_bjg.pas			207 lines
+- g_tga.pas			192 lines
+- inp.pas			276 lines
+- log.pas			103 lines
+- ogl.pas			881 lines
+- snd.pas			775 lines
+- sys_main.pas			324 lines
+- s_ogg.pas			396 lines
+- tex.pas			504 lines
+- vbo.pas			406 lines
+- vec.pas			113 lines
+- vfp.pas			251 lines
+- wnd.pas			378 lines
+- Vectors.pas			315 lines
+- FormAbout.pas			29 lines
+- FormMain.pas			901 lines
+- FormPrefs.pas			40 lines
+- FrameMaterial.pas			208 lines
+- FrameMesh.pas			228 lines
+- FrameModel.pas			55 lines
+- FrameObject.pas			188 lines
+- FramePriCone.pas			163 lines
+- FramePriCube.pas			82 lines
+- FramePrimitive.pas			181 lines
+- FramePriSphere.pas			116 lines
+- GlobalVariables.pas			54 lines
+- Import3ds.pas			159 lines
+- PMEdit.dpr			29 lines
+- STAsm.dpr			68 lines
+- dsound.inc			132 lines
+- dsound.inc			132 lines
+- dsufmod.inc			82 lines
+- import.inc			57 lines
+- test_ds.dpr			81 lines
+- VSEArrayBuffer.pas			121 lines
+- VSEBindMan.pas			655 lines
+- VSECamera.pas			44 lines
+- VSECollisionCheck.pas			119 lines
+- VSEConsole.pas			870 lines
+- VSECore.pas			962 lines
+- VSEGameObject.pas			18 lines
+- VSEGameStates.pas			91 lines
+- VSEGUI.pas			485 lines
+- VSEImageCodec.pas			287 lines
+- VSEInit.pas			160 lines
+- VSELog.pas			156 lines
+- VSEMemPak.pas			78 lines
+- VSEMemPakTypes.inc			5 lines
+- VSEOpenGLExt.pas			297 lines
+- VSEPrimitiveModel.inc			77 lines
+- VSEPrimitiveModel.pas			827 lines
+- VSEQuadTree.pas			124 lines
+- VSEShaders.pas			337 lines
+- VSESound.pas			200 lines
+- VSESysInfo.pas			130 lines
+- VSETerrain.pas			184 lines
+- VSETexMan.pas			584 lines
+- VSEVertexArrayUtils.pas			51 lines
+Lines : 26182
+Size  : 866525

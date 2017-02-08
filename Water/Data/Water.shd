@@ -1,0 +1,29 @@
+!vertex_shader
+varying vec4 tc;
+varying vec4 dc;
+
+void main(void)
+{
+  const mat4 m = mat4(0.5, 0.0, 0.0, 0.0,
+                      0.0, 0.5, 0.0, 0.0,
+                      0.0, 0.0, 1.0, 0.0,
+                      0.5, 0.5, 0.0, 1.0);
+  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+  tc  = m * gl_Position;
+  dc  = gl_Vertex * 0.025;
+}
+
+!fragment_shader
+uniform sampler2D tex0;
+uniform sampler2D tex1;
+uniform sampler2D dot3;
+uniform float phase;
+
+varying vec4 tc;
+varying vec4 dc;
+
+void main(void)
+{
+   vec4 c = 0.6*tc + texture2D(dot3, vec2(dc.x + phase, dc.z)) * 0.4;
+   gl_FragColor = texture2DProj(tex0, c) * 0.4 + texture2DProj(tex1, c)*vec4(0.5676, 0.66, 0.5676, 1);
+}
