@@ -10,7 +10,7 @@ type
   TShaderAttrib=class(TDLCListItem)
   private
     FHandle: Integer;
-    FShader: TShader;
+    //FShader: TShader;
     FName: string;
   public
     constructor Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
@@ -23,7 +23,7 @@ type
   TShaderUniform=class(TDLCListItem)
   private
     FHandle: Integer;
-    FShader: TShader;
+    //FShader: TShader;
     FName: string;
   public
     constructor Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
@@ -43,6 +43,7 @@ type
     procedure SetEnabled(Value: Boolean);
     function  GetValid: Boolean;
     function  GetInfoLog: string;
+    function  ObjectInfoLog(Obj: Integer): string;
     function  CheckAttrib(Item: TDLCListItem; Data: Integer): Boolean;
     function  CheckUniform(Item: TDLCListItem; Data: Integer): Boolean;
   protected
@@ -139,8 +140,6 @@ begin
 end;
 
 destructor TShader.Destroy;
-var
-  i: Integer;
 begin
   if Assigned(FVaries) then FVaries.ClearList;
   FAN(FVaries);
@@ -250,20 +249,6 @@ function TShader.Compile(const Prog: string; ObjType: Integer): Boolean;
 var
   ShTemp: Integer;
   P: PChar;
-
-  {$IFDEF VSE_LOG}procedure CompileLog;
-  var
-    LogLen: Integer;
-    LogStr: string;
-  begin
-    glGetObjectParameterivARB(ShTemp, GL_OBJECT_INFO_LOG_LENGTH_ARB, @LogLen);
-    if (glGetError<>GL_NO_ERROR) or (LogLen<1) then Exit;
-    SetLength(LogStr, LogLen);
-    glGetInfoLogARB(ShTemp, LogLen, LogLen, PChar(LogStr));
-    SetLength(LogStr, LogLen);
-    Log(llInfo, LogStr);
-  end; {$ENDIF}
-
 begin
   Result:=false;
   if Prog='' then Exit;
@@ -273,8 +258,7 @@ begin
   glCompileShaderARB(ShTemp);
   if Error(ShTemp, GL_OBJECT_COMPILE_STATUS_ARB) then
   begin
-    {$IFDEF VSE_LOG}Log(llError, ShaderType[ObjType=GL_FRAGMENT_SHADER_ARB]+' compilation failed');
-    CompileLog;{$ENDIF}
+    {$IFDEF VSE_LOG}LogMultiline(llError, ShaderType[ObjType=GL_FRAGMENT_SHADER_ARB]+' compilation failed'#13+ObjectInfoLog(ShTemp));{$ENDIF}
     Exit;
   end;
   glAttachObjectARB(FHandle, ShTemp);
@@ -311,27 +295,30 @@ begin
 end;
 
 function TShader.GetInfoLog: string;
+begin
+  Result:=ObjectInfoLog(FHandle);
+end;
+
+function TShader.ObjectInfoLog(Obj: Integer): string;
 var
   LogLen, Written: Integer;
 begin
   Result:='';
-  glGetObjectParameterivARB(FHandle, GL_OBJECT_INFO_LOG_LENGTH_ARB, @LogLen);
-  if LogLen<1 then Exit;
+  glGetObjectParameterivARB(Obj, GL_OBJECT_INFO_LOG_LENGTH_ARB, @LogLen);
+  if (glGetError<>GL_NO_ERROR) or (LogLen<1) then Exit;
   SetLength(Result, LogLen);
-  glGetInfoLogARB(FHandle, LogLen, Written, PChar(Result));
+  glGetInfoLogARB(Obj, LogLen, Written, PChar(Result));
   SetLength(Result, Written);
 end;
 
 function TShader.CheckAttrib(Item: TDLCListItem; Data: Integer): Boolean;
 begin
-  if Item is TShaderAttrib
-    then Result:=TShaderAttrib(Item).Name=string(Data);
+  Result:=(Item is TShaderAttrib) and (TShaderAttrib(Item).Name=string(Data));
 end;
 
 function TShader.CheckUniform(Item: TDLCListItem; Data: Integer): Boolean;
 begin
-  if Item is TShaderUniform
-    then Result:=TShaderUniform(Item).Name=string(Data);
+  Result:=(Item is TShaderUniform) and(TShaderUniform(Item).Name=string(Data));
 end;
 
 end.

@@ -35,7 +35,6 @@ const
 constructor TStateMain.Create;
 var
   Data: TStream;
-  Test: TShaderUniform;
   Temp: array[0..TEX_SIZE*TEX_SIZE*3] of Byte;
 begin
   inherited Create;
@@ -55,7 +54,7 @@ begin
     FWaterShader.Link;
     if not FWaterShader.Valid
       then Log(llError, 'StateMain.Create: WaterShader is not valid');
-    Log(llInfo, 'WaterShader log: '+FWaterShader.InfoLog);
+    LogMultiline(llInfo, 'WaterShader log:'#13+FWaterShader.InfoLog);
   finally
     FAN(Data);
   end;

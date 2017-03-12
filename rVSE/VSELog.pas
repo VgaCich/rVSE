@@ -17,6 +17,7 @@ procedure Log(Level: TLogLevel; const S: string); //Add message to log
 procedure LogF(Level: TLogLevel; const Fmt: string; const Args: array of const); //Add message to log, Format version
 procedure LogRaw(Level: TLogLevel; const S: string; const Prefix: string = '');
 procedure LogAssert(Condition: Boolean; const Msg: string); //Add message if Condition=false
+procedure LogMultiline(Level: TLogLevel; S: string); //Add multiline message to log
 
 var
   LogLevel: TLogLevel = {$IFDEF VSE_DEBUG}llDebug{$ELSE}llInfo{$ENDIF}; //Minimal level of message, that will be passed to log
@@ -84,6 +85,15 @@ end;
 procedure LogAssert(Condition: Boolean; const Msg: string);
 begin
   if not Condition then Log(llError, 'Assertion failed: '+Msg);
+end;
+
+procedure LogMultiline(Level: TLogLevel; S: string);
+begin
+  while (S<>'') and (S[Length(S)] in [#10, #13]) do
+    Delete(S, Length(S), 1);
+  Log(Level, Tok(#10#13, S));
+  while S<>'' do
+    LogRaw(Level, Tok(#10#13, S));
 end;
 
 procedure Log(Level: TLogLevel; const S: string);

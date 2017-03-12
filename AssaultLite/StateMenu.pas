@@ -581,23 +581,20 @@ end;
 function TStateMenu.MenuBgHandler(Sender: TObject; Args: array of const): Boolean;
 var
   Image: TImage;
-  F: TStream;
 begin
   Result:=false;
-  F:=GetFile(string(Args[1].VAnsiString));
-  if Assigned(F) then
+  if FileExists(ExePath + string(Args[1].VAnsiString)) then
   begin
     Image:=TImage.Create;
     try
-      Image.Load(F);
+      Image.Load(ExePath + string(Args[1].VAnsiString));
       FBgTex:=TexMan.AddTexture('MenuBg', Image, true, false);
     finally
       Image.Free;
-      F.Free;
     end;
     Result:=true;
   end
-    {$IFDEF VSE_LOG}else LogF(llError, 'StateMenu.MenuBg: file "%s" not found', [string(Args[1].VAnsiString)]){$ENDIF};
+  {$IFDEF VSE_LOG}else LogF(llError, 'StateMenu.MenuBg: file "%s" not found', [string(Args[1].VAnsiString)]){$ENDIF};
 end;
 
 type
@@ -621,7 +618,6 @@ const
     (IsColorSet: false; Color: @clFormCaptText),
     (IsColorSet: false; Color: @clText),
     (IsColorSet: false; Color: @clTabStop));
-
 begin
   Result:=true;
   if Length(Args)=1

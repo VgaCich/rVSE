@@ -17,8 +17,10 @@ type
   public
     constructor Create; overload;
     constructor Create(const Transform: TPMTransform); overload; //internally used
+    procedure Assign(const Transform: TTransform); //Assign values from TTransform
     procedure Apply; //Apply transform to OpenGL
-    procedure Reset; //Reset to defaul transform
+    procedure Reset; //Reset to default values
+    procedure SetAsDefault; //Set current values as default
     procedure Translate(X, Y, Z: Single);
     procedure Rotate(Angle, X, Y, Z: Single);
     procedure Scale(X, Y, Z: Single);
@@ -73,11 +75,13 @@ type
     property Shininess: Single read FShininess write FShininess; //Shininess power
     property Texture: Cardinal read FTexture write FTexture; //Texture ID
   end;
+  TOnDrawObject=function(Sender: TObject; Obj: TPriModelObject): Boolean of object;
   TPriModel=class //Model
   private
     FVertexBuffer: TArrayBuffer;
     FObjects: array of TPriModelObject;
     FMaterials: array of TPriModelMaterial;
+    FOnDrawObject: TOnDrawObject;
     {$IFDEF PM_DRAWNORMALS}FNormals: TArrayBuffer;{$ENDIF}
     function ReadChunk(Data, VertexBuffer: TStream): Boolean;
     function GetObject(ID: Cardinal): TPriModelObject;
@@ -88,6 +92,7 @@ type
     procedure Draw; //Draw model
     property Objects[ID: Cardinal]: TPriModelObject read GetObject; default; //Model objects
     property Materials[ID: Byte]: TPriModelMaterial read GetMaterial; //Model materials
+    property OnDrawObject: TOnDrawObject read FOnDrawObject write FOnDrawObject; //Draw object event
   end;
 
 implementation
@@ -129,7 +134,12 @@ begin
     Rotate(BDegToRad*Roll, 0, 0, -1);
     Translate(TranslateX/512, TranslateY/512, TranslateZ/512);
   end;
-  FDefMatrix:=FMatrix;
+  SetAsDefault;
+end;
+
+procedure TTransform.Assign(const Transform: TTransform);
+begin
+  FMatrix:=Transform.FMatrix;
 end;
 
 procedure TTransform.Apply;
@@ -140,6 +150,11 @@ end;
 procedure TTransform.Reset;
 begin
   FMatrix:=FDefMatrix;
+end;
+
+procedure TTransform.SetAsDefault;
+begin
+  FDefMatrix := FMatrix;
 end;
 
 procedure TTransform.Translate(X, Y, Z: Single);
@@ -255,6 +270,7 @@ var
   i: Integer;
 begin
   if not FVisible then Exit;
+  if Assigned(FModel.FOnDrawObject) and not FModel.FOnDrawObject(FModel, Self) then Exit;
   if FMaterialID <> 0 then FModel.Materials[FMaterialID].Apply;
   glPushMatrix;
   FTransform.Apply;

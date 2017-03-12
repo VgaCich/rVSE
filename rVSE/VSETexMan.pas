@@ -7,6 +7,7 @@ uses
   VSEImageCodec, VSECore{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 type
+  TOnLostTex=function(Sender: TObject; const Name: string): Cardinal;
   TRTTMethod=(rttCopy, rttFBO); //Render-to-Texture method - CopyTexture (slow), FrameBuffer Object
   TTexture=record //internally used
     ID: Cardinal;
@@ -23,6 +24,7 @@ type
     FCount, FMaxChannel: Integer;
     FTextures: array of TTexture;
     FRTTs: array of TRTTInfo;
+    FOnLostTex: TOnLostTex;
     FRTTMethod: TRTTMethod;
     procedure SetRTTMethod(Value: TRTTMethod);
   public
@@ -32,7 +34,7 @@ type
     //function  AddTexture(const Name: string; Stream: TStream; Clamp, MipMap: Boolean): Cardinal; overload;  //Add texture from stream
     function  AddTexture(const Name: string; const Image: TImage; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from TImageData
     function  AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from memory
-    function  GetTex(Name: string; DontLogLostTex: Boolean = false): Cardinal; //Get texture ID by texture name
+    function  GetTex(const Name: string; IgnoreLostTex: Boolean = false): Cardinal; //Get texture ID by texture name
     procedure Bind(ID: Cardinal; Channel: Integer = 0); //Set current texture in specified texture channel
     procedure Unbind(Channel: Integer = 0); //Remove texture from specified texture channel
     {Render-To-Texture (RTT)}
@@ -41,6 +43,7 @@ type
     function  RTTBegin(RTT: Cardinal; TexColor: Cardinal; TexDepth: Cardinal = 0): Boolean; //Start render to RTT target; TexColor, TexDepth - target textures; returns true if successfully started
     procedure RTTEnd(RTT: Cardinal); //End render to RTT target
     {properties}
+    property OnLostTex: TOnLostTex read FOnLostTex write FOnLostTex; //Invoked if texture not found; return TexID or 0
     property RTTMethod: TRTTMethod read FRTTMethod write SetRTTMethod; //Method, used for RTT; default: autodetect
   end;
 
@@ -107,7 +110,7 @@ end;
 function TTexMan.AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal;
 begin
   {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: adding texture '+Name);{$ENDIF}
-  Name:=UpperCase(Name);
+  Name:=Name;
   Result:=GetTex(Name, true);
   if Result=0 then
   begin
@@ -141,20 +144,23 @@ begin
   end;
 end;
 
-function TTexMan.GetTex(Name: string; DontLogLostTex: Boolean = false): Cardinal;
+function TTexMan.GetTex(const Name: string; IgnoreLostTex: Boolean = false): Cardinal;
 var
   i: Integer;
 begin
   Result:=0;
-  Name:=UpperCase(Name);
   for i:=0 to FCount-1 do
-    if FTextures[i].Name=Name then
+    if SameText(FTextures[i].Name, Name) then
     begin
       Result:=FTextures[i].ID;
       Exit;
     end;
-  {$IFDEF VSE_LOG}if not DontLogLostTex
-    then Log(llError, 'TexMan: can''t find texture '+Name);{$ENDIF}
+  if not IgnoreLostTex then
+  begin
+    if Assigned(FOnLostTex) then
+      Result:=FOnLostTex(Self, Name);
+    {$IFDEF VSE_LOG}if Result=0 then Log(llError, 'TexMan: can''t find texture '+Name);{$ENDIF}
+  end;
 end;
 
 procedure TTexMan.Bind(ID: Cardinal; Channel: Integer);

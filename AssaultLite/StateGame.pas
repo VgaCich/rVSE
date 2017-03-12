@@ -112,7 +112,7 @@ begin
       with Camera do
         Render2D.TextOut(FFont, Left + 5, Top + 45, Format('Angles=%s, %s',
           [FloatToStr2(XAngle, 4, 2), FloatToStr2(YAngle, 4, 2)]));
-      end;
+    end;
     Render2D.Leave;
   end;
 end;
