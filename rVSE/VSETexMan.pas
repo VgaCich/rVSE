@@ -109,7 +109,7 @@ end;
 
 function TTexMan.AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal;
 begin
-  {$IFDEF VSE_LOG}Log(llInfo, 'TexMan: adding texture '+Name);{$ENDIF}
+  //{$IFDEF VSE_LOG}Log(llInfo, 'TexMan: adding texture '+Name);{$ENDIF}
   Name:=Name;
   Result:=GetTex(Name, true);
   if Result=0 then
