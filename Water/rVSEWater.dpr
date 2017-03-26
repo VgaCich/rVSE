@@ -201,6 +201,7 @@ begin
   Data:=GetFile(string(Args[2].VAnsiString));
   if Assigned(Data) then
   try
+    Log(llInfo, 'Loading shader '+string(Args[2].VAnsiString));
     Shader.Load(Data);
     Shader.Link;
     if not Shader.Valid

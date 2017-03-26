@@ -322,7 +322,7 @@ var
 begin
   Result:='';
   glGetObjectParameterivARB(Obj, GL_OBJECT_INFO_LOG_LENGTH_ARB, @LogLen);
-  if (glGetError<>GL_NO_ERROR) or (LogLen<1) then Exit;
+  if LogLen<1 then Exit;
   SetLength(Result, LogLen);
   glGetInfoLogARB(Obj, LogLen, Written, PChar(Result));
   SetLength(Result, Written);
