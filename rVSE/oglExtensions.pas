@@ -144,9 +144,12 @@ var
   glGetObjectParameterivARB : procedure(Obj: GLHandleARB; pname: GLEnum; params: PGLuint); stdcall;
   glGetAttribLocationARB    : function(programObj: GLhandleARB; const char: PChar): GLInt; stdcall;
   glGetUniformLocationARB   : function(programObj:GLhandleARB; const char: PChar): GLInt; stdcall;
+  glEnableVertexAttribArrayARB: procedure(index: GLuint); stdcall;
+  glDisableVertexAttribArrayARB: procedure(index: GLuint); stdcall;
   glVertexAttrib1fARB       : procedure(index: GLuint; x: GLfloat); stdcall;
   glVertexAttrib2fARB       : procedure(index: GLuint; x, y: GLfloat); stdcall;
   glVertexAttrib3fARB       : procedure(index: GLuint; x, y, z: GLfloat); stdcall;
+  glVertexAttribPointerARB  : procedure(index: GLuint; size: GLint; type_: GLenum; normalized: GLboolean; stride: GLsizei; const data: Pointer); stdcall;
   glUniform1fARB            : procedure(location: GLint; v0 : GLfloat); stdcall;
   glUniform2fARB            : procedure(location: GLint; v0, v1: GLfloat); stdcall;
   glUniform3fARB            : procedure(location: GLint; v0, v1, v2: GLfloat); stdcall;
@@ -242,10 +245,13 @@ begin
     glGetObjectParameterivARB := wglGetProcAddress('glGetObjectParameterivARB');
     glGetAttribLocationARB    := wglGetProcAddress('glGetAttribLocationARB');
     glGetUniformLocationARB   := wglGetProcAddress('glGetUniformLocationARB');
+    glEnableVertexAttribArrayARB := wglGetProcAddress('glEnableVertexAttribArrayARB');
+    glDisableVertexAttribArrayARB := wglGetProcAddress('glDisableVertexAttribArrayARB');
   // attribs
     glVertexAttrib1fARB := wglGetProcAddress('glVertexAttrib1fARB');
     glVertexAttrib2fARB := wglGetProcAddress('glVertexAttrib2fARB');
     glVertexAttrib3fARB := wglGetProcAddress('glVertexAttrib3fARB');
+    glVertexAttribPointerARB := wglGetProcAddress('glVertexAttribPointerARB');
   // uniforms
     glUniform1fARB := wglGetProcAddress('glUniform1fARB');
     glUniform2fARB := wglGetProcAddress('glUniform2fARB');

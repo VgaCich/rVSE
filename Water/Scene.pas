@@ -69,6 +69,10 @@ begin
   c[3] := 1;
   glLightfv(ID, GL_DIFFUSE,  @c);
   glLightfv(ID, GL_SPECULAR, @c);
+  c[0] := c[0] / 5;
+  c[1] := c[1] / 5;
+  c[2] := c[2] / 5;
+  glLightfv(ID, GL_AMBIENT, @c);
 end;
 
 procedure LightPos(ID: Integer; X, Y, Z: Single);
@@ -218,7 +222,7 @@ begin
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
   LightColor(GL_LIGHT0, 1, 1, 1);
-  LightPos(GL_LIGHT0, 1000, 1000, 1000);
+  LightPos(GL_LIGHT0, 1000, 1500, 577);
   glColor3f(1, 1, 1);
   for i := 0 to O_Count - 1 do
     Objects[i].Render;

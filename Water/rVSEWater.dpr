@@ -3,19 +3,18 @@ program VSEWater;
 uses
   {$IFDEF VER150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
   AvL, avlUtils, avlMath, avlVectors, OpenGL, oglExtensions, VSEOpenGLExt,
-  VSECore, VSETexMan, VSERender2D, VSEShaders, VSEMemPak, VSELog, Scene;
+  VSECore, VSETexMan, VSERender2D, VSEShaders, VSEMemPak, VSEConsole, VSELog, Scene;
 
 type
   TStateMain=class(TGameState)
   private
     FScene: TScene;
     FPos, FAngle: TVector3D;
-    FWaterShader: TShader;
-    FUWaterTex0, FUWaterTex1, FUWaterDot3Tex, FUWaterPhase: TShaderUniform;
+    FShader, FWaterShader: TShader;
     FWaterRT: Cardinal;
     FWaterTex: array[0..1] of Cardinal;
-    FWaterPhase: Single;
     FFont: Cardinal;
+    function LoadShaderHandler(Sender: TObject; Args: array of const): Boolean;
   protected
     function GetName: string; override;
   public
@@ -34,39 +33,23 @@ const
 
 constructor TStateMain.Create;
 var
-  Data: TStream;
   Temp: array[0..TEX_SIZE*TEX_SIZE*3] of Byte;
 begin
   inherited Create;
-  FPos:=VectorSetValue(0, 5, 0);
-  FAngle:=VectorSetValue(0);
-  FWaterPhase:=0;
+  FPos:=VectorSetValue(-12, 5, -20);
+  FAngle:=VectorSetValue(0, 160, 0);
   FScene.Load('scene');
   FWaterTex[0]:=TexMan.AddTexture('water0', @Temp, TEX_SIZE, TEX_SIZE, GL_RGB8, GL_RGB, true, false);
   FWaterTex[1]:=TexMan.AddTexture('water1', @Temp, TEX_SIZE, TEX_SIZE, GL_RGB8, GL_RGB, true, false);
   LoadTex('water_dot3.jpg', false, false);
   FWaterRT:=TexMan.InitRTT(TEX_SIZE, TEX_SIZE);
-  FWaterShader:=TShader.Create;
-  Data:=GetFile('Water.shd');
-  if Assigned(Data) then
-  try
-    FWaterShader.Load(Data);
-    FWaterShader.Link;
-    if not FWaterShader.Valid
-      then Log(llError, 'StateMain.Create: WaterShader is not valid');
-    LogMultiline(llInfo, 'WaterShader log:'#13+FWaterShader.InfoLog);
-  finally
-    FAN(Data);
-  end;
-  FUWaterTex0:=FWaterShader.GetUniform('tex0');
-  FUWaterTex1:=FWaterShader.GetUniform('tex1');
-  FUWaterDot3Tex:=FWaterShader.GetUniform('dot3');
-  FUWaterPhase:=FWaterShader.GetUniform('phase');
   FFont:=Render2D.CreateFont('Courier New', 10, true);
+  Console['loadshader target=emain:water shader=s']:=LoadShaderHandler;
 end;
 
 destructor TStateMain.Destroy;
 begin
+  FShader.Free;
   FWaterShader.Free;
   inherited Destroy;
 end;
@@ -86,51 +69,77 @@ begin
   glActiveTextureARB(GL_TEXTURE0_ARB);
   glEnable(GL_TEXTURE_2D);
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-  glPushMatrix;
+  glMatrixMode(GL_PROJECTION);
   glRotatef(FAngle.Z, 0, 0, 1);
   glRotatef(FAngle.X, 1, 0, 0);
   glRotatef(FAngle.Y, 0, 1, 0);
   glTranslatef(-FPos.X, -FPos.Y, -FPos.Z);
-  glPushMatrix;
-  for i:=0 to 1 do
-  begin
-    TexMan.RTTBegin(FWaterRT, FWaterTex[i]);
-    glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
-    glScalef(1, -1, 1);
-    FScene.RenderSkyBox(VectorSetValue(FPos.X, FPos.Y*(i*2-1), FPos.Z));
-    glEnable(GL_CLIP_PLANE0);
-    glClipPlane(GL_CLIP_PLANE0, @Plane[i xor 1]);
-    FScene.Render;
-    glDisable(GL_CLIP_PLANE0);
-    TexMan.RTTEnd(FWaterRT);
-  end;
-  glPopMatrix;
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
   FScene.RenderSkyBox(FPos);
+  if Assigned(FShader) and FShader.Valid then
+  begin
+    FShader.Enabled:=true;
+    FShader['eye'].Value(FPos.X, FPos.Y, FPos.Z);
+    FShader['tex'].Value(0);
+  end;
   FScene.Render;
-  TexMan.Bind(TexMan.GetTex('water_dot3'), 0);
-  TexMan.Bind(FWaterTex[1], 2);
-  TexMan.Bind(FWaterTex[0], 1);
-  FWaterShader.Enabled:=true;
-  FUWaterTex0.Value(1);
-  FUWaterTex1.Value(2);
-  FUWaterDot3Tex.Value(0);
-  FUWaterPhase.Value(FWaterPhase);
-  glColor3f(1, 1, 1);
-  glBegin(GL_QUADS);
-    glVertex3fv(@WaterVert[0]);
-    glVertex3fv(@WaterVert[1]);
-    glVertex3fv(@WaterVert[2]);
-    glVertex3fv(@WaterVert[3]);
-  glEnd;
-  FWaterShader.Enabled:=false;
-  TexMan.Unbind(2);
-  TexMan.Unbind(1);
-  TexMan.Unbind(0);
-  glPopMatrix;
+  if Assigned(FShader) and FShader.Valid then
+    FShader.Enabled:=false;
+  if Assigned(FWaterShader) and FWaterShader.Valid then
+  begin
+    glPushMatrix;
+    for i:=0 to 1 do
+    begin
+      TexMan.RTTBegin(FWaterRT, FWaterTex[i]);
+      glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
+      glMatrixMode(GL_PROJECTION);
+      glScalef(1, -1, 1);
+      glMatrixMode(GL_MODELVIEW);
+      FScene.RenderSkyBox(VectorSetValue(FPos.X, FPos.Y*(i*2-1), FPos.Z));
+      glEnable(GL_CLIP_PLANE0);
+      glClipPlane(GL_CLIP_PLANE0, @Plane[i xor 1]);
+      if Assigned(FShader) and FShader.Valid then
+        FShader.Enabled:=true;
+      FScene.Render;
+      if Assigned(FShader) and FShader.Valid then
+        FShader.Enabled:=false;
+      glDisable(GL_CLIP_PLANE0);
+      TexMan.RTTEnd(FWaterRT);
+    end;
+    glPopMatrix;
+    TexMan.Bind(TexMan.GetTex('water_dot3'), 0);
+    TexMan.Bind(FWaterTex[1], 2);
+    TexMan.Bind(FWaterTex[0], 1);
+    FWaterShader.Enabled:=true;
+    FWaterShader['tex0'].Value(1);
+    FWaterShader['tex1'].Value(2);
+    FWaterShader['dot3'].Value(0);
+    FWaterShader['phase'].Value(0.00005*(Core.Time mod 20000));
+    FShader['eye'].Value(FPos.X, FPos.Y, FPos.Z);
+    glColor3f(1, 1, 1);
+    glBegin(GL_QUADS);
+      glNormal3f(0, 1, 0);
+      glVertex3fv(@WaterVert[0]);
+      glVertex3fv(@WaterVert[1]);
+      glVertex3fv(@WaterVert[2]);
+      glVertex3fv(@WaterVert[3]);
+    glEnd;
+    FWaterShader.Enabled:=false;
+    TexMan.Unbind(2);
+    TexMan.Unbind(1);
+    TexMan.Unbind(0);
+  end;
   Render2D.Enter;
   FPS:='FPS: '+IntToStr(Core.FPS);
   Render2D.TextOut(FFont, Render2D.VSWidth-Render2D.TextWidth(FFont, FPS), 0, FPS);
+  {Render2D.TextOut(FFont, 0, 0, Format('Pos: %s %s %s', [FloatToStr2(FPos.X, 4, 2), FloatToStr2(FPos.Y, 4, 2), FloatToStr2(FPos.Z, 4, 2)]));
+  Render2D.TextOut(FFont, 0, 20, Format('Angle: %s %s %s', [FloatToStr2(FAngle.X, 4, 2), FloatToStr2(FAngle.Y, 4, 2), FloatToStr2(FAngle.Z, 4, 2)]));}
+  {gleColor(clRed);
+  Render2D.DrawLine(350, 300, 450, 300);
+  Render2D.DrawLine(400, 250, 400, 350);
+  gleColor(clWhite);}
   Render2D.Leave;
 end;
 
@@ -150,7 +159,6 @@ begin
   C:=cos(DegToRad(FAngle.Y));
   with Speed do
     FPos:=VectorAdd(FPos, VectorSetValue(X*C-Z*S, 0, X*S+Z*C));
-  FWaterPhase:=FWaterPhase+0.0007;
 end;
 
 function TStateMain.Activate: Cardinal;
@@ -177,12 +185,44 @@ begin
   Result:='Main';
 end;
 
+function TStateMain.LoadShaderHandler(Sender: TObject; Args: array of const): Boolean;
+var
+  Data: TStream;
+  Shader: TShader;
+
+  procedure SetShader(var Target);
+  begin
+    FAN(Target);
+    Pointer(Target):=Pointer(Shader);
+  end;
+
+begin
+  Shader:=TShader.Create;
+  Data:=GetFile(string(Args[2].VAnsiString));
+  if Assigned(Data) then
+  try
+    Shader.Load(Data);
+    Shader.Link;
+    if not Shader.Valid
+      then Log(llError, 'Shader is not valid');
+    LogMultiline(llInfo, 'Shader log:'#13+Shader.InfoLog);
+    Result:=Shader.Valid;
+    case Args[1].VInteger of
+      0: SetShader(FShader);
+      1: SetShader(FWaterShader);
+    end;
+  finally
+    FAN(Data);
+  end;
+end;
+
 procedure InitStates;
 begin
   Core.SwitchState(Core.AddState(TStateMain.Create));
 end;
 
 begin
+  Randomize;
   InitSettings.InitStates:=InitStates;
   InitSettings.Caption:='rVSE Water';
   InitSettings.Version:='1.0';

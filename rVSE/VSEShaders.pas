@@ -7,45 +7,53 @@ uses
 
 type
   TShader=class;
-  TShaderAttrib=class(TDLCListItem)
-  private
+  TShaderVariable=class(TDLCListItem)
+  protected
     FHandle: Integer;
-    //FShader: TShader;
     FName: string;
   public
-    constructor Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
+    constructor Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string); virtual;
+    property Name: string read FName;
+  end;
+  CShaderVariable=class of TShaderVariable;
+  TShaderAttrib=class(TShaderVariable)
+  private
+    FHandle: Integer;
+  public
+    constructor Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string); override;
     procedure Value(x: Single); overload;
     procedure Value(x, y: Single); overload;
     procedure Value(x, y, z: Single); overload;
+    procedure ArrayPtr(size: GLint; type_: GLenum; normalized: GLboolean; stride: GLsizei; const data: Pointer);
+    procedure EnableArray;
+    procedure DisableArray;
     property Handle: Integer read FHandle;
-    property Name: string read FName;
   end;
-  TShaderUniform=class(TDLCListItem)
+  TShaderUniform=class(TShaderVariable)
   private
     FHandle: Integer;
-    //FShader: TShader;
-    FName: string;
   public
-    constructor Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
+    constructor Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string); override;
     procedure Value(x: Single); overload;
     procedure Value(x, y: Single); overload;
     procedure Value(x, y, z: Single); overload;
     procedure Value(x, y, z, w: Single); overload;
     procedure Value(i: Integer); overload;
     property Handle: Integer read FHandle;
-    property Name: string read FName;
   end;
   TShader=class
   private
     FHandle: Integer;
-    FVaries: TDLCListItem;
+    FVariables: TShaderVariable;
     function  GetEnabled: Boolean;
     procedure SetEnabled(Value: Boolean);
     function  GetValid: Boolean;
     function  GetInfoLog: string;
     function  ObjectInfoLog(Obj: Integer): string;
-    function  CheckAttrib(Item: TDLCListItem; Data: Integer): Boolean;
-    function  CheckUniform(Item: TDLCListItem; Data: Integer): Boolean;
+    function CheckVariable(Item: TDLCListItem; Data: Integer): Boolean;
+    function  GetVariable(const Name: string; Cls: CShaderVariable): TShaderVariable;
+    function  GetAttrib(const Name: string): TShaderAttrib;
+    function  GetUniform(const Name: string): TShaderUniform;
   protected
     function Compile(const Prog: string; ObjType: Integer): Boolean;
     function Error(Handle: Integer; Param: DWORD): Boolean;
@@ -56,8 +64,8 @@ type
     function AddVP(const VP: string): Boolean;
     function AddFP(const FP: string): Boolean;
     function Link: Boolean;
-    function GetAttrib(const Name: string): TShaderAttrib;
-    function GetUniform(const Name: string): TShaderUniform;
+    property Attrib[const Name: string]: TShaderAttrib read GetAttrib;
+    property Uniform[const Name: string]: TShaderUniform read GetUniform; default;
     property Handle: Integer read FHandle;
     property Enabled: Boolean read GetEnabled write SetEnabled;
     property Valid: Boolean read GetValid;
@@ -69,62 +77,101 @@ implementation
 uses
   {$IFDEF VSE_LOG}VSELog, {$ENDIF}VSECore;
 
+type
+  PFindRec=^TFindRec;
+  TFindRec=record
+    Name: string;
+    Cls: CShaderVariable;
+  end;
+
+{TShaderVariable}
+
+constructor TShaderVariable.Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
+begin
+  inherited Create(PrevItem);
+  FName:=Name;
+end;
+
 {TShaderAttrib}
 
 constructor TShaderAttrib.Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
 begin
-  inherited Create(PrevItem);
-  FName:=Name;
+  inherited;
   FHandle:=glGetAttribLocationARB(ShaderHandle, PChar(Name));
 end;
 
 procedure TShaderAttrib.Value(x: Single);
 begin
-  glVertexAttrib1fARB(FHandle, x);
+  if FHandle >= 0 then
+    glVertexAttrib1fARB(FHandle, x);
 end;
 
 procedure TShaderAttrib.Value(x, y: Single);
 begin
-  glVertexAttrib2fARB(FHandle, x, y);
+  if FHandle >= 0 then
+    glVertexAttrib2fARB(FHandle, x, y);
 end;
 
 procedure TShaderAttrib.Value(x, y, z: Single);
 begin
-  glVertexAttrib3fARB(FHandle, x, y, z);
+  if FHandle >= 0 then
+    glVertexAttrib3fARB(FHandle, x, y, z);
+end;
+
+procedure TShaderAttrib.ArrayPtr(size: GLint; type_: GLenum; normalized: GLboolean; stride: GLsizei; const data: Pointer);
+begin
+  if FHandle >= 0 then
+    glVertexAttribPointerARB(FHandle, size, type_, normalized, stride, data);
+end;
+
+procedure TShaderAttrib.EnableArray;
+begin
+  if FHandle >= 0 then
+    glEnableVertexAttribArrayARB(FHandle);
+end;
+
+procedure TShaderAttrib.DisableArray;
+begin
+  if FHandle >= 0 then
+    glDisableVertexAttribArrayARB(FHandle);
 end;
 
 {TShaderUniform}
 
 constructor TShaderUniform.Create(PrevItem: TDLCListItem; ShaderHandle: Integer; const Name: string);
 begin
-  inherited Create(PrevItem);
-  FName:=Name;
+  inherited;
   FHandle:=glGetUniformLocationARB(ShaderHandle, PChar(Name));
 end;
 
 procedure TShaderUniform.Value(x: Single);
 begin
-  glUniform1fARB(FHandle, x);
+  if FHandle >= 0 then
+    glUniform1fARB(FHandle, x);
 end;
 
 procedure TShaderUniform.Value(x, y: Single);
 begin
-  glUniform2fARB(FHandle, x, y);
+  if FHandle >= 0 then
+    glUniform2fARB(FHandle, x, y);
 end;
 
 procedure TShaderUniform.Value(x, y, z: Single);
 begin
-  glUniform3fARB(FHandle, x, y, z);
+  if FHandle >= 0 then
+    glUniform3fARB(FHandle, x, y, z);
 end;
 
 procedure TShaderUniform.Value(x, y, z, w: Single);
 begin
-  glUniform4fARB(FHandle, x, y, z, w);
+  if FHandle >= 0 then
+    glUniform4fARB(FHandle, x, y, z, w);
 end;
 
 procedure TShaderUniform.Value(i: Integer);
 begin
-  glUniform1iARB(FHandle, i);
+  if FHandle >= 0 then
+    glUniform1iARB(FHandle, i);
 end;
 
 {TShader}
@@ -141,8 +188,8 @@ end;
 
 destructor TShader.Destroy;
 begin
-  if Assigned(FVaries) then FVaries.ClearList;
-  FAN(FVaries);
+  if Assigned(FVariables) then FVariables.ClearList;
+  FAN(FVariables);
   glDeleteObjectARB(FHandle);
   inherited Destroy;
 end;
@@ -209,36 +256,6 @@ begin
   Result:=not Error(FHandle, GL_OBJECT_LINK_STATUS_ARB);
   {$IFDEF VSE_LOG}if not Result
     then Log(llError, 'Shader.Link: cannot link shader');{$ENDIF}
-end;
-
-function TShader.GetAttrib(const Name: string): TShaderAttrib;
-begin
-  if Assigned(FVaries) then
-  begin
-    Result:=TShaderAttrib(FVaries.FindItem(CheckAttrib, Integer(Name)));
-    if Assigned(Result)
-      then Result.AddRef
-      else Result:=TShaderAttrib.Create(FVaries, FHandle, Name);
-  end
-  else begin
-    Result:=TShaderAttrib.Create(FVaries, FHandle, Name);
-    FVaries:=Result;
-  end;
-end;
-
-function TShader.GetUniform(const Name: string): TShaderUniform;
-begin
-  if Assigned(FVaries) then
-  begin
-    Result:=TShaderUniform(FVaries.FindItem(CheckUniform, Integer(Name)));
-    if Assigned(Result)
-      then Result.AddRef
-      else Result:=TShaderUniform.Create(FVaries, FHandle, Name);
-  end
-  else begin
-    Result:=TShaderUniform.Create(FVaries, FHandle, Name);
-    FVaries:=Result;
-  end;
 end;
 
 {protected}
@@ -311,14 +328,35 @@ begin
   SetLength(Result, Written);
 end;
 
-function TShader.CheckAttrib(Item: TDLCListItem; Data: Integer): Boolean;
+function TShader.CheckVariable(Item: TDLCListItem; Data: Integer): Boolean;
 begin
-  Result:=(Item is TShaderAttrib) and (TShaderAttrib(Item).Name=string(Data));
+  with PFindRec(Data)^ do
+    Result:=(Item is Cls) and (TShaderVariable(Item).Name=Name);
 end;
 
-function TShader.CheckUniform(Item: TDLCListItem; Data: Integer): Boolean;
+function TShader.GetVariable(const Name: string; Cls: CShaderVariable): TShaderVariable;
+var
+  FindRec: TFindRec;
 begin
-  Result:=(Item is TShaderUniform) and(TShaderUniform(Item).Name=string(Data));
+  Result:=nil;
+  FindRec.Name:=Name;
+  FindRec.Cls:=Cls;
+  if Assigned(FVariables) then
+    Result:=TShaderVariable(FVariables.FindItem(CheckVariable, Integer(@FindRec)));
+  if not Assigned(Result) then
+    Result:=Cls.Create(FVariables, FHandle, Name);
+  if not Assigned(FVariables) then
+    FVariables:=Result;
+end;
+
+function TShader.GetAttrib(const Name: string): TShaderAttrib;
+begin
+  Result:=GetVariable(Name, TShaderAttrib) as TShaderAttrib;
+end;
+
+function TShader.GetUniform(const Name: string): TShaderUniform;
+begin
+  Result:=GetVariable(Name, TShaderUniform) as TShaderUniform;
 end;
 
 end.

@@ -1,4 +1,7 @@
 !vertex_shader
+uniform vec3 eye;
+varying vec3 h;
+varying vec3 l;
 varying vec4 tc;
 varying vec4 dc;
 
@@ -8,6 +11,9 @@ void main(void)
                       0.0, 0.5, 0.0, 0.0,
                       0.0, 0.0, 1.0, 0.0,
                       0.5, 0.5, 0.0, 1.0);
+  vec3 p = vec3(gl_ModelViewMatrix * gl_Vertex);
+  l = normalize(vec3(gl_LightSource[0].position) - p);
+  h = normalize(vec3(eye) - p);
   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
   tc  = m * gl_Position;
   dc  = gl_Vertex * 0.025;
@@ -18,12 +24,17 @@ uniform sampler2D tex0;
 uniform sampler2D tex1;
 uniform sampler2D dot3;
 uniform float phase;
-
+varying vec3 l;
+varying vec3 h;
 varying vec4 tc;
 varying vec4 dc;
 
 void main(void)
 {
-   vec4 c = 0.6*tc + texture2D(dot3, vec2(dc.x + phase, dc.z)) * 0.4;
-   gl_FragColor = texture2DProj(tex0, c) * 0.4 + texture2DProj(tex1, c)*vec4(0.5676, 0.66, 0.5676, 1);
+  vec4 dot3s = vec4(texture2D(dot3, vec2(dc.x + phase, dc.z)).rgb, 1);
+  vec3 n = normalize(dot3s.xzy - vec3(0.5, 0, 0.5));
+  float ref = 0.0203 + 0.9797 * pow(1.0 - dot(h, n), 5.0);
+  vec4 spec = pow(max(dot(n, normalize(h + l)), 0.0), 127.0) * gl_LightSource[0].specular;
+  vec4 c = 0.6*tc + 0.4 * dot3s;
+  gl_FragColor = texture2DProj(tex0, c) * ref + texture2DProj(tex1, c) * (1-ref) + 2 * spec;
 }
