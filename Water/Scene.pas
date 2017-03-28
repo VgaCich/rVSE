@@ -103,11 +103,25 @@ begin
 end;
 
 procedure TSceneObj.Render;
+
+  procedure SetColor(Target: GLenum; Color: TColor);
+  var
+    C: TVector4f;
+  begin
+    C:=gleColorTo4f(Color or $FF000000);
+    glMaterialfv(GL_FRONT_AND_BACK, Target, @C);
+  end;
+
 var
   i : Integer;
 begin
   TexMan.Bind(Texture);
   glBindTexture(GL_TEXTURE_2D, Texture);
+  SetColor(GL_DIFFUSE, clWhite);
+  SetColor(GL_SPECULAR, clGray);
+  SetColor(GL_AMBIENT, clWhite);
+  SetColor(GL_EMISSION, clBlack);
+  glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 10.0);
   glBegin(GL_TRIANGLES);
   for i := 0 to F_Count - 1 do
   begin

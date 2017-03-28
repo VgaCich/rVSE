@@ -116,14 +116,26 @@ begin
 end;
 
 procedure TTerrain.Draw;
-{var
-  i: Integer;}
+
+  procedure SetColor(Target: GLenum; Color: TColor);
+  var
+    C: TVector4f;
+  begin
+    C:=gleColorTo4f(Color or $FF000000);
+    glMaterialfv(GL_FRONT_AND_BACK, Target, @C);
+  end;
+
 begin
   glPushAttrib(GL_ENABLE_BIT or GL_TEXTURE_BIT);
   glEnable(GL_LIGHTING);
   glEnable(GL_DEPTH_TEST);
   TexMan.Bind(FTexture);
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+  SetColor(GL_DIFFUSE, clWhite);
+  SetColor(GL_SPECULAR, clGray);
+  SetColor(GL_AMBIENT, $404040);
+  SetColor(GL_EMISSION, clBlack);
+  glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, 10.0);
   FVertexBuffer.Bind(GL_ARRAY_BUFFER_ARB);
   FIndexBuffer.Bind(GL_ELEMENT_ARRAY_BUFFER_ARB);
   glEnableClientState(GL_VERTEX_ARRAY);
@@ -135,10 +147,6 @@ begin
   glDrawElements(GL_TRIANGLE_STRIP, FIndexBuffer.Size div SizeOf(Integer), GL_UNSIGNED_INT, FIndexBuffer.Data);
   glDisableClientState(GL_TEXTURE_COORD_ARRAY);
   glDisableClientState(GL_NORMAL_ARRAY);
-  //Draw normals:
-  {FNormalsBuffer.Bind(GL_ARRAY_BUFFER_ARB);
-  glVertexPointer(3, GL_FLOAT, SizeOf(TVector3D), FNormalsBuffer.Data);
-  glDrawArrays(GL_LINES, 0, FNormalsBuffer.Size div SizeOf(TVector3D));}
   glDisableClientState(GL_VERTEX_ARRAY);
   FVertexBuffer.Unbind;
   FIndexBuffer.Unbind;

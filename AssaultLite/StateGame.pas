@@ -4,11 +4,12 @@ interface
 
 uses
   Windows, AvL, avlUtils, avlMath, avlVectors, OpenGL, VSEOpenGLExt, oglExtensions,
-  VSECore, VSETerrain, Sky, GameUnit, GamePlayer;
+  VSECore, VSEShaders, VSETerrain, Sky, GameUnit, GamePlayer;
 
 type
   TStateGame=class(TGameState)
   private
+    FShader: TShader;
     FTerrain: TTerrain;
     FSky: TSky;
     FFont: Cardinal;
@@ -16,6 +17,7 @@ type
     FUnits: array of TUnit;
     FShowDebugInfo: Boolean;
     function GetCanResumeGame: Boolean;
+    {$IFDEF VSE_CONSOLE}function LoadShaderHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
   protected
     function  GetName: string; override;
   public
@@ -35,7 +37,7 @@ type
 
 implementation
 
-uses VSERender2D, VSECamera, VSEMemPak, VSESound, VSEBindMan
+uses VSERender2D, VSECamera, VSEMemPak, VSESound, VSEBindMan, VSETexMan
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -48,15 +50,19 @@ const
     (Name: 'SpdDn'; Description: 'Decelerate'; Key: VK_CONTROL));
 
 constructor TStateGame.Create;
+const
+  White: array[0..3] of Byte = ($FF, $FF, $FF, $FF);
 begin
   inherited Create;
   {$IFDEF VSE_CONSOLE}
-  Console.OnCommand['debuginfo ?val=eoff:on']:=Console.GetConVarHandler(FShowDebugInfo, cvBool);
+  Console['debuginfo ?val=eoff:on']:=Console.GetConVarHandler(FShowDebugInfo, cvBool);
+  Console['loadshader file=s']:=LoadShaderHandler;
   {$ENDIF}
   BindMan.AddBindings(Bindings);
   Camera:=TCamera.Create;
   FFont:=Render2D.CreateFont('Courier New', 10);
   FTerrain:=TTerrain.Create;
+  TexMan.AddTexture('white', @White, 1, 1, GL_RGBA8, GL_RGBA, false, false);
 end;
 
 destructor TStateGame.Destroy;
@@ -69,6 +75,7 @@ begin
   FAN(FTerrain);
   FAN(FSky);
   FAN(Camera);
+  FAN(FShader);
   inherited Destroy;
 end;
 
@@ -96,9 +103,24 @@ begin
   glLightfv(GL_LIGHT0, GL_AMBIENT, @LightAmbi);
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHTING);
+  if Assigned(FShader) and FShader.Valid then
+  begin
+    TexMan.Bind(TexMan.GetTex('white'), 1);
+    FShader.Enabled:=true;
+    with Camera.Eye do
+      FShader['eye'].Value(X, Y, Z);
+    FShader['tex'].Value(0);
+  end;
   FTerrain.Draw;
+  if Assigned(FShader) and FShader.Valid then
+    FShader['tex'].Value(1);
   for i:=0 to High(FPlayers) do
     FPlayers[i].Draw;
+  if Assigned(FShader) and FShader.Valid then
+  begin
+    FShader.Enabled:=false;
+    TexMan.Unbind(1);
+  end;
   if FShowDebugInfo then
   begin
     Render2D.Enter;
@@ -265,5 +287,28 @@ function TStateGame.GetCanResumeGame: Boolean;
 begin
   Result:=Length(FPlayers)>0;
 end;
+
+{$IFDEF VSE_CONSOLE}
+function TStateGame.LoadShaderHandler(Sender: TObject; Args: array of const): Boolean;
+var
+  Data: TStream;
+begin
+  FAN(FShader);
+  Data:=GetFile(string(Args[1].VAnsiString));
+  if Assigned(Data) then
+  try
+    Log(llInfo, 'Loading shader '+string(Args[1].VAnsiString));
+    FShader:=TShader.Create;
+    FShader.Load(Data);
+    FShader.Link;
+    if not FShader.Valid
+      then Log(llError, 'Shader is not valid');
+    LogMultiline(llInfo, 'Shader log:'#13+FShader.InfoLog);
+    Result:=FShader.Valid;
+  finally
+    FAN(Data);
+  end;
+end;
+{$ENDIF}
 
 end.

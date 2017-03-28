@@ -101,7 +101,11 @@ begin
       glEnable(GL_CLIP_PLANE0);
       glClipPlane(GL_CLIP_PLANE0, @Plane[i xor 1]);
       if Assigned(FShader) and FShader.Valid then
+      begin
         FShader.Enabled:=true;
+        FShader['eye'].Value(FPos.X, FPos.Y, FPos.Z);
+        FShader['tex'].Value(0);
+      end;
       FScene.Render;
       if Assigned(FShader) and FShader.Valid then
         FShader.Enabled:=false;
@@ -113,9 +117,9 @@ begin
     TexMan.Bind(FWaterTex[1], 2);
     TexMan.Bind(FWaterTex[0], 1);
     FWaterShader.Enabled:=true;
+    FWaterShader['dot3'].Value(0);
     FWaterShader['tex0'].Value(1);
     FWaterShader['tex1'].Value(2);
-    FWaterShader['dot3'].Value(0);
     FWaterShader['phase'].Value(0.00005*(Core.Time mod 20000));
     FShader['eye'].Value(FPos.X, FPos.Y, FPos.Z);
     glColor3f(1, 1, 1);
@@ -197,23 +201,24 @@ var
   end;
 
 begin
-  Shader:=TShader.Create;
+  Shader:=nil;
   Data:=GetFile(string(Args[2].VAnsiString));
   if Assigned(Data) then
   try
     Log(llInfo, 'Loading shader '+string(Args[2].VAnsiString));
+    Shader:=TShader.Create;
     Shader.Load(Data);
     Shader.Link;
     if not Shader.Valid
       then Log(llError, 'Shader is not valid');
     LogMultiline(llInfo, 'Shader log:'#13+Shader.InfoLog);
     Result:=Shader.Valid;
-    case Args[1].VInteger of
-      0: SetShader(FShader);
-      1: SetShader(FWaterShader);
-    end;
   finally
     FAN(Data);
+  end;
+  case Args[1].VInteger of
+    0: SetShader(FShader);
+    1: SetShader(FWaterShader);
   end;
 end;
 
