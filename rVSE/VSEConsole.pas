@@ -92,7 +92,7 @@ type
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); // internally used
     procedure CharEvent(C: Char); // internally used
     procedure WriteLn(const Line: string = ''); // Write line to console
-    function Execute(const CommandLine: string): Boolean; // Execute command; returns true if successful
+    function Execute(CommandLine: string): Boolean; // Execute command; returns true if successful
     function GetCommands(Prefix: string): TStringList; // Get list of commands, starts with Prefix
     function GetConVarHandler(const Variable; VarType: TConsoleVarType): TOnConsoleCommand; //Get command handler for console variable
     property Active: Boolean read FActive write SetActive; // Console is open
@@ -429,12 +429,13 @@ begin
   if AtEnd then FLogPosition := LogEndPosition;
 end;
 
-function TConsole.Execute(const CommandLine: string): Boolean;
+function TConsole.Execute(CommandLine: string): Boolean;
 var
   Command: TConsoleCommand;
 begin
   Result := false;
-  if Trim(CommandLine) = '' then Exit;
+  CommandLine := Trim(CommandLine);
+  if CommandLine = '' then Exit;
   if Assigned(FOnExecute) then
     try
       if not FOnExecute(Self, CommandLine) then Exit;
