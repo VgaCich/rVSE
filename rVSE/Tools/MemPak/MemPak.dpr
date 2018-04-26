@@ -20,14 +20,14 @@ begin
   FindClose(SR);
 end;
 
-procedure Add(Pak: TStream; FileName: string);
+procedure Add(Pak: TStream; FileName: string; const Prefix: string);
 var
   IFile: TFileStream;
   Hdr: TFileHeader;
 begin
   IFile:=TFileStream.Create(FileName, fmOpenRead);
   try
-    FileName:=ExtractFileName(FileName);
+    FileName:=Prefix+ExtractFileName(FileName);
     WriteLn('Adding: ', FileName, ': ', IFile.Size);
     Hdr.NameLen:=Length(FileName);
     Hdr.FileSize:=IFile.Size;
@@ -79,26 +79,32 @@ end;
 var
   FilesList: TStringList;
   Pak: TMemoryStream;
-  i: Integer;
+  S: string;
+  i, j: Integer;
 
 begin
-  WriteLn('MemPak 2.0');
-  WriteLn('(c)VgaSoft, 2007-2016');
+  WriteLn('MemPak 2.1');
+  WriteLn('(c)VgaSoft, 2007-2018');
   WriteLn;
   if ParamCount<2 then
   begin
     WriteLn('Usage:');
-    WriteLn('  MemPak <out file> <in file> [in file] ...');
+    WriteLn('  MemPak <out file> <in file[|prefix]> [in file[|prefix]] ...');
     Exit;
   end;
   FilesList:=TStringList.Create;
   try
-    for i:=2 to ParamCount do
-      FillList(FilesList, ParamStr(i));
     Pak:=TMemoryStream.Create;
     try
-      for i:=0 to FilesList.Count-1 do
-        Add(Pak, FilesList[i]);
+      for i:=2 to ParamCount do
+      begin
+        FilesList.Clear;
+        S:=ParamStr(i);
+        FillList(FilesList, Tok('|', S));
+        S:=Tok('|', S);
+        for j:=0 to FilesList.Count-1 do
+          Add(Pak, FilesList[j], S);
+      end;
       if SameText(ExtractFileExt(ParamStr(1)), '.pas') then
         SaveToPas(Pak, ParamStr(1))
       else

@@ -41,6 +41,16 @@ var
   LogErrors: Integer = 0;
   LogWarnings: Integer = 0;
 
+function GetTickCount: Cardinal;
+var
+  T, F: Int64;
+begin
+  if QueryPerformanceFrequency(F) and QueryPerformanceCounter(T) then
+    Result := 1000 * (T div F) + (1000 * (T mod F)) div F
+  else
+    Result := Windows.GetTickCount;
+end;
+
 procedure TLoggerThread.Execute;
 var
   LogFile: TFileStream;
@@ -144,6 +154,7 @@ end;
 
 initialization
 
+  IsMultiThread:=true;
   LogEvent:=TEvent.Create(nil, false, false, '');
   LogBufferLock:=TCriticalSection.Create;
   Logger:=TLoggerThread.Create(false);

@@ -67,8 +67,21 @@ const
   AlphaPrefix='A=';
 
 function TMaterialFrame.Fill(Obj: TObject): Boolean;
-var
-  SR: TSearchRec;
+
+  procedure SearchTextures(const Ext: string; Strip: Boolean);
+  var
+    SR: TSearchRec;
+  begin
+    if FindFirst(MainForm.TexturesDir+Ext, 0, SR)=0 then
+      repeat
+        if Strip then
+          Texture.Items.Add(ChangeFileExt(SR.Name, ''))
+        else
+          Texture.Items.Add(SR.Name);
+      until FindNext(SR)<>0;
+    FindClose(SR);
+  end;
+
 begin
   Result:=Obj is TPMBMaterial;
   if Result then
@@ -85,11 +98,12 @@ begin
     try
       Texture.Items.Clear;
       Texture.Items.Add('');
-      if FindFirst(MainForm.TexturesDir+'*.tga', 0, SR)=0 then
-        repeat
-          Texture.Items.Add(ChangeFileExt(SR.Name, ''));
-        until FindNext(SR)<>0;
-      FindClose(SR);
+      SearchTextures('*.tga', true);
+      SearchTextures('*.jpg', false);
+      SearchTextures('*.png', false);
+      SearchTextures('*.bmp', false);
+      SearchTextures('*.gif', false);
+      SearchTextures('*.tif', false);
     finally
       Texture.Items.EndUpdate;
     end;

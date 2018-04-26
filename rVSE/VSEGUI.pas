@@ -6,9 +6,12 @@ uses
   Windows, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions, VSECore, VSERender2D;
 
 type
+  TGUIForm = class;
+  TFormManager = class;
   TBtnType = (btPush, btCheck, btRadio); //Button type: push button, check box, radio button
   PBtn = ^TBtn;
   TGUIOnClick = procedure(Btn: PBtn) of object;
+  TOnForm = procedure(Form: TGUIForm) of object;
   TBtn = record //Button
     Caption: string; //Button caption
     Type_: TBtnType; //Button type
@@ -34,6 +37,13 @@ type
     Tag: Integer; //Item button tag
     OnClick: TGUIOnClick; //Item button click event handler
   end;
+  PFormRec = ^TFormRec;
+  TFormRec = record
+    Name, Parent: string;
+    Form: TGUIForm;
+    Visible, Locked: Boolean;
+    Prev, Next: PFormRec;
+  end;
   TMenuItems = array of Integer;
   TGUIForm = class //GUI Form
   private
@@ -49,6 +59,7 @@ type
     FCaptHeight: Integer; //Form caption height
     FX, FY, FWidth, FHeight: Integer; //Form position and size
     FFont: Cardinal; //Form font
+    FManager: TFormManager; //Form manager
     function  GetButton(Index: Integer): PBtn; //Get button by index
     function  GetLabel(Index: Integer): PLbl; //Get label by index
     procedure CheckClick(Btn: PBtn); //CheckBox click handler
@@ -80,6 +91,35 @@ type
     property Height: Integer read FHeight write FHeight; //Form height
     property Font: Cardinal read FFont write FFont; //Font
     property Movable: Boolean read FMovable write FMovable; //Form can be dragged by caption
+  end;
+  TFormManager = class
+  private
+    FForms: PFormRec;
+    FCapturedMouse: TGUIForm;
+    function FindForm(const Name: string): PFormRec; overload;
+    function FindForm(Form: TGUIForm): PFormRec; overload;
+    function FormAt(X, Y: Integer): PFormRec;
+    function LastForm: PFormRec;
+    function GetForm(const Name: string): TGUIForm;
+    function GetVisible(const Name: string): Boolean;
+    procedure SetVisible(const Name: string; const Value: Boolean);
+  public
+    destructor Destroy; override;
+    procedure Draw; //Draw forms
+    procedure Update; //Update forms
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; //Process mouse event; returns true if mouse is over form
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent); //Process key event
+    procedure CharEvent(C: Char); //Process char event
+    procedure AddForm(const Name: string; Form: TGUIForm; const Parent: string = ''); //Add form; Parent: name of parent form; Parentless forms visible by default
+    procedure RemoveForm(Form: TGUIForm); //Remove form
+    procedure IterateForms(Handler: TOnForm); //Call Handler for every form
+    procedure Show(const Name: string); //Show and pop form
+    procedure Hide(const Name: string); //Hide form
+    procedure Pop(const Name: string); //Pop form to front
+    function FormName(Form: TGUIForm): string; //Name of form
+    function Top: TGUIForm; //Topmost form
+    property Forms[const Name: string]: TGUIForm read GetForm; default; //Forms
+    property Visible[const Name: string]: Boolean read GetVisible write SetVisible; //Form visibility
   end;
 
 function CreateSelect(Form: TGUIForm; X, Y, Width, Height: Integer; OnChange: TGUIOnClick; const PrevCaption, NextCaption: string): Integer; //Creates select control, returns select state label index; distinguish prev & next buttons in handler by Btn^.Tag (-1 for prev, 1 for next)
@@ -118,6 +158,8 @@ implementation
 uses
   VSECollisionCheck;
 
+{TGUIForm}
+
 constructor TGUIForm.Create(X, Y, Width, Height: Integer; Font: Cardinal);
 begin
   inherited Create;
@@ -136,6 +178,8 @@ end;
 
 destructor TGUIForm.Destroy;
 begin
+  if Assigned(FManager) then
+    FManager.RemoveForm(Self);
   Finalize(FButtons);
   Finalize(FRects);
 end;
@@ -213,8 +257,7 @@ procedure TGUIForm.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer
 var
   Cursor: TPoint;
 begin
-  Cursor.X := X;
-  Cursor.Y := Y;
+  Cursor := Point(X, Y);
   MapCursor(Cursor);
   case Event of
     meDown:
@@ -296,7 +339,7 @@ begin
   Render2D.LineWidth(1);
   gleColor(clFormBackground);
   Render2D.DrawRect(0, 0, FWidth, FHeight);
-  if IsMoving
+  if IsMoving or (Assigned(FManager) and (FManager.Top = Self))
     then gleColor(clFormCaptHl)
     else gleColor(clFormCapt);
   Render2D.DrawRect(0, 0, FWidth, FCaptHeight);
@@ -433,6 +476,260 @@ begin
         Exit;
       end;
 end;
+
+{TFormManager}
+
+destructor TFormManager.Destroy;
+var
+  Cur: PFormRec;
+begin
+  while Assigned(FForms) do
+  begin
+    Cur := FForms;
+    FForms := Cur.Next;
+    Cur.Form.Free;
+    Dispose(Cur);
+  end;
+  inherited;
+end;
+
+procedure TFormManager.Draw;
+var
+  Form: PFormRec;
+begin
+  Form := LastForm;
+  while Assigned(Form) do
+  begin
+    if Form.Visible then
+      Form.Form.Draw;
+    Form := Form.Prev;
+  end;
+end;
+
+procedure TFormManager.Update;
+var
+  Form: PFormRec;
+begin
+  Form := FForms;
+  while Assigned(Form) do
+  begin
+    Form.Form.Update;
+    Form := Form.Next;
+  end;
+end;
+
+procedure TFormManager.KeyEvent(Key: Integer; Event: TKeyEvent);
+begin
+  if Assigned(FForms) and not FForms.Locked then
+    FForms.Form.KeyEvent(Key, Event);
+end;
+
+function TFormManager.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
+var
+  Form: PFormRec;
+begin
+  Result := Assigned(FCapturedMouse);
+  if Assigned(FCapturedMouse) then
+  begin
+    FCapturedMouse.MouseEvent(Button, Event, X, Y);
+    if Event = meUp then
+      FCapturedMouse := nil;
+    Exit;
+  end;
+  with Render2D.MapCursor(Point(X, Y)) do
+    Form := FormAt(X, Y);
+  if Assigned(Form) and not Form.Locked then
+  begin
+    if Event = meDown then
+    begin
+      FCapturedMouse := Form.Form;
+      Pop(Form.Name);
+    end;
+    Form.Form.MouseEvent(Button, Event, X, Y);
+    Result := true;
+  end;
+end;
+
+procedure TFormManager.CharEvent(C: Char);
+begin
+  if Assigned(FForms) and not FForms.Locked then
+    FForms.Form.CharEvent(C);
+end;
+
+procedure TFormManager.AddForm(const Name: string; Form: TGUIForm; const Parent: string);
+var
+  Rec, Last: PFormRec;
+begin
+  if Assigned(FindForm(Name)) then
+    raise Exception.Create('FormManager: duplicate form name "' + Name + '"');
+  New(Rec);
+  Rec.Name := Name;
+  Rec.Form := Form;
+  Rec.Parent := Parent;
+  Rec.Visible := Parent = '';
+  Rec.Locked := false;
+  if Rec.Visible or not Assigned(FForms) then
+  begin
+    Rec.Prev := nil;
+    Rec.Next := FForms;
+    FForms := Rec;
+  end
+  else begin
+    Last := LastForm;
+    Rec.Prev := Last;
+    Rec.Next := nil;
+    Last.Next := Rec;
+  end;
+  Form.FManager := Self;
+end;
+
+procedure TFormManager.RemoveForm(Form: TGUIForm);
+var
+  Rec: PFormRec;
+begin
+  Rec := FindForm(Form);
+  if not Assigned(Rec) then Exit;
+  Rec.Form.FManager := nil;
+  if Assigned(Rec.Prev) then
+    Rec.Prev.Next := Rec.Next;
+  if Assigned(Rec.Next) then
+    Rec.Next.Prev := Rec.Prev;
+  if Rec = FForms then
+    FForms := Rec.Next;
+  Dispose(Rec);
+end;
+
+procedure TFormManager.IterateForms(Handler: TOnForm);
+var
+  Cur: PFormRec;
+begin
+  Cur := FForms;
+  while Assigned(Cur) do
+  begin
+    Handler(Cur.Form);
+    Cur := Cur.Next;
+  end;
+end;
+
+procedure TFormManager.Show(const Name: string);
+begin
+  Visible[Name] := true;
+  Pop(Name);
+end;
+
+procedure TFormManager.Hide(const Name: string);
+begin
+  Visible[Name] := false;
+end;
+
+procedure TFormManager.Pop(const Name: string);
+var
+  Form: PFormRec;
+begin
+  Form := FindForm(Name);
+  if not Assigned(Form) or not Assigned(Form.Prev) then Exit;
+  Form.Prev.Next := Form.Next;
+  if Assigned(Form.Next) then
+    Form.Next.Prev := Form.Prev;
+  FForms.Prev := Form;
+  Form.Prev := nil;
+  Form.Next := FForms;
+  FForms := Form;
+end;
+
+function TFormManager.FormName(Form: TGUIForm): string;
+var
+  Rec: PFormRec;
+begin
+  Result := '';
+  Rec := FindForm(Form);
+  if Assigned(Rec) then
+    Result := Rec.Name;
+end;
+
+function TFormManager.Top: TGUIForm;
+begin
+  Result := nil;
+  if Assigned(FForms) then
+    Result := FForms.Form;
+end;
+
+function TFormManager.FindForm(const Name: string): PFormRec;
+begin
+  Result := FForms;
+  while Assigned(Result) do
+    if Result.Name = Name then
+      Break
+    else
+      Result := Result.Next;
+end;
+
+function TFormManager.FindForm(Form: TGUIForm): PFormRec;
+begin
+  Result := FForms;
+  while Assigned(Result) do
+    if Result.Form = Form then
+      Break
+    else
+      Result := Result.Next;
+end;
+
+function TFormManager.FormAt(X, Y: Integer): PFormRec;
+begin
+  Result := FForms;
+  while Assigned(Result) do
+    with Result.Form do
+      if PointInRect(Point(X, Y), Rect(Left, Top, Left + Width, Top + Height)) then
+        Break
+      else
+        Result := Result.Next;
+end;
+
+function TFormManager.LastForm: PFormRec;
+begin
+  Result := FForms;
+  while Assigned(Result) and Assigned(Result.Next) do
+    Result := Result.Next;
+end;
+
+function TFormManager.GetForm(const Name: string): TGUIForm;
+var
+  Form: PFormRec;
+begin
+  Result := nil;
+  Form := FindForm(Name);
+  if Assigned(Form) then
+    Result := Form.Form;
+end;
+
+function TFormManager.GetVisible(const Name: string): Boolean;
+var
+  Form: PFormRec;
+begin
+  Result := false;
+  Form := FindForm(Name);
+  if Assigned(Form) then
+    Result := Form.Visible;
+end;
+
+procedure TFormManager.SetVisible(const Name: string; const Value: Boolean);
+var
+  Form, Parent: PFormRec;
+begin
+  Form := FindForm(Name);
+  if not Assigned(Form) then Exit;
+  Form.Visible := Value;
+  if Form.Parent <> '' then
+  begin
+    Parent := FindForm(Form.Parent);
+    if not Assigned(Parent) then Exit;
+    Parent.Locked := Value;
+    if not Value then
+      Pop(Parent.Name);
+  end;
+end;
+
+{Functions}
 
 function CreateSelect(Form: TGUIForm; X, Y, Width, Height: Integer; OnChange: TGUIOnClick; const PrevCaption, NextCaption: string): Integer;
 var

@@ -81,6 +81,7 @@ type
     FVertexBuffer: TArrayBuffer;
     FObjects: array of TPriModelObject;
     FMaterials: array of TPriModelMaterial;
+    FTransform: TTransform;
     FOnDrawObject: TOnDrawObject;
     {$IFDEF PM_DRAWNORMALS}FNormals: TArrayBuffer;{$ENDIF}
     function ReadChunk(Data, VertexBuffer: TStream): Boolean;
@@ -92,6 +93,7 @@ type
     procedure Draw; //Draw model
     property Objects[ID: Cardinal]: TPriModelObject read GetObject; default; //Model objects
     property Materials[ID: Byte]: TPriModelMaterial read GetMaterial; //Model materials
+    property Transform: TTransform read FTransform;
     property OnDrawObject: TOnDrawObject read FOnDrawObject write FOnDrawObject; //Draw object event
   end;
 
@@ -174,7 +176,7 @@ var
   V: TVector3D;
   RMat: TMatrix4D;
 begin
-  V:=VectorSetValue(X, Y, Z);
+  V:=Vector3D(X, Y, Z);
   VectorNormalize(V);
   S:=Sin(Angle);
   C:=Cos(Angle);
@@ -432,12 +434,12 @@ function TPriModelObject.GenCube(Params: PPPCube; Flags: Byte; var VA: TVertexAr
 
 const
   Verts: array[0..23] of Byte = (
-    $06, $0F, $1B, $12,
-    $20, $29, $3D, $34,
-    $46, $4A, $58, $54,
-    $63, $6F, $7D, $71,
-    $82, $8B, $99, $90,
-    $A7, $AE, $BC, $B5);
+    $16, $1F, $0B, $02,
+    $30, $39, $2D, $24,
+    $4E, $42, $50, $5C,
+    $6B, $67, $75, $79,
+    $8A, $83, $91, $98,
+    $AF, $A6, $B4, $BD);
 var
   i, FaceType: Integer;
 begin
@@ -669,7 +671,7 @@ end;}
 
 procedure TPriModelMaterial.Apply;
 var
-  Color: TVector4f;
+  Color: TVector4D;
 begin
   if FTexture<>0
     then TexMan.Bind(FTexture)
@@ -700,6 +702,7 @@ var
   {$ENDIF}
 begin
   inherited Create;
+  FTransform := TTransform.Create;
   Data:=GetFile(FileName);
   if not Assigned(Data)
     then raise Exception.CreateFmt(SPriModelCreateCannotOpenFile, [FileName]);
@@ -741,6 +744,7 @@ destructor TPriModel.Destroy;
 var
   i: Integer;
 begin
+  FAN(FTransform);
   FAN(FVertexBuffer);
   {$IFDEF PM_DRAWNORMALS}FAN(FNormals);{$ENDIF}
   for i:=0 to High(FObjects) do FObjects[i].Free;
@@ -754,6 +758,8 @@ procedure TPriModel.Draw;
 var
   i: Integer;
 begin
+  glPushMatrix;
+  FTransform.Apply;
   glPushAttrib(GL_ENABLE_BIT or GL_POLYGON_BIT or GL_LIGHTING_BIT or GL_CURRENT_BIT or GL_TEXTURE_BIT);
   glEnable(GL_NORMALIZE);
   FVertexBuffer.Bind(GL_ARRAY_BUFFER_ARB);
@@ -781,6 +787,7 @@ begin
   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
   {$ENDIF}
   glPopAttrib;
+  glPopMatrix;
 end;
 
 function TPriModel.ReadChunk(Data, VertexBuffer: TStream): Boolean;

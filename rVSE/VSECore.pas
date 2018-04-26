@@ -38,7 +38,7 @@ type
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); virtual; //Mouse event; Button - mouse button number or wheel click if Event=meWheel; X, Y - cursor coordinates or cursor coordinates delta if Core.MouseCapture=true
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); virtual; //Keyboard event; Key - VK key code
     procedure CharEvent(C: Char); virtual; //Char event (char of pressed key in current layout)
-    function  SysNotify(Notify: TSysNotify): Boolean; virtual; //System notify event, return value ignored
+    function  SysNotify(Notify: TSysNotify): Boolean; virtual; //System notify event, return value only from TGameState
   end;
   TGameState = class(TCoreModule) //Base state class
   protected
@@ -63,7 +63,7 @@ type
     FRefreshRate: Cardinal;
     FColorDepth: Cardinal;
     FFramesCount, FFPS, FFPSTimer, FPreviousUpdate, FUpdInt, FUpdOverloadCount, FUpdOverloadThreshold: Cardinal;
-    FPerformanceFrequency: Int64;
+    FHPETFreq: Int64;
     FStates: array of TGameState;
     FModules: array of TModule;
     FState, FSwitchTo: Cardinal;
@@ -201,8 +201,7 @@ const
     ('meDown', 'meUp', 'meMove', 'meWheel');
   KeyEventNames: array[TKeyEvent] of string =
     ('keDown', 'keUp');
-  VSECaptVer = 'reduced VS Engine 0.1';
-  SCoreRevision: string = '$Rev: 186 $';
+  VSECaptVer = 'reduced VS Engine 1.0';
   SSectionSettings = 'Settings';
   mbLeft = 1; //Left mouse button
   mbRight = 2; //Right mouse button
@@ -328,7 +327,9 @@ begin
   FFullscreen:=false;
   FFPS:=0;
   FFramesCount:=0;
-  QueryPerformanceFrequency(FPerformanceFrequency);
+  {$IFDEF VSE_LOG}if not{$ENDIF}
+  QueryPerformanceFrequency(FHPETFreq)
+  {$IFDEF VSE_LOG}then Log(llWarning, 'HPET not available, using GTC'){$ENDIF};
   FPreviousUpdate:=0;
   FUpdOverloadCount:=0;
   FUpdOverloadThreshold:=DefaultOverloadThreshold;
@@ -457,7 +458,7 @@ begin
     if FPaused then Exit;
     if GetForegroundWindow<>FHandle then
     begin
-      {$IFDEF VSE_LOG}Log(llInfo, 'Window minimized');{$ENDIF}
+      {$IFDEF VSE_LOG}if not FMinimized then Log(llInfo, 'Window minimized');{$ENDIF}
       FMinimized:=True;
       if FFullscreen then
       begin
@@ -944,8 +945,10 @@ function TCore.GetTime: Cardinal;
 var
   T: Int64;
 begin
-  QueryPerformanceCounter(T);
-  Result:=Trunc(1000*(T/FPerformanceFrequency));
+  if QueryPerformanceCounter(T) then
+    Result := 1000 * (T div FHPETFreq) + (1000 * (T mod FHPETFreq)) div FHPETFreq
+  else
+    Result := GetTickCount;
 end;
 
 procedure TCore.ResetMouse;
@@ -1203,7 +1206,7 @@ begin
   Result:=StopInitError;
   if IsRunning(InitSettings.Caption) then Exit;
   {$IFDEF VSE_LOG}Log(llInfo, InitSettings.Caption+' '+InitSettings.Version+' started');
-  Log(llInfo, VSECaptVer+' (core '+SCoreRevision+')');{$ENDIF}
+  Log(llInfo, VSECaptVer);{$ENDIF}
   Fin:=false;
   ZeroMemory(@WndClass, SizeOf(WndClass));
   with WndClass do

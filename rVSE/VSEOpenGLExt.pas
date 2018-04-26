@@ -25,7 +25,7 @@ procedure gleOrthoMatrix(Width, Height: Integer); //Set orthogonal projection; W
 procedure gleOrthoMatrix2(Left, Top, Right, Bottom: Double); //Set orthogonal projection; Left, Top, Right, Bottom: projection dimensions
 function  gleError(GLError: Cardinal): string; //Convert OpenGL error code to text
 procedure gleColor(Color: TColor); //Set current OpenGL color
-function  gleColorTo4f(Color: TColor): TVector4f; //Convert GDI color to OpenGL color
+function  gleColorTo4f(Color: TColor): TVector4D; //Convert GDI color to OpenGL color
 function  gleGetResolutions: TResolutions; //List available screen resolutions, RefreshRate not used
 function  gleGetCurrentResolution: TResolution; //Returns current resolution, RefreshRates not used
 function  gleScreenTo3D(X, Y: Integer; GetDepth: Boolean=false): TVector3D; //Translates screen coordinates to 3D coordinates; GetDepth: fetch screen depth from framebuffer
@@ -77,6 +77,7 @@ begin
     cColorBits:=Depth;
     //if Depth=32 then cAlphaBits:=8;
     cDepthBits:=24;
+    cStencilBits:=8;
     iLayerType:=PFD_MAIN_PLANE;
   end;
   PixelFormat:=ChoosePixelFormat(DC, @PFD);
@@ -198,16 +199,16 @@ begin
   glColor4ub(Clr[0], Clr[1], Clr[2], Clr[3]);
 end;
 
-function gleColorTo4f(Color: TColor): TVector4f;
+function gleColorTo4f(Color: TColor): TVector4D;
 var
   Clr: packed array[0..3] of Byte absolute Color;
 begin
   with Result do
   begin
-    Red:=Clr[0]/255;
-    Green:=Clr[1]/255;
-    Blue:=Clr[2]/255;
-    Alpha:=Clr[3]/255;
+    X:=Clr[0]/255;
+    Y:=Clr[1]/255;
+    Z:=Clr[2]/255;
+    W:=Clr[3]/255;
   end;
 end;
 
@@ -295,14 +296,14 @@ var
   OX, OY, OZ: Double;
 begin
   glGetDoublev(GL_MODELVIEW_MATRIX, @ModelViewMatrix);
-	glGetDoublev(GL_PROJECTION_MATRIX, @ProjectionMatrix);
-	glGetIntegerv(GL_VIEWPORT, @Viewport);
+  glGetDoublev(GL_PROJECTION_MATRIX, @ProjectionMatrix);
+  glGetIntegerv(GL_VIEWPORT, @Viewport);
   Y:=Viewport[3]-Y-1;
   if GetDepth
     then glReadPixels(X, Y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, @Z)
     else Z:=0;
   gluUnProject(X, Y, Z, @ModelViewMatrix, @ProjectionMatrix, @Viewport, OX, OY, OZ);
-  Result:=VectorSetValue(OX, OY, OZ);
+  Result:=Vector3D(OX, OY, OZ);
 end;
 
 function gle3DToScreen(X, Y, Z: Double): TPoint;

@@ -53,7 +53,8 @@ begin
         if SameText(Name, FileName) then
         begin
           Result:=TMemoryStream.Create;
-          Result.CopyFrom(Pak, Hdr.FileSize);
+          if Hdr.FileSize > 0 then
+            Result.CopyFrom(Pak, Hdr.FileSize);
           Result.Position:=0;
           Exit;
         end

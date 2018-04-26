@@ -163,6 +163,7 @@ object MaterialFrame: TMaterialFrame
       Height = 21
       Anchors = [akLeft, akTop, akRight]
       ItemHeight = 13
+      Sorted = True
       TabOrder = 1
       OnExit = TextureExit
       OnKeyPress = TextureKeyPress

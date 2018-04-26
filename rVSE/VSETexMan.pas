@@ -31,7 +31,7 @@ type
     constructor Create; override; //internally used
     destructor Destroy; override; //internally used
     class function Name: string; override; //internally used
-    //function  AddTexture(const Name: string; Stream: TStream; Clamp, MipMap: Boolean): Cardinal; overload;  //Add texture from stream
+    function  AddTexture(const Name: string; Stream: TStream; Clamp, MipMap: Boolean; FreeStream: Boolean = false): Cardinal; overload;  //Add texture from stream
     function  AddTexture(const Name: string; const Image: TImage; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from TImageData
     function  AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from memory
     function  GetTex(const Name: string; IgnoreLostTex: Boolean = false): Cardinal; //Get texture ID by texture name
@@ -71,7 +71,7 @@ destructor TTexMan.Destroy;
 var
   i: Integer;
 begin
-  Texman:=nil;
+  TexMan:=nil;
   {$IFDEF VSE_LOG}LogF(llInfo, 'TexMan: Freeing %d textures', [FCount]);{$ENDIF}
   for i:=0 to High(FRTTs) do FreeRTT(i);
   Finalize(FRTTs);
@@ -86,17 +86,20 @@ begin
   Result:='TexMan';
 end;
 
-(*function TTexMan.AddTexture(const Name: string; Stream: TStream; Clamp, MipMap: Boolean): Cardinal;
+function TTexMan.AddTexture(const Name: string; Stream: TStream; Clamp, MipMap: Boolean; FreeStream: Boolean = false): Cardinal;
 var
-  ImageData: TImageData;
+  Image: TImage;
 begin
-  ImageData.Pixels := nil;
-  if LoadImageFromStream(Stream, ImageData)
-    then Result:=AddTexture(Name, ImageData, Clamp, MipMap)
-    else Result:=0;
-  {$IFDEF VSE_LOG}if Result=0 then Log(llError, 'TexMan: can''t load texture '+Name+' from stream');{$ENDIF}
-  FreeImageData(ImageData);
-end;*)
+  Image:=TImage.Create;
+  try
+    Image.Load(Stream);
+    Result:=AddTexture(Name, Image, Clamp, MipMap);
+  finally
+    Image.Free;
+    if FreeStream then
+      Stream.Free;
+  end;
+end;
 
 function TTexMan.AddTexture(const Name: string; const Image: TImage; Clamp, MipMap: Boolean): Cardinal;
 const

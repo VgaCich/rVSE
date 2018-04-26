@@ -225,7 +225,7 @@ begin
   {$IFDEF VSE_LOG}
   Log(llInfo, 'Console: Destroy');
   UpdateLog;
-  FLog.SaveToFile(ChangeFileExt(FullExeName, '.console.log'));
+  {$IFDEF VSE_DEBUG}FLog.SaveToFile(ChangeFileExt(FullExeName, '.console.log'));{$ENDIF}
   FAN(FLogBufferLock);
   FAN(FLogBufferEvent);
   FAN(FLogBuffer);

@@ -1360,12 +1360,12 @@ function TPMBPrimitiveCube.CreateVerts: Boolean;
 
 const
   Verts: array[0..23] of Byte = (
-    $06, $0F, $1B, $12,
-    $20, $29, $3D, $34,
-    $46, $4A, $58, $54,
-    $63, $6F, $7D, $71,
-    $82, $8B, $99, $90,
-    $A7, $AE, $BC, $B5);
+    $16, $1F, $0B, $02,
+    $30, $39, $2D, $24,
+    $4E, $42, $50, $5C,
+    $6B, $67, $75, $79,
+    $8A, $83, $91, $98,
+    $AF, $A6, $B4, $BD);
 var
   MergeInfo: Byte;
   i, FaceType: Integer;

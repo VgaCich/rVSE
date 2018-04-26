@@ -39,24 +39,11 @@ implementation
 function LoadTex(FileName: string; Clamp: Boolean=false; MipMap: Boolean=true): Cardinal;
 var
   Name: string;
-  Data: TStream;
-  Image: TImage;
 begin
   Name:=ChangeFileExt(ExtractFileName(FileName), '');
   Result:=TexMan.GetTex(Name, true);
   if Result<>0 then Exit;
-  Data:=GetFile(FileName);
-  try
-    Image:=TImage.Create;
-    try
-      Image.Load(Data);
-      Result:=TexMan.AddTexture(Name, Image, Clamp, MipMap);
-    finally
-      FAN(Image);
-    end;
-  finally
-    FAN(Data);
-  end;
+  Result:=TexMan.AddTexture(Name, GetFile(FileName), Clamp, MipMap, true);
 end;
 
 procedure LightColor(ID: Integer; R, G, B: Single);

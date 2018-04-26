@@ -27,7 +27,7 @@ procedure SaveFormState(Form: TForm);
 begin
   with Config, Form do
   begin
-    WriteInteger(Name, KeyLeft, Left);
+    WriteInteger(Name, KeyLeft, Left); //TODO: Save form state
     WriteInteger(Name, KeyTop, Top);
     WriteInteger(Name, KeyWidth, Width);
     WriteInteger(Name, KeyHeight, Height);

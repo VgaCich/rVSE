@@ -252,7 +252,10 @@ end;
 
 function TMainForm.LoadTexture(const TexName: string): Cardinal;
 begin
-  Result:=tex.Load(PChar(FTexturesDir+TexName+'.tga'));
+  if ExtractFileExt(TexName) = '' then
+    Result:=tex.Load(PChar(FTexturesDir+TexName+'.tga'))
+  else
+    Result:=tex.Load(PChar(FTexturesDir+TexName));
 end;
 
 procedure TMainForm.BindTexture(ID: Cardinal);
