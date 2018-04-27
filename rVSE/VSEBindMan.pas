@@ -65,8 +65,7 @@ type
     procedure DefaultClick(Btn: PBtn);
     procedure SetKey(Key: Integer);
   public
-    constructor Create(X, Y, Width, Height: Integer; Font: Cardinal; const
-      DefaultCapt, CloseCapt: string);
+    constructor Create(X, Y, Width, Height: Integer; const DefaultCapt, CloseCapt: string);
     destructor Destroy; override;
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
@@ -514,16 +513,16 @@ end;
 
 { TBindManCfgForm }
 
-constructor TBindManCfgForm.Create(X, Y, Width, Height: Integer; Font: Cardinal; const DefaultCapt, CloseCapt: string);
+constructor TBindManCfgForm.Create(X, Y, Width, Height: Integer; const DefaultCapt, CloseCapt: string);
 var
   Btn: TBtn;
   Lbl: TLbl;
   BHeight, i: Integer;
 begin
-  inherited Create(X, Y, Width, Height, Font);
+  inherited Create(X, Y, Width, Height);
   FActive:=-1;
-  BHeight:=Render2D.TextHeight(Font)+10;
-  SetLength(FLabels, Min(Length(BindMan.FBindings), (Height-20-Render2D.TextHeight(Font)) div (BHeight+10)));
+  BHeight:=Render2D.TextHeight(GetFont)+10;
+  SetLength(FLabels, Min(Length(BindMan.FBindings), (Height-20-Render2D.TextHeight(GetFont)) div (BHeight+10)));
   SetLength(FButtons, Length(FLabels));
   FPages:=High(BindMan.FBindings) div Max(Length(FLabels), 1);
   with Btn do
@@ -546,10 +545,10 @@ begin
   begin
     with Btn do
     begin
-      Y:=20+Render2D.TextHeight(Font)+i*(BHeight+10);
+      Y:=20+Render2D.TextHeight(GetFont)+i*(BHeight+10);
       Tag:=i;
     end;
-    Lbl.Y:=25+Render2D.TextHeight(Font)+i*(BHeight+10);
+    Lbl.Y:=25+Render2D.TextHeight(GetFont)+i*(BHeight+10);
     FButtons[i]:=AddButton(Btn);
     FLabels[i]:=AddLabel(Lbl);
   end;

@@ -42,7 +42,7 @@ const
 
 implementation
 
-uses VSERender2D, VSETexMan, VSEMemPak, StateMenu
+uses VSERender2D, VSETexMan, VSEMemPak, VSEFormManager, StateMenu
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -98,7 +98,10 @@ begin
   end;
   glPopAttrib;
   with Core.MouseCursor do
-    Obj := ObjectAt(X, Y);
+    if not FormManager.MouseBusy(X, Y) then
+      Obj := ObjectAt(X, Y)
+    else
+      Obj := nil;
   Render2D.Enter;
   if Assigned(Obj) and (Obj is TCharacter) then
     with Render2D.MapCursor(Core.MouseCursor), Obj as TCharacter do

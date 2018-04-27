@@ -71,6 +71,7 @@ type
     FPrevStateName: string;
     FFullscreen, FNeedSwitch, FMinimized, FPaused, FMouseCapture: Boolean;
     FKeyState: TKeyboardState;
+    FSavedMousePos: TPoint;
     procedure SetFullscreen(Value: Boolean);
     function  GetVSync: Boolean;
     procedure SetVSync(Value: Boolean);
@@ -925,12 +926,15 @@ begin
   FMouseCapture:=Value;
   if Value then
   begin
+    GetCursorPos(FSavedMousePos);
     ResetMouse;
     SetCapture(FHandle);
     ShowCursor(false);
   end
   else begin
     ReleaseCapture;
+    with FSavedMousePos do
+      SetCursorPos(X, Y);
     ShowCursor(true);
   end;
 end;

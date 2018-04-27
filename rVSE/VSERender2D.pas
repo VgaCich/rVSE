@@ -66,6 +66,9 @@ type
 var
   Render2D: TRender2D; //Render2D interface
 
+const
+  InvalidFont: Cardinal = $FFFFFFFF;
+
 implementation
 
 uses

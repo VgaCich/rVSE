@@ -3,14 +3,17 @@ unit StateGame;
 interface
 
 uses
-  Windows, AvL, avlUtils, avlMath, avlVectors, OpenGL, VSEOpenGLExt, oglExtensions,
-  VSECore, VSECamera, Scene, Game;
+  Windows, AvL, avlUtils, avlMath, avlVectors, OpenGL, oglExtensions,
+  VSEOpenGLExt, VSECore, VSECamera, VSEGUI, Scene, Game;
 
 type
   TStateGame=class(TGameState)
   private
+    {$IFDEF VSE_DEBUG}
     FFont: Cardinal;
-    {$IFDEF VSE_DEBUG}FShowDebugInfo: Boolean;{$ENDIF}
+    FShowDebugInfo: Boolean;
+    {$ENDIF}
+    FFormsSet: TGUIFormsSet;
     FCamera: TCamera;
     FScene: TScene;
     FGame: TGame;
@@ -30,6 +33,7 @@ type
     function  SysNotify(Notify: TSysNotify): Boolean; override;
     procedure NewGame;
     property CanResumeGame: Boolean read GetCanResumeGame;
+    property Mouse3D: TVector3D read FMouse3D;
   end;
 
 const
@@ -37,9 +41,9 @@ const
 
 implementation
 
-uses VSERender2D, VSETexMan, VSEMemPak, VSEBindMan
+uses VSERender2D, VSETexMan, VSEMemPak, VSEBindMan, VSEFormManager
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
-  StateMenu;
+  StateMenu, GameForms;
 
 const
   Bindings: array[0..3] of TBindingRec = (
@@ -50,17 +54,26 @@ const
   );
 
 constructor TStateGame.Create;
+
+  procedure SetMovable(Self: TObject; Form: TGUIForm);
+  begin
+    Form.Movable := true;
+  end;
+
 begin
   inherited Create;
   Randomize;
+  FFormsSet := TGUIFormsSet.Create;
   {$IFDEF VSE_DEBUG}
   {$IFDEF VSE_CONSOLE}
   Console.OnCommand['debuginfo ?val=eoff:on'] := Console.GetConVarHandler(FShowDebugInfo, cvBool);
   {$ENDIF}
   FShowDebugInfo := true;
+  FFont := Render2D.CreateFont('Courier New', 10);
+  FFormsSet.AddForm(IDLogPoints, TLogPointsForm.Create, '', false);
   {$ENDIF}
   BindMan.AddBindings(Bindings);
-  FFont := Render2D.CreateFont('Courier New', 10);
+  FFormsSet.IterateForms(TOnForm(MakeMethod(@SetMovable)));
   FCamera := TCamera.Create;
 end;
 
@@ -69,6 +82,7 @@ begin
   FAN(FGame);
   FAN(FScene);
   FAN(FCamera);
+  FAN(FFormsSet);
   inherited Destroy;
 end;
 
@@ -122,6 +136,7 @@ begin
   Result := 20;
   glClearColor(0, 0, 0, 1);
   glClearStencil(0);
+  FormManager.FormsSet := FFormsSet;
   Draw;
   Core.ResetUpdateTimer;
   //TODO: FGame.Resume;
@@ -130,12 +145,14 @@ end;
 procedure TStateGame.Deactivate;
 begin
   inherited;
+  FormManager.FormsSet := nil;
   //TODO: FGame.Pause;
 end;
 
 procedure TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 begin
   inherited;
+  if not Core.MouseCapture and FormManager.MouseBusy(X, Y) then Exit;
   case Event of
     meDown: if Button in [mbRight, mbMiddle] then
       Core.MouseCapture := true;

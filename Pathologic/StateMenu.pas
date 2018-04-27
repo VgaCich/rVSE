@@ -17,7 +17,7 @@ type
     procedure TextClick(Btn: PBtn);
     procedure ExitClick(Btn: PBtn);
   public
-    constructor Create(Font: Cardinal);
+    constructor Create;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure ResumeEnable(Enable: Boolean);
   end;
@@ -35,8 +35,9 @@ type
     procedure KeyConfig(Btn: PBtn);
     procedure OKClick(Btn: PBtn);
     procedure CancelClick(Btn: PBtn);
+    procedure KeyConfigClose(Sender: TObject);
   public
-    constructor Create(Font: Cardinal);
+    constructor Create;
     destructor Destroy; override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure ReadOptions;
@@ -49,32 +50,24 @@ type
     procedure ChangePage(Btn: PBtn);
     procedure Close(Btn: PBtn);
   public
-    constructor Create(const Caption, TextFile: string; Font: Cardinal);
+    constructor Create(const Caption, TextFile: string);
     destructor Destroy; override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
   end;
   TStateMenu = class(TGameState)
   private
-    FFormManager: TFormManager;
+    FFormsSet: TGUIFormsSet;
     FStart: TStateStart;
     FGame: TStateGame;
-    procedure KeyConfigClose(Sender: TObject);
-    {$IFDEF VSE_CONSOLE}
-    function MenuBgHandler(Sender: TObject; Args: array of const): Boolean;
-    function UIColorHandler(Sender: TObject; Args: array of const): Boolean;
-    function UIFontHandler(Sender: TObject; Args: array of const): Boolean;
-    {$ENDIF}
+    {$IFDEF VSE_CONSOLE}function MenuBgHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
   protected
     function GetName: string; override;
   public
     constructor Create;
     destructor Destroy; override;
     procedure Draw; override;
-    procedure Update; override;
     function Activate: Cardinal; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    procedure CharEvent(C: Char); override;
+    procedure Deactivate; override;
     function SysNotify(Notify: TSysNotify): Boolean; override;
   end;
 
@@ -91,7 +84,7 @@ function GetTexFileName(const Name: string): string;
 implementation
 
 uses
-  VSETexMan, VSERender2D, VSEMemPak, VSEImageCodec
+  VSETexMan, VSERender2D, VSEFormManager, VSEMemPak, VSEImageCodec
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -168,9 +161,9 @@ var
     (Caption: 'Титры'; Tag: 1),
     (Caption: 'Выход'; Tag: 0));
 
-constructor TMainMenu.Create(Font: Cardinal);
+constructor TMainMenu.Create;
 begin
-  inherited Create(300, 130, 200, 350, Font);
+  inherited Create(300, 130, 200, 350);
   FCaption := GameTitle;
   MainMenuItems[0].OnClick := GameClick;
   MainMenuItems[1].OnClick := GameClick;
@@ -207,16 +200,16 @@ end;
 
 procedure TMainMenu.OptionsClick(Btn: PBtn);
 begin
-  (FManager[IDOptions] as TOptions).ReadOptions;
-  FManager.Show(IDOptions);
+  (FormManager[IDOptions] as TOptions).ReadOptions;
+  FormManager.Show(IDOptions);
 end;
 
 procedure TMainMenu.TextClick(Btn: PBtn);
 begin
-  FManager[IDTextView].Free;
-  FManager.AddForm(IDTextView, TTextView.Create(Btn.Caption, TextFiles[Btn.Tag], Font), IDMainMenu);
-  FManager[IDTextView].Movable := true;
-  FManager.Show(IDTextView);
+  FormManager[IDTextView].Free;
+  FParentSet.AddForm(IDTextView, TTextView.Create(Btn.Caption, TextFiles[Btn.Tag]), IDMainMenu);
+  FormManager[IDTextView].Movable := true;
+  FormManager.Show(IDTextView);
 end;
 
 procedure TMainMenu.ExitClick(Btn: PBtn);
@@ -226,12 +219,12 @@ end;
 
 {TOptions}
 
-constructor TOptions.Create(Font: Cardinal);
+constructor TOptions.Create;
 var
   Btn: TBtn;
   Lbl: TLbl;
 begin
-  inherited Create(200, 130, 400, 350, Font);
+  inherited Create(200, 130, 400, 350);
   FCaption := 'Настройки';
   FResolutions := gleGetResolutions;
   FLResolution := CreateSelect(Self, 10, 60, 190, 20, ResClick, '-', '+');
@@ -377,8 +370,14 @@ end;
 
 procedure TOptions.KeyConfig(Btn: PBtn);
 begin
-  (FManager[IDKeyConfig] as TBindManCfgForm).Refresh;
-  FManager.Show(IDKeyConfig);
+  if not Assigned(FormManager[IDKeyConfig]) then
+    with FParentSet.AddForm(IDKeyConfig, TBindManCfgForm.Create(200, 130, 400, 350, 'Сброс', 'OK'), IDOptions) as TBindManCfgForm do
+    begin
+      Caption := 'Управление';
+      OnClose := KeyConfigClose;
+    end;
+  (FormManager[IDKeyConfig] as TBindManCfgForm).Refresh;
+  FormManager.Show(IDKeyConfig);
 end;
 
 procedure TOptions.OKClick(Btn: PBtn);
@@ -392,12 +391,17 @@ begin
     Settings.Int[SSectionSettings, SGraphicsQuality] := Integer(FQuality);
     Core.SwitchState(SIDStart);
   end;
-  FManager.Hide(FManager.FormName(Self));
+  FormManager.Hide(FormManager.FormName(Self));
 end;
 
 procedure TOptions.CancelClick(Btn: PBtn);
 begin
-  FManager.Hide(FManager.FormName(Self));
+  FormManager.Hide(FormManager.FormName(Self));
+end;
+
+procedure TOptions.KeyConfigClose(Sender: TObject);
+begin
+  FormManager.Hide(IDKeyConfig);
 end;
 
 {TTextView}
@@ -405,13 +409,13 @@ end;
 const
   SPage = '%d/%d';
 
-constructor TTextView.Create(const Caption, TextFile: string; Font: Cardinal);
+constructor TTextView.Create(const Caption, TextFile: string);
 var
   Line: Integer;
   Src, Dst: string;
   Btn: TBtn;
 begin
-  inherited Create(80, 60, 640, 480, Font);
+  inherited Create(80, 60, 640, 480);
   FCaption := Caption;
   FText := GetFileText(TextFile);
   Line := 0;
@@ -419,7 +423,7 @@ begin
   begin
     Src := ProcessKeyTags(FText[Line]);
     Dst := '';
-    while (Src <> '') and (Render2D.TextWidth(FFont, Src) > 620) do
+    while (Src <> '') and (Render2D.TextWidth(GetFont, Src) > 620) do
     begin
       Dst := Src[Length(Src)] + Dst;
       Delete(Src, Length(Src), 1);
@@ -492,9 +496,9 @@ begin
       if (S <> '') and (S[1] = #9) then
       begin
         S := Copy(S, 2, MaxInt);
-        Inc(Left, 310 - Render2D.TextWidth(FFont, S) div 2);
+        Inc(Left, 310 - Render2D.TextWidth(GetFont, S) div 2);
       end;
-      Render2D.TextOut(FFont, Left, 35 + 16 * i, S);
+      Render2D.TextOut(GetFont, Left, 35 + 16 * i, S);
     end;
 end;
 
@@ -505,48 +509,25 @@ end;
 
 procedure TTextView.Close(Btn: PBtn);
 begin
-  FManager.Hide(FManager.FormName(Self));
+  FormManager.Hide(FormManager.FormName(Self));
 end;
 
 {TStateMenu}
 
-const
-  ColorNames = 'btnbg:btnbd:btntxt:frmbg:frmbd:frmcpt:frmcphl:frmcptxt:text:tabstop';
-
 constructor TStateMenu.Create;
-
-  procedure SetMovable(Self: TObject; Form: TGUIForm);
-  begin
-    Form.Movable := true;
-  end;
-
-var
-  Font: Cardinal;
 begin
   inherited Create;
-  {$IFDEF VSE_CONSOLE}
-  Console.OnCommand['menubg file=s'] := MenuBgHandler;
-  Console.OnCommand['uicolor ?clr=e' + ColorNames + ' ?def=i ?hl=i ?act=i ?dis=i'] := UIColorHandler;
-  Console.OnCommand['uifont name=s ?size=i8:24 ?weight=en:b'] := UIFontHandler;
-  {$ENDIF}
-  Font := Render2D.CreateFont(UIFont, UIFontSize, true);
-  FFormManager := TFormManager.Create;
-  FFormManager.AddForm(IDMainMenu, TMainMenu.Create(Font));
-  FFormManager.AddForm(IDOptions, TOptions.Create(Font), IDMainMenu);
-  FFormManager.AddForm(IDKeyConfig, TBindManCfgForm.Create(200, 130, 400, 350, Font, 'Сброс', 'OK'), IDOptions);
-  with FFormManager[IDKeyConfig] as TBindManCfgForm do
-  begin
-    Caption := 'Управление';
-    OnClose := KeyConfigClose;
-  end;
-  FFormManager.IterateForms(TOnForm(MakeMethod(@SetMovable)));
+  {$IFDEF VSE_CONSOLE}Console.OnCommand['menubg file=s'] := MenuBgHandler;{$ENDIF}
+  FFormsSet := TGUIFormsSet.Create;
+  FFormsSet.AddForm(IDMainMenu, TMainMenu.Create);
+  FFormsSet.AddForm(IDOptions, TOptions.Create, IDMainMenu);
   FStart := TStateStart(Core.GetState(Core.FindState(SIDStart)));
   FGame := TStateGame(Core.GetState(Core.FindState(SIDGame)));
 end;
 
 destructor TStateMenu.Destroy;
 begin
-  FAN(FFormManager);
+  FAN(FFormsSet);
   inherited Destroy;
 end;
 
@@ -558,20 +539,14 @@ begin
     FGame.Draw
   else
     DrawBackground;
-  FFormManager.Draw;
-end;
-
-procedure TStateMenu.Update;
-begin
-  inherited;
-  FFormManager.Update;
 end;
 
 function TStateMenu.Activate: Cardinal;
 begin
   Result := inherited Activate;
   glClearColor(0, 0, 0, 1);
-  with FFormManager[IDMainMenu] as TMainMenu do
+  FormManager.FormsSet := FFormsSet;
+  with FormManager[IDMainMenu] as TMainMenu do
   begin
     ResumeEnable(FGame.CanResumeGame);
     if FGame.CanResumeGame then
@@ -586,32 +561,14 @@ begin
   end;
 end;
 
-procedure TStateMenu.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+procedure TStateMenu.Deactivate;
 begin
-  inherited;
-  FFormManager.MouseEvent(Button, Event, X, Y);
-end;
-
-procedure TStateMenu.KeyEvent(Key: Integer; Event: TKeyEvent);
-begin
-  inherited;
-  FFormManager.KeyEvent(Key, Event);
-end;
-
-procedure TStateMenu.CharEvent(C: Char);
-begin
-  inherited;
-  FFormManager.CharEvent(C);
+  FormManager.FormsSet := nil;
 end;
 
 function TStateMenu.GetName: string;
 begin
   Result := SIDMenu;
-end;
-
-procedure TStateMenu.KeyConfigClose(Sender: TObject);
-begin
-  FFormManager.Hide(IDKeyConfig);
 end;
 
 function TStateMenu.SysNotify(Notify: TSysNotify): Boolean;
@@ -635,74 +592,6 @@ begin
   end
   {$IFDEF VSE_LOG}  else
     LogF(llError, 'StateMenu.MenuBg: file "%s" not found', [string(Args[1].VAnsiString)]){$ENDIF};
-end;
-
-type
-  TColorRec = record
-    Name: string;
-    case IsColorSet: Boolean of
-      true: (ColorSet: ^TColorSet);
-      false: (Color: ^TColor);
-  end;
-
-function TStateMenu.UIColorHandler(Sender: TObject; Args: array of const): Boolean;
-const
-  Colors: array[0..9] of TColorRec = (
-    (IsColorSet: true; ColorSet: @BtnBackground),
-    (IsColorSet: true; ColorSet: @BtnBorder),
-    (IsColorSet: true; ColorSet: @BtnText),
-    (IsColorSet: false; Color: @clFormBackground),
-    (IsColorSet: false; Color: @clFormBorder),
-    (IsColorSet: false; Color: @clFormCapt),
-    (IsColorSet: false; Color: @clFormCaptHl),
-    (IsColorSet: false; Color: @clFormCaptText),
-    (IsColorSet: false; Color: @clText),
-    (IsColorSet: false; Color: @clTabStop));
-begin
-  Result := true;
-  if Length(Args) = 1 then
-    Console.WriteLn('Colors: ' + ColorNames)
-  else
-    with Colors[Args[1].VInteger] do
-      if Length(Args) = 2 then
-        if IsColorSet then
-          Console.WriteLn(Format('def=$%X hl=$%X act=$%X dis=$%X', [ColorSet.Default, ColorSet.Highlighted, ColorSet.Activated, ColorSet.Disabled]))
-        else
-          Console.WriteLn('$' + IntToHex(Color^, 8))
-      else if IsColorSet then
-        if Length(Args) = 6 then
-        begin
-          ColorSet.Default := Args[2].VInteger;
-          ColorSet.Highlighted := Args[3].VInteger;
-          ColorSet.Activated := Args[4].VInteger;
-          ColorSet.Disabled := Args[5].VInteger;
-        end
-        else begin
-          Console.WriteLn('Error: 4 values needed for color set' + PostfixError);
-          Result := false;
-        end
-      else
-        Color^ := Args[2].VInteger;
-end;
-
-function TStateMenu.UIFontHandler(Sender: TObject; Args: array of const): Boolean;
-
-  procedure SetFont(Font: Cardinal; Form: TGUIForm);
-  begin
-    Form.Font := Font;
-  end;
-
-var
-  Font: Cardinal;
-begin
-  Result := true;
-  if Length(Args) = 4 then
-    Font := Render2D.CreateFont(string(Args[1].VAnsiString), Args[2].VInteger, Boolean(Args[3].VInteger))
-  else if Length(Args) = 3 then
-    Font := Render2D.CreateFont(string(Args[1].VAnsiString), Args[2].VInteger, true)
-  else
-    Font := Render2D.CreateFont(string(Args[1].VAnsiString), UIFontSize, true);
-  FFormManager.IterateForms(TOnForm(MakeMethod(@SetFont, Pointer(Font))));
 end;
 {$ENDIF}
 
