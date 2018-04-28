@@ -20,6 +20,9 @@ type
     FTitleMsgStatus: TTitleMsgStatus;
     function GetObjCount: Integer;
     function GetObject(Index: Integer): TGameObject;
+    {$IF Defined(VSE_DEBUG) and Defined(VSE_CONSOLE)}
+    function ClearSceneHandler(Sender: TObject; Args: array of const): Boolean;
+    {$IFEND}
   public
     constructor Create;
     destructor Destroy; override;
@@ -60,6 +63,9 @@ begin
   FMap := TPriModel.Create('Models\Map.vpm');
   FTitleFont := Render2D.CreateFont(UIFont, 20, false);
   FInfoFont := Render2D.CreateFont(UIFont, 12, true);
+  {$IF Defined(VSE_DEBUG) and Defined(VSE_CONSOLE)}
+  Console.OnCommand['clearscene'] := ClearSceneHandler;
+  {$IFEND}
 end;
 
 destructor TScene.Destroy;
@@ -166,19 +172,6 @@ begin
   SetLength(FObjects, Length(FObjects) - 1);
 end;
 
-function TScene.GetObjCount: Integer;
-begin
-  Result := Length(FObjects);
-end;
-
-function TScene.GetObject(Index: Integer): TGameObject;
-begin
-  if (Index >= 0) and (Index < Length(FObjects)) then
-    Result := FObjects[Index]
-  else
-    Result := nil;
-end;
-
 procedure TScene.ShowTitleMessage(const Msg: string);
 begin
   FTitleMsgStatus.Msg := Msg;
@@ -197,5 +190,27 @@ begin
   glReadPixels(X, Core.ResolutionY - Y - 1, 1, 1, GL_STENCIL_INDEX, GL_BYTE, @StencilValue);
   Result := Objects[StencilValue - StencilObjShift];
 end;
+
+function TScene.GetObjCount: Integer;
+begin
+  Result := Length(FObjects);
+end;
+
+function TScene.GetObject(Index: Integer): TGameObject;
+begin
+  if (Index >= 0) and (Index < Length(FObjects)) then
+    Result := FObjects[Index]
+  else
+    Result := nil;
+end;
+
+{$IF Defined(VSE_DEBUG) and Defined(VSE_CONSOLE)}
+function TScene.ClearSceneHandler(Sender: TObject; Args: array of const):
+  Boolean;
+begin
+  Finalize(FObjects);
+  Result := true;
+end;
+{$IFEND}
 
 end.

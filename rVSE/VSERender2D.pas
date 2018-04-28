@@ -41,6 +41,8 @@ type
     procedure Enter; //Enter 2D mode
     procedure Leave; //Leave 2D mode
     function  MapCursor(const Cursor: TPoint): TPoint; //Map cursor to virtual screen
+    procedure SetScissor(Left, Top, Width, Height: Single);
+    procedure RemoveScissor;
     //Draw primitives
     procedure LineWidth(w: Single); //Set line width
     procedure DrawLine(X1, Y1, X2, Y2: Single); overload; //Draw line from X1, Y1 to X2, Y2
@@ -115,7 +117,7 @@ begin
   Inc(FEnters);
   if FEnters > 1 then Exit;
   glePushMatrix;
-  glPushAttrib(GL_ENABLE_BIT or GL_POINT_BIT or GL_LINE_BIT or GL_LIGHTING_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT or GL_TEXTURE_BIT);
+  glPushAttrib(GL_ENABLE_BIT or GL_POINT_BIT or GL_LINE_BIT or GL_LIGHTING_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT or GL_TEXTURE_BIT or GL_SCISSOR_BIT);
   with VSBounds do
     gleOrthoMatrix2(Left, Top, Right, Bottom);
   glDisable(GL_DEPTH_TEST);
@@ -146,6 +148,21 @@ begin
     Result.X := Round(Cursor.X / FVSScale - FVSPadding);
     Result.Y := Round(Cursor.Y / FVSScale);
   end;
+end;
+
+procedure TRender2D.SetScissor(Left, Top, Width, Height: Single);
+begin
+  if FVSPaddingVertical then
+    Top := Top + FVSPadding
+  else
+    Left := Left + FVSPadding;
+  glEnable(GL_SCISSOR_TEST);
+  glScissor(Round(Left * FVSScale), Core.ResolutionY - Round((Top + Height) * FVSScale) - 1, Round(Width * FVSScale), Round(Height * FVSScale));
+end;
+
+procedure TRender2D.RemoveScissor;
+begin
+  glDisable(GL_SCISSOR_TEST);
 end;
 
 procedure TRender2D.LineWidth(w: Single);

@@ -65,12 +65,13 @@ begin
   Randomize;
   FFormsSet := TGUIFormsSet.Create;
   {$IFDEF VSE_DEBUG}
+  FFormsSet.AddForm(IDLogPoints, TLogPointsForm.Create, '', false);
   {$IFDEF VSE_CONSOLE}
   Console.OnCommand['debuginfo ?val=eoff:on'] := Console.GetConVarHandler(FShowDebugInfo, cvBool);
+  Console.OnCommand['logpoints ?val=eoff:on'] := Console.GetConVarHandler(FFormsSet.FindForm(IDLogPoints).Visible, cvBool);
   {$ENDIF}
   FShowDebugInfo := true;
   FFont := Render2D.CreateFont('Courier New', 10);
-  FFormsSet.AddForm(IDLogPoints, TLogPointsForm.Create, '', false);
   {$ENDIF}
   BindMan.AddBindings(Bindings);
   FFormsSet.IterateForms(TOnForm(MakeMethod(@SetMovable)));
@@ -97,6 +98,8 @@ begin
   with Core.MouseCursor do
     FMouse3D := gleScreenTo3D(X, Y, true);
   {$IFDEF VSE_DEBUG}
+  if FormManager.Visible[IDLogPoints] then
+    (FormManager[IDLogPoints] as TLogPointsForm).DrawPoints;
   if FShowDebugInfo then
   begin
     Render2D.Enter;
@@ -155,7 +158,9 @@ begin
   if not Core.MouseCapture and FormManager.MouseBusy(X, Y) then Exit;
   case Event of
     meDown: if Button in [mbRight, mbMiddle] then
-      Core.MouseCapture := true;
+        Core.MouseCapture := true
+      else if (Button = mbLeft) and FormManager.Visible[IDLogPoints] then
+        (FormManager[IDLogPoints] as TLogPointsForm).AddPoint(FMouse3D);
     meUp: if Button in [mbRight, mbMiddle] then
       Core.MouseCapture := false;
     meMove: if Core.MouseCapture then //TODO: Panning & Rotating speed to Options
