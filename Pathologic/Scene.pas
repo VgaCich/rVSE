@@ -102,12 +102,14 @@ begin
     glStencilFunc(GL_ALWAYS, StencilObjShift + i, $FF);
     FObjects[i].Draw;
   end;
-  glPopAttrib;
   with Core.MouseCursor do
     if not FormManager.MouseBusy(X, Y) then
       Obj := ObjectAt(X, Y)
     else
       Obj := nil;
+  if Assigned(Obj) and (Obj is TQuarter) then 
+    (Obj as TQuarter).DrawHighlight(clLime);
+  glPopAttrib;
   Render2D.Enter;
   if Assigned(Obj) and (Obj is TCharacter) then
     with Render2D.MapCursor(Core.MouseCursor), Obj as TCharacter do

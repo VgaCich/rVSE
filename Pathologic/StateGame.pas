@@ -92,7 +92,7 @@ begin
   inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT or GL_STENCIL_BUFFER_BIT);
   DrawBackground;
-  glePerspectiveMatrix(60, Core.ResolutionX, Core.ResolutionY);
+  glePerspectiveMatrix2(60, Core.ResolutionX, Core.ResolutionY, 1, 1000);
   FCamera.Apply;
   FScene.Draw;
   with Core.MouseCursor do

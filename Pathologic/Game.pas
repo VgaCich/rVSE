@@ -59,6 +59,8 @@ var
 begin
   inherited Create;
   FScene := Scene;
+  for i := Low(TQuarterIndex) to High(TQuarterIndex) do
+    FScene.AddObject(TQuarter.Create(i));
   FStage := TStageStart.Create(Self);
   SetLength(FCharacters, Length(Characters));
   for i := 0 to High(FCharacters) do

@@ -4,10 +4,9 @@ interface
 
 uses
   AvL, avlUtils, avlMath, avlVectors, OpenGL, VSEOpenGLExt, oglExtensions,
-  VSECore, VSEPrimitiveModel;
+  VSECore, VSEPrimitiveModel, GameData;
 
 type
-  TResourceType = (rtCoin, rtKey, rtSecret);
   TAnimationAction = (aaMove, aaMoveTo, aaRotate);
   TAnimationStep = record
     Action: TAnimationAction;
@@ -36,11 +35,17 @@ type
     property Pos: TVector3D read FPos write SetPos;
     property Visible: Boolean read FVisible write SetVisible;
   end;
-  TCharProfile = record
-    RuName: string;
-    IsDoctor: Boolean;
-    Master: string;
-    Resource: TResourceType;
+  TQuarter = class(TGameObject)
+  protected
+    FIndex: TQuarterIndex;
+    function GetName: string;
+  public
+    constructor Create(Index: TQuarterIndex);
+    procedure Draw; override;
+    procedure Update; override;
+    procedure DrawHighlight(Color: TColor);
+    property Index: TQuarterIndex read FIndex;
+    property Name: string read GetName;
   end;
   TCharacter = class(TGameObject)
   private
@@ -135,6 +140,58 @@ end;
 procedure TGameObject.SetVisible(Value: Boolean);
 begin
   FVisible := Value;
+end;
+
+{ TQuarter }
+
+constructor TQuarter.Create(Index: TQuarterIndex);
+begin
+  FIndex := Index;
+end;
+
+procedure TQuarter.Draw;
+begin
+  if Assigned(Quarters[FIndex].Border) then
+    with Quarters[FIndex] do
+    begin
+      glPushAttrib(GL_DEPTH_BUFFER_BIT or GL_COLOR_BUFFER_BIT);
+      glDepthFunc(GL_LEQUAL);
+      glDepthMask(false);
+      glColorMask(false, false, false, false);
+      glEnableClientState(GL_VERTEX_ARRAY);
+      glVertexPointer(3, GL_FLOAT, 12, Border);
+      glDrawArrays(GL_TRIANGLE_FAN, 0, BorderLength);
+      glDisableClientState(GL_VERTEX_ARRAY);
+      glPopAttrib;
+    end;
+end;
+
+procedure TQuarter.Update;
+begin
+  
+end;
+
+procedure TQuarter.DrawHighlight(Color: TColor);
+begin
+  if Assigned(Quarters[FIndex].Border) then
+    with Quarters[FIndex] do
+    begin
+      glPushAttrib(GL_DEPTH_BUFFER_BIT or GL_ENABLE_BIT);
+      glDepthFunc(GL_LEQUAL);
+      glDepthMask(false);
+      glEnable(GL_COLOR_MATERIAL);
+      gleColor(TColor($80000000) or Color);
+      glEnableClientState(GL_VERTEX_ARRAY);
+      glVertexPointer(3, GL_FLOAT, 12, Border);
+      glDrawArrays(GL_TRIANGLE_FAN, 0, BorderLength);
+      glDisableClientState(GL_VERTEX_ARRAY);
+      glPopAttrib;
+    end;
+end;
+
+function TQuarter.GetName: string;
+begin
+  Result := Quarters[FIndex].Name;
 end;
 
 { TCharacter }
