@@ -59,11 +59,12 @@ begin
     OnClick := NameEditClick;
     FNameEdit := AddButton(Btn);
     Y := 360;
-    Width := 60;
+    Width := 65;
     Caption := 'Remove';
     OnClick := RemoveClick;
     AddButton(Btn);
-    X := 80;
+    X := 85;
+    Width := 55;
     Caption := 'Save';
     OnClick := SaveClick;
     AddButton(Btn);
@@ -129,18 +130,19 @@ begin
 end;
 
 procedure TLogPointsForm.DrawButton(const Btn: TBtn; State: TBtnState);
+const
+  Cursor: array[Boolean] of Char = (' ', '_');
+var
+  NewBtn: TBtn;
 begin
-  inherited;
-  if (Btn.Tag = $ED) and (Core.Time and $100 = 0) then
-    with Render2D, Btn do
-    begin
-      SetColor(State, BtnText, Btn.Enabled);
-      SetScissor(FX + X, FY + Y, Width, Height);
-      TextOut(GetFont,
-        X + Max((Width - TextWidth(GetFont, Caption)) div 2, 0) + TextWidth(GetFont, Caption),
-        Y + (Height - TextHeight(GetFont)) div 2, '_');
-      RemoveScissor;
-    end;
+  if Btn.Tag = $ED then
+  begin
+    NewBtn := Btn;
+    NewBtn.Caption := NewBtn.Caption + Cursor[Core.Time and $100 = 0];
+    inherited DrawButton(NewBtn, State);
+  end
+  else
+    inherited;
 end;
 
 procedure TLogPointsForm.NameEditClick(Btn: PBtn);

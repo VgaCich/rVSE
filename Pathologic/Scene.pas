@@ -45,7 +45,7 @@ const
 
 implementation
 
-uses VSERender2D, VSETexMan, VSEMemPak, VSEFormManager, StateMenu
+uses VSERender2D, VSETexMan, VSEMemPak, VSEFormManager, StateMenu, StateGame
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -103,7 +103,7 @@ begin
     FObjects[i].Draw;
   end;
   with Core.MouseCursor do
-    if not FormManager.MouseBusy(X, Y) then
+    if (Core.CurState is TStateGame) and not (Core.MouseCapture or FormManager.MouseBusy(X, Y)) then
       Obj := ObjectAt(X, Y)
     else
       Obj := nil;

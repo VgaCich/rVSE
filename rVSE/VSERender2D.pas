@@ -41,8 +41,9 @@ type
     procedure Enter; //Enter 2D mode
     procedure Leave; //Leave 2D mode
     function  MapCursor(const Cursor: TPoint): TPoint; //Map cursor to virtual screen
-    procedure SetScissor(Left, Top, Width, Height: Single);
-    procedure RemoveScissor;
+    procedure Move(X, Y: Single; Relative: Boolean = true); //Move origin
+    procedure SetScissor(Left, Top, Width, Height: Single); //Set scissor window
+    procedure RemoveScissor; //Remove scissor window
     //Draw primitives
     procedure LineWidth(w: Single); //Set line width
     procedure DrawLine(X1, Y1, X2, Y2: Single); overload; //Draw line from X1, Y1 to X2, Y2
@@ -148,6 +149,13 @@ begin
     Result.X := Round(Cursor.X / FVSScale - FVSPadding);
     Result.Y := Round(Cursor.Y / FVSScale);
   end;
+end;
+
+procedure TRender2D.Move(X, Y: Single; Relative: Boolean);
+begin
+  if not Relative then
+    glLoadIdentity;
+  glTranslate(Round(X * FVSScale) / FVSScale, Round(Y * FVSScale) / FVSScale, 0);
 end;
 
 procedure TRender2D.SetScissor(Left, Top, Width, Height: Single);

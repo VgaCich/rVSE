@@ -335,8 +335,7 @@ var
   i: Integer;
 begin
   Render2D.Enter;
-  glPushMatrix;
-  glTranslate(FX, FY, 0);
+  Render2D.Move(FX, FY, false);
   DrawForm;
   for i := 0 to High(FRects) do
     DrawRect(FRects[i]);
@@ -344,7 +343,6 @@ begin
     DrawLabel(FLabels[i]);
   for i := 0 to High(FButtons) do
     DrawButton(FButtons[i], BtnState(i));
-  glPopMatrix;
   Render2D.Leave;
 end;
 
@@ -473,7 +471,6 @@ begin
         SetColor(State, BtnBorder, Btn.Enabled);
         Render2D.DrawRectBorder(Btn.X, Btn.Y, Btn.Width, Btn.Height);
         TextX := Max((Btn.Width - Render2D.TextWidth(GetFont, Btn.Caption)) div 2, 0);
-        TextY := (Btn.Height - Render2D.TextHeight(GetFont)) div 2;
       end;
     btCheck, btRadio:
       begin
@@ -482,10 +479,10 @@ begin
           Render2D.DrawRect(Btn.X + 3, Btn.Y + 3, Btn.Height - 6, Btn.Height - 6);
         Render2D.DrawRectBorder(Btn.X, Btn.Y, Btn.Height, Btn.Height);
         TextX := Min(Btn.Height + 5, Btn.Width);
-        TextY := (Btn.Height - Render2D.TextHeight(GetFont)) div 2;
       end;
   end;
   Text := Btn.Caption;
+  TextY := (Btn.Height - Render2D.TextHeight(GetFont)) div 2;
   while (Text <> '') and (Render2D.TextWidth(GetFont, Text) + TextX > Btn.Width) do
     Delete(Text, Length(Text), 1);
   SetColor(State, BtnText, Btn.Enabled);

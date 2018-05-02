@@ -151,19 +151,18 @@ end;
 
 procedure TQuarter.Draw;
 begin
-  if Assigned(Quarters[FIndex].Border) then
-    with Quarters[FIndex] do
-    begin
-      glPushAttrib(GL_DEPTH_BUFFER_BIT or GL_COLOR_BUFFER_BIT);
-      glDepthFunc(GL_LEQUAL);
-      glDepthMask(false);
-      glColorMask(false, false, false, false);
-      glEnableClientState(GL_VERTEX_ARRAY);
-      glVertexPointer(3, GL_FLOAT, 12, Border);
-      glDrawArrays(GL_TRIANGLE_FAN, 0, BorderLength);
-      glDisableClientState(GL_VERTEX_ARRAY);
-      glPopAttrib;
-    end;
+  with Quarters[FIndex] do
+  begin
+    glPushAttrib(GL_DEPTH_BUFFER_BIT or GL_COLOR_BUFFER_BIT);
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(false);
+    glColorMask(false, false, false, false);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_FLOAT, 12, Border);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, BorderLength);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glPopAttrib;
+  end;
 end;
 
 procedure TQuarter.Update;
@@ -173,20 +172,19 @@ end;
 
 procedure TQuarter.DrawHighlight(Color: TColor);
 begin
-  if Assigned(Quarters[FIndex].Border) then
-    with Quarters[FIndex] do
-    begin
-      glPushAttrib(GL_DEPTH_BUFFER_BIT or GL_ENABLE_BIT);
-      glDepthFunc(GL_LEQUAL);
-      glDepthMask(false);
-      glEnable(GL_COLOR_MATERIAL);
-      gleColor(TColor($80000000) or Color);
-      glEnableClientState(GL_VERTEX_ARRAY);
-      glVertexPointer(3, GL_FLOAT, 12, Border);
-      glDrawArrays(GL_TRIANGLE_FAN, 0, BorderLength);
-      glDisableClientState(GL_VERTEX_ARRAY);
-      glPopAttrib;
-    end;
+  with Quarters[FIndex] do
+  begin
+    glPushAttrib(GL_DEPTH_BUFFER_BIT or GL_ENABLE_BIT);
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(false);
+    glEnable(GL_COLOR_MATERIAL);
+    gleColor(TColor($80000000) or Color);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(3, GL_FLOAT, 12, Border);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, BorderLength);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glPopAttrib;
+  end;
 end;
 
 function TQuarter.GetName: string;

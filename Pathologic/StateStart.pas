@@ -114,7 +114,7 @@ begin
   Render2D.DrawRect(250, 300, 300, 180);
   gleColor(VSEGUI.clText);
   glPushMatrix;
-  glTranslate(200, 230, 0);
+  Render2D.Move(200, 230);
   glScalef(0.5, 0.5, 1);
   Render2D.TextOut(FFont, 400-Render2D.TextWidth(FFont, SRVSE)/2, 430, SRVSE);
   DrawSegs(300, 200, $426);
