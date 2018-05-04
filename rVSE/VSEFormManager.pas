@@ -186,14 +186,8 @@ begin
 end;
 
 function TFormManager.GetForm(const Name: string): TGUIForm;
-var
-  Form: PFormRec;
 begin
-  Result := nil;
-  if not Assigned(FFormsSet) then Exit;
-  Form := FFormsSet.FindForm(Name);
-  if Assigned(Form) then
-    Result := Form.Form;
+  Result := FFormsSet[Name];
 end;
 
 function TFormManager.GetVisible(const Name: string): Boolean;

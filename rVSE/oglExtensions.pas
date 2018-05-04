@@ -98,6 +98,12 @@ const
   GL_DYNAMIC_DRAW_ARB                                = $88E8;
   GL_DYNAMIC_READ_ARB                                = $88E9;
   GL_DYNAMIC_COPY_ARB                                = $88EA;
+//GL 1.2+
+  GL_GENERATE_MIPMAP                                 = $8191;
+  GL_TEXTURE_MIN_LOD                                 = $813A;
+  GL_TEXTURE_MAX_LOD                                 = $813B;
+  GL_TEXTURE_BASE_LEVEL                              = $813C;
+  GL_TEXTURE_MAX_LEVEL                               = $813D;
 
   procedure glGenTextures(n: GLsizei; textures: PGLuint); stdcall; external opengl32;
   procedure glBindTexture(target: GLenum; texture: GLuint); stdcall; external opengl32;

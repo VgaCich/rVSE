@@ -4,11 +4,12 @@ interface
 
 uses
   Windows, AvL, avlUtils, avlMath, OpenGL, oglExtensions, VSEOpenGLExt,
-  VSEImageCodec, VSECore{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+  VSEImageCodec, VSECore{$IFDEF VSE_LOG}, VSELog{$ENDIF}{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF};
 
 type
   TOnLostTex=function(Sender: TObject; const Name: string): Cardinal;
   TRTTMethod=(rttCopy, rttFBO); //Render-to-Texture method - CopyTexture (slow), FrameBuffer Object
+  TTextureFilter=(tfNone, tfBilinear, tfTrilinear, tfAnisotropic, tfCustomAnisotropy); //Use tfCustomAnisotropy+AnisoLevel to set custom anisotropy level
   TTexture=record //internally used
     ID: Cardinal;
     Name: string;
@@ -27,6 +28,7 @@ type
     FOnLostTex: TOnLostTex;
     FRTTMethod: TRTTMethod;
     procedure SetRTTMethod(Value: TRTTMethod);
+    {$IFDEF VSE_CONSOLE}function TexFilterHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
   public
     constructor Create; override; //internally used
     destructor Destroy; override; //internally used
@@ -35,6 +37,8 @@ type
     function  AddTexture(const Name: string; const Image: TImage; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from TImageData
     function  AddTexture(Name: string; Data: Pointer; Width, Height: Integer; Comps, Format: GLenum; Clamp, MipMap: Boolean): Cardinal; overload; //Add texture from memory
     function  GetTex(const Name: string; IgnoreLostTex: Boolean = false): Cardinal; //Get texture ID by texture name
+    procedure SetFilter(ID: Cardinal; Filter: TTextureFilter); overload; //Set texture filter
+    procedure SetFilter(const Prefix: string; Filter: TTextureFilter); overload; //Set filter for textures with name starting with Prefix
     procedure Bind(ID: Cardinal; Channel: Integer = 0); //Set current texture in specified texture channel
     procedure Unbind(Channel: Integer = 0); //Remove texture from specified texture channel
     {Render-To-Texture (RTT)}
@@ -65,6 +69,7 @@ begin
   if GL_EXT_framebuffer_object
     then FRTTMethod:=rttFBO
     else FRTTMethod:=rttCopy;
+  {$IFDEF VSE_CONSOLE}Console.OnCommand['texfilter flt=enone:bilin:trilin:aniso ?prefix=s']:=TexFilterHandler;{$ENDIF}
 end;
 
 destructor TTexMan.Destroy;
@@ -135,14 +140,15 @@ begin
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   end;
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   if MipMap then
   begin
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     gluBuild2DMipmaps(GL_TEXTURE_2D, Comps, Width, Height, Format, GL_UNSIGNED_BYTE, Data)
   end
   else begin
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, Comps, Width, Height, 0, Format, GL_UNSIGNED_BYTE, Data);
   end;
 end;
@@ -164,6 +170,38 @@ begin
       Result:=FOnLostTex(Self, Name);
     {$IFDEF VSE_LOG}if Result=0 then Log(llError, 'TexMan: can''t find texture '+Name);{$ENDIF}
   end;
+end;
+
+procedure TTexMan.SetFilter(ID: Cardinal; Filter: TTextureFilter);
+const
+  MagFilters: array[Boolean] of Cardinal = (GL_NEAREST, GL_LINEAR);
+  MinFilters: array[Boolean, tfNone..tfAnisotropic] of Cardinal = (
+    (GL_NEAREST, GL_LINEAR, GL_LINEAR, GL_LINEAR),
+    (GL_NEAREST, GL_LINEAR_MIPMAP_NEAREST, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR_MIPMAP_LINEAR)
+  );
+var
+  MaxLevel: Cardinal;
+begin
+  Bind(ID);
+  glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, @MaxLevel);
+  glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, MagFilters[Filter>tfNone]);
+  glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, MinFilters[MaxLevel>0, TTextureFilter(Min(Integer(Filter), Integer(tfAnisotropic)))]);
+  case Filter of
+    tfNone..tfTrilinear: glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 1);
+    tfAnisotropic: glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, glMaxAnisotropy);
+    else glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, Integer(Filter) - Integer(tfCustomAnisotropy));
+  end;
+  Unbind;
+end;
+
+procedure TTexMan.SetFilter(const Prefix: string; Filter: TTextureFilter);
+var
+  i: Integer;
+begin
+  for i:=0 to FCount-1 do
+    with FTextures[i] do
+      if ((Length(Prefix)=0) and (Copy(Name, 1, 2)<>'__')) or ((Length(Prefix)>0) and SameText(Copy(Name, 1, Length(Prefix)), Prefix)) then
+        SetFilter(ID, Filter);
 end;
 
 procedure TTexMan.Bind(ID: Cardinal; Channel: Integer);
@@ -258,6 +296,9 @@ begin
     glViewport(0, 0, RTWidth, RTHeight);
     Color:=TexColor;
     Depth:=TexDepth;
+    Bind(TexColor);
+    glTexParameter(GL_TEXTURE, GL_GENERATE_MIPMAP, Integer(GL_TRUE));
+    Unbind;
     if Method=rttFBO then
     begin
       glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, FBO);
@@ -318,6 +359,20 @@ begin
     Value := rttCopy;
   FRTTMethod := Value;
 end;
+
+{$IFDEF VSE_CONSOLE}
+function TTexMan.TexFilterHandler(Sender: TObject; Args: array of const): Boolean;
+var
+  Prefix: string;
+begin
+  Result:=true;
+  if Length(Args)=3 then
+    Prefix:=string(Args[2].VAnsiString)
+  else
+    Prefix:='';
+  SetFilter(Prefix, TTextureFilter(Args[1].VInteger));
+end;
+{$ENDIF}
 
 initialization
   RegisterModule(TTexMan);

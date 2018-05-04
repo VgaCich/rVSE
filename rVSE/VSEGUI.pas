@@ -47,6 +47,7 @@ type
   TGUIFormsSet = class
   private
     FForms: PFormRec;
+    function GetForm(const Name: string): TGUIForm;
   public
     destructor Destroy; override;
     function AddForm(const Name: string; Form: TGUIForm; const Parent: string = ''; Visible: Boolean = true): TGUIForm; //Add form; Parent: name of parent form; Parentless forms visible by default
@@ -58,6 +59,7 @@ type
     procedure Pop(Form: PFormRec); //internally used
     function LastForm: PFormRec; //internally used
     property FirstForm: PFormRec read FForms; //internally used
+    property Forms[const Name: string]: TGUIForm read GetForm; default;
   end;
   TGUIForm = class //GUI Form
   private
@@ -93,7 +95,7 @@ type
     function  AddLabel(const Lbl: TLbl): Integer; //Add label, returns label index
     procedure AddRect(const Rect: TRect); //Add rectangle (visual frame)
     procedure Draw; //Draw form
-    procedure Update; //dynamic; //Update form
+    procedure Update; dynamic; //Update form
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); dynamic; //Process mouse event
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); dynamic; //Process key event
     procedure CharEvent(C: Char); dynamic; //Process char event
@@ -179,13 +181,17 @@ begin
   begin
     Rec.Prev := nil;
     Rec.Next := FForms;
+    if Assigned(FForms) then FForms.Prev := Rec;
     FForms := Rec;
   end
   else begin
     Last := LastForm;
     Rec.Prev := Last;
     Rec.Next := nil;
-    Last.Next := Rec;
+    if Assigned(Last) then
+      Last.Next := Rec
+    else
+      FForms := Rec;
   end;
   Form.FParentSet := Self;
 end;
@@ -266,6 +272,18 @@ begin
   Form.Prev := nil;
   Form.Next := FForms;
   FForms := Form;
+end;
+
+function TGUIFormsSet.GetForm(const Name: string): TGUIForm;
+var
+  Form: PFormRec;
+begin
+  Result := nil;
+  Form := nil;
+  if Assigned(Self) then
+    Form := FindForm(Name);
+  if Assigned(Form) then
+    Result := Form.Form;
 end;
 
 { TGUIForm }
