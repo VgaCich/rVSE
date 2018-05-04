@@ -18,30 +18,28 @@ type
     FModel: TPriModel;
     FPos: TVector3D;
     FHeight: Single;
-    FVisible: Boolean;
     FFollow: TGameObject;
     FAnimationStatus: TAnimationStep;
     FAnimationQueue: array of TAnimationStep;
     procedure SetPos(const Value: TVector3D); virtual;
-    procedure SetVisible(Value: Boolean); virtual;
   public
     constructor Create(const Model: string);
     destructor Destroy; override;
     procedure Draw; virtual;
     procedure Update; virtual;
-    procedure AddAnimationStep(Action: TAnimationAction; const Param: TVector4D; Time: Cardinal);
+    procedure AddAnimationStep(Action: TAnimationAction; const Param: TVector3D; Time: Cardinal); overload;
+    procedure AddAnimationStep(Action: TAnimationAction; const Param: TVector4D; Time: Cardinal); overload;
     property Follow: TGameObject read FFollow write FFollow;
     property Height: Single read FHeight;
     property Pos: TVector3D read FPos write SetPos;
-    property Visible: Boolean read FVisible write SetVisible;
   end;
-  CGameObject = class of TGameObject;
+  TGameObjectClass = class of TGameObject;
   TGameObjectsArray = class
-  private
+  protected
     FObjects: array of TGameObject;
     function GetCount: Integer;
     function GetObject(Index: Integer): TGameObject;
-    function GetObjOfType(T: CGameObject; Index: Integer): TGameObject;
+    function GetObjOfType(T: TGameObjectClass; Index: Integer): TGameObject;
   public
     destructor Destroy; override;
     function Add(Obj: TGameObject): Integer;
@@ -50,7 +48,7 @@ type
     procedure Clear;
     property Count: Integer read GetCount;
     property Objects[Index: Integer]: TGameObject read GetObject; default;
-    property ObjOfType[T: CGameObject; Index: Integer]: TGameObject read GetObjOfType;
+    property ObjOfType[T: TGameObjectClass; Index: Integer]: TGameObject read GetObjOfType;
   end;
   TQuarter = class(TGameObject)
   protected
@@ -82,6 +80,23 @@ type
     property Quarter: TQuarter read FQuarter write SetQuarter;
     property Profile: TCharProfile read FProfile;
   end;
+  TChip = class(TGameObject)
+  public
+    constructor Create(const Name: string);
+  end;
+  TCard = class(TGameObject)
+  public
+    constructor Create(const Name: string; Index: Integer);
+  end;
+  TDeck = class(TGameObjectsArray)
+  private
+    function GetCard(Index: Integer): TCard;
+  public
+    constructor Create(Objects: TGameObjectsArray; T: TGameObjectClass);
+    procedure Shuffle;
+    function Take: TCard;
+    property Cards[Index: Integer]: TCard read GetCard; default;
+  end;
 
 implementation
 
@@ -105,7 +120,6 @@ end;
 
 procedure TGameObject.Draw;
 begin
-  if not Visible then Exit;
   glPushMatrix;
   if Assigned(FFollow) and not ((Length(FAnimationQueue) > 0) or (FAnimationStatus.Time > 0)) then
     FPos := VectorAdd(FFollow.Pos, Vector3D(0, (FFollow.Height + FHeight) / 2, 0));
@@ -146,6 +160,12 @@ begin
     end;
 end;
 
+procedure TGameObject.AddAnimationStep(Action: TAnimationAction; const Param: TVector3D; Time: Cardinal);
+begin
+  with Param do
+    AddAnimationStep(Action, Vector4D(X, Y, Z, 0), Time);
+end;
+
 procedure TGameObject.AddAnimationStep(Action: TAnimationAction; const Param: TVector4D; Time: Cardinal);
 begin
   SetLength(FAnimationQueue, Length(FAnimationQueue) + 1);
@@ -157,11 +177,6 @@ end;
 procedure TGameObject.SetPos(const Value: TVector3D);
 begin
   FPos := Value;
-end;
-
-procedure TGameObject.SetVisible(Value: Boolean);
-begin
-  FVisible := Value;
 end;
 
 { TGameObjectsArray }
@@ -216,7 +231,7 @@ begin
     Result := nil;
 end;
 
-function TGameObjectsArray.GetObjOfType(T: CGameObject; Index: Integer): TGameObject;
+function TGameObjectsArray.GetObjOfType(T: TGameObjectClass; Index: Integer): TGameObject;
 var
   i: Integer;
 begin
@@ -290,24 +305,19 @@ end;
 
 { TCharacter }
 
+constructor TCharacter.Create(const Name: string; const Profile: TCharProfile);
 const
   CharObj = $52414843;
-  CharCardMtl = 3;
-  CharHeight = 6.6;
-  CharModel = 'Models\Character.vpm';
-  CharTex = 'Chars\%s.jpg';
   DoctorScale = 1.2;
-
-constructor TCharacter.Create(const Name: string; const Profile: TCharProfile);
 begin
-  inherited Create(CharModel);
+  inherited Create('Models\Character.vpm');
   FName := Name;
   FProfile := Profile;
   if Name <> SPlague then
   begin
     FQuarantined := true;
-    FModel.Materials[CharCardMtl].Texture := TexMan.GetTex(Format(CharTex, [Name]));
-    FHeight := CharHeight;
+    FModel.Materials[3].Texture := TexMan.GetTex(Format('Chars\%s.jpg', [Name]));
+    FHeight := 6.6;
     if Profile.IsDoctor then
     begin
       FModel.Objects[CharObj].Transform.Scale(DoctorScale, DoctorScale, DoctorScale);
@@ -335,6 +345,67 @@ begin
   FQuarter := Value;
   if Assigned(FQuarter) then
     FQuarter.Objects.Add(Self);
+end;
+
+{ TChip }
+
+constructor TChip.Create(const Name: string);
+begin
+  inherited Create('Models\Chip.vpm');
+  FModel.Materials[1].Texture := TexMan.GetTex(Format('Chips\%s.png', [Name]));
+  FHeight := 0.006;
+end;
+
+{ TCard }
+
+constructor TCard.Create(const Name: string; Index: Integer);
+const
+  Model: array[-1..2] of string = ('Card.vpm', 'Card0.vpm', 'Card1.vpm', 'Card2.vpm');
+begin
+  inherited Create('Models\' + Model[Index]);
+  FModel.Materials[1].Texture := TexMan.GetTex(Format('Cards\%s.jpg', [Name]));
+  FHeight := 0.006;
+end;
+
+{ TDeck }
+
+procedure TDeck.Shuffle;
+
+  procedure Swap(A, B: Integer);
+  var
+    T: TGameObject;
+  begin
+    T := FObjects[A];
+    FObjects[A] := FObjects[B];
+    FObjects[B] := T;
+  end;
+
+var
+  i: Integer;
+begin
+  for i := 0 to 10 * Count do
+    Swap(Random(Count), Random(Count));
+end;
+
+function TDeck.GetCard(Index: Integer): TCard;
+begin
+  Result := Objects[Index] as TCard;
+end;
+
+function TDeck.Take: TCard;
+begin
+  Result := Cards[0];
+  Remove(Result);
+end;
+
+constructor TDeck.Create(Objects: TGameObjectsArray; T: TGameObjectClass);
+var
+  i: Integer;
+begin
+  inherited Create;
+  i := 0;
+  while Assigned(Objects.ObjOfType[T, i]) do
+    Add(Objects.ObjOfType[T, i]);
 end;
 
 end.

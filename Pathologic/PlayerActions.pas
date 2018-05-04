@@ -75,7 +75,6 @@ begin
     if not ((Obj is TQuarter) and CheckQuarter(Obj as TQuarter)) then Exit;
     with TVector3D(Args[1].VPointer^) do
       FChar.Pos := Vector3D(X, 0, Z);
-    FChar.Visible := true;
     FChar.Quarter := Obj as TQuarter;
     FPlayer.Objects.Remove(FChar);
     FPlayer.Game.Scene.Objects.Add(FChar);

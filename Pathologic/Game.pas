@@ -36,10 +36,13 @@ type
   protected
     FName: string;
     FCharacter: TCharacter;
+    FVictoryChip: TChip;
     FGame: TGame;
     FArguments: Integer;
     FAvailActions: TPlayerActionsArray;
     FObjects: TGameObjectsArray;
+    function VictoryPos(Arguments: Integer): TVector3D;
+    procedure SetArguments(Value: Integer);
   public
     Resources: array[TResourceType] of Integer;
     constructor Create(Game: TGame; const Name: string);
@@ -51,7 +54,7 @@ type
     property Game: TGame read FGame;
     property Name: string read FName;
     property Character: TCharacter read FCharacter;
-    property Arguments: Integer read FArguments write FArguments;
+    property Arguments: Integer read FArguments write SetArguments;
     property AvailActions: TPlayerActionsArray read FAvailActions;
     property Objects: TGameObjectsArray read FObjects;
   end;
@@ -177,6 +180,12 @@ begin
   FGame := Game;
   FCharacter := FGame.GetCharacter(FName);
   FObjects := TGameObjectsArray.Create;
+  if Name <> SPlague then
+  begin
+    FVictoryChip := TChip.Create(FName);
+    FVictoryChip.Pos := VictoryPos(3);
+    Game.Scene.Objects.Add(FVictoryChip);
+  end;
 end;
 
 destructor TPlayer.Destroy;
@@ -217,6 +226,22 @@ begin
   while Length(FAvailActions) > 0 do
     FAvailActions[High(FAvailActions)].Free;
   EventBus.SendEvent(PlayerOnActionsChanged, Self, []);
+end;
+
+function TPlayer.VictoryPos(Arguments: Integer): TVector3D;
+var
+  i: Integer;
+begin
+  for i := 0 to High(VictoryTracks) do
+    with VictoryTracks[i] do
+      if Name = FName then
+        Result := Track[Max(0, Min(Arguments - 1, High(Track)))];
+end;
+
+procedure TPlayer.SetArguments(Value: Integer);
+begin
+  FArguments := Max(1, Value);
+  FVictoryChip.AddAnimationStep(aaMoveTo, VictoryPos(FArguments), 100);
 end;
 
 { TPlayerAction }

@@ -58,7 +58,6 @@ begin
   begin
     Char := FGame.Character[Characters[i].Name];
     Char.Quarantined := true;
-    Char.Visible := false;
     if not Char.Profile.IsDoctor and (Char.Profile.Master <> '') then
       FGame.Player[Char.Profile.Master].Objects.Add(Char);
   end;

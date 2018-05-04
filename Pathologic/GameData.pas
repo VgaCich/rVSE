@@ -846,6 +846,42 @@ const
     (Name: 'Дубильщики'; Linked: [8, 9, 13]; BorderLength: Length(Quarter14Border); Border: @Quarter14Border),
     (Name: 'Хребтовка'; Linked: [9, 10, 11, 12]; BorderLength: Length(Quarter15Border); Border: @Quarter15Border)
   );
+  VictoryTracks: array[0..2] of record
+    Name: string;
+    Track: array[0..7] of TVector3D;
+  end = (
+    (Name: SBachelor; Track: (
+      (X: -58.830; Y: 0.0; Z: 32.669),
+      (X: -55.443; Y: 0.0; Z: 32.792),
+      (X: -52.057; Y: 0.0; Z: 32.546),
+      (X: -48.670; Y: 0.0; Z: 32.669),
+      (X: -44.975; Y: 0.0; Z: 32.546),
+      (X: -41.589; Y: 0.0; Z: 32.546),
+      (X: -38.140; Y: 0.0; Z: 32.546),
+      (X: -34.753; Y: 0.0; Z: 32.607))
+    ),
+    (Name: SHaruspex; Track: (
+      (X: -59.012; Y: 0.0; Z: 36.855),
+      (X: -55.565; Y: 0.0; Z: 37.101),
+      (X: -51.994; Y: 0.0; Z: 36.916),
+      (X: -48.547; Y: 0.0; Z: 37.101),
+      (X: -45.222; Y: 0.0; Z: 36.978),
+      (X: -41.775; Y: 0.0; Z: 36.855),
+      (X: -38.204; Y: 0.0; Z: 37.039),
+      (X: -34.941; Y: 0.0; Z: 36.978))
+    ),
+    (Name: SChangeling; Track: (
+      (X: -59.071; Y: 0.0; Z: 41.100),
+      (X: -55.563; Y: 0.0; Z: 41.161),
+      (X: -52.239; Y: 0.0; Z: 41.038),
+      (X: -48.854; Y: 0.0; Z: 41.223),
+      (X: -45.161; Y: 0.0; Z: 41.100),
+      (X: -41.714; Y: 0.0; Z: 41.161),
+      (X: -38.206; Y: 0.0; Z: 41.038),
+      (X: -34.636; Y: 0.0; Z: 40.977))
+    )
+  );
+
 
 implementation
 
