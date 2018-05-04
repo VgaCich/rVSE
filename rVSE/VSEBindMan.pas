@@ -652,6 +652,7 @@ procedure TBindManCfgForm.CloseClick(Btn: PBtn);
 begin
   BindMan.SaveBindings;
   if Assigned(FOnClose) then FOnClose(Self);
+  Close;
 end;
 
 destructor TBindManCfgForm.Destroy;

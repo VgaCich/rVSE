@@ -30,9 +30,8 @@ type
     procedure Hide(const Name: string); //Hide form
     procedure Pop(const Name: string); //Pop form to front
     function MouseBusy(X, Y: Integer): Boolean; //Returns true if mouse processed by FormManager
-    function FormName(Form: TGUIForm): string; //Name of form
     function Top: TGUIForm; //Topmost form
-    property FormsSet: TGUIFormsSet read FFormsSet write FFormsSet; //Current forms set 
+    property FormsSet: TGUIFormsSet read FFormsSet write FFormsSet; //Current forms set
     property Forms[const Name: string]: TGUIForm read GetForm; default; //Forms
     property Visible[const Name: string]: Boolean read GetVisible write SetVisible; //Form visibility
   end;
@@ -88,15 +87,16 @@ end;
 
 procedure TFormManager.Update;
 var
-  Form: PFormRec;
+  Form, NextForm: PFormRec;
 begin
   if not Assigned(FFormsSet) then Exit;
   Form := FFormsSet.FirstForm;
   while Assigned(Form) do
   begin
+    NextForm := Form.Next;
     if Form.Visible then
       Form.Form.Update;
-    Form := Form.Next;
+    Form := NextForm;
   end;
 end;
 
@@ -167,17 +167,6 @@ begin
   Result := Assigned(FCapturedMouse) or Assigned(Form);
 end;
 
-function TFormManager.FormName(Form: TGUIForm): string;
-var
-  Rec: PFormRec;
-begin
-  Result := '';
-  if not Assigned(FFormsSet) then Exit;
-  Rec := FFormsSet.FindForm(Form);
-  if Assigned(Rec) then
-    Result := Rec.Name;
-end;
-
 function TFormManager.Top: TGUIForm;
 begin
   Result := nil;
@@ -191,32 +180,16 @@ begin
 end;
 
 function TFormManager.GetVisible(const Name: string): Boolean;
-var
-  Form: PFormRec;
 begin
   Result := false;
-  if not Assigned(FFormsSet) then Exit;
-  Form := FFormsSet.FindForm(Name);
-  if Assigned(Form) then
-    Result := Form.Visible;
+  if Assigned(FFormsSet) then
+    Result := FFormsSet.Visible[Name];
 end;
 
 procedure TFormManager.SetVisible(const Name: string; const Value: Boolean);
-var
-  Form, Parent: PFormRec;
 begin
-  if not Assigned(FFormsSet) then Exit;
-  Form := FFormsSet.FindForm(Name);
-  if not Assigned(Form) then Exit;
-  Form.Visible := Value;
-  if Form.Parent <> '' then
-  begin
-    Parent := FFormsSet.FindForm(Form.Parent);
-    if not Assigned(Parent) then Exit;
-    Parent.Locked := Value;
-    if not Value then
-      Pop(Parent.Name);
-  end;
+  if Assigned(FFormsSet) then
+    FFormsSet.Visible[Name] := Value;
 end;
 
 {$IFDEF VSE_CONSOLE}

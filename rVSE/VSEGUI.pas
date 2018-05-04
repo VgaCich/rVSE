@@ -48,9 +48,11 @@ type
   private
     FForms: PFormRec;
     function GetForm(const Name: string): TGUIForm;
+    function GetVisible(const Name: string): Boolean;
+    procedure SetVisible(const Name: string; const Value: Boolean);
   public
     destructor Destroy; override;
-    function AddForm(const Name: string; Form: TGUIForm; const Parent: string = ''; Visible: Boolean = true): TGUIForm; //Add form; Parent: name of parent form; Parentless forms visible by default
+    function AddForm(const Name: string; Form: TGUIForm; const Parent: string = ''): TGUIForm; //Add form; Parent: name of parent form; Parentless forms visible by default
     procedure RemoveForm(Form: TGUIForm); //Remove form
     procedure IterateForms(Handler: TOnForm); //Call Handler for every form
     function FindForm(const Name: string): PFormRec; overload; //internally used
@@ -59,13 +61,15 @@ type
     procedure Pop(Form: PFormRec); //internally used
     function LastForm: PFormRec; //internally used
     property FirstForm: PFormRec read FForms; //internally used
-    property Forms[const Name: string]: TGUIForm read GetForm; default;
+    function FormName(Form: TGUIForm): string; //Name of form
+    property Forms[const Name: string]: TGUIForm read GetForm; default; //Forms
+    property Visible[const Name: string]: Boolean read GetVisible write SetVisible; //Form visibility
   end;
   TGUIForm = class //GUI Form
   private
     FActive, FLastActive, FLast, FTabStop: Integer; //internally used
     FCustomFont: Cardinal; //internally used
-    FMovable: Boolean; //internally used
+    FMovable, FClose: Boolean; //internally used
     FDragPoint: TPoint; //internally used
     FButtons: array of TBtn; //internally used
     FRects: array of TRect; //internally used
@@ -96,6 +100,7 @@ type
     procedure AddRect(const Rect: TRect); //Add rectangle (visual frame)
     procedure Draw; //Draw form
     procedure Update; dynamic; //Update form
+    procedure Close; //Free form safely
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); dynamic; //Process mouse event
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); dynamic; //Process key event
     procedure CharEvent(C: Char); dynamic; //Process char event
@@ -164,7 +169,7 @@ begin
   inherited;
 end;
 
-function TGUIFormsSet.AddForm(const Name: string; Form: TGUIForm; const Parent: string; Visible: Boolean): TGUIForm;
+function TGUIFormsSet.AddForm(const Name: string; Form: TGUIForm; const Parent: string): TGUIForm;
 var
   Rec, Last: PFormRec;
 begin
@@ -175,7 +180,7 @@ begin
   Rec.Name := Name;
   Rec.Form := Form;
   Rec.Parent := Parent;
-  Rec.Visible := (Parent = '') and Visible;
+  Rec.Visible := Parent = '';
   Rec.Locked := false;
   if Rec.Visible or not Assigned(FForms) then
   begin
@@ -202,6 +207,7 @@ var
 begin
   Rec := FindForm(Form);
   if not Assigned(Rec) then Exit;
+  Visible[Rec.Name] := false;
   Rec.Form.FParentSet := nil;
   if Assigned(Rec.Prev) then
     Rec.Prev.Next := Rec.Next;
@@ -262,6 +268,16 @@ begin
     Result := Result.Next;
 end;
 
+function TGUIFormsSet.FormName(Form: TGUIForm): string;
+var
+  Rec: PFormRec;
+begin
+  Result := '';
+  Rec := FindForm(Form);
+  if Assigned(Rec) then
+    Result := Rec.Name;
+end;
+
 procedure TGUIFormsSet.Pop(Form: PFormRec);
 begin
   if not Assigned(Form) or not Assigned(Form.Prev) then Exit;
@@ -284,6 +300,33 @@ begin
     Form := FindForm(Name);
   if Assigned(Form) then
     Result := Form.Form;
+end;
+
+function TGUIFormsSet.GetVisible(const Name: string): Boolean;
+var
+  Form: PFormRec;
+begin
+  Result := false;
+  Form := FindForm(Name);
+  if Assigned(Form) then
+    Result := Form.Visible;
+end;
+
+procedure TGUIFormsSet.SetVisible(const Name: string; const Value: Boolean);
+var
+  Form, Parent: PFormRec;
+begin
+  Form := FindForm(Name);
+  if not Assigned(Form) then Exit;
+  Form.Visible := Value;
+  if Form.Parent <> '' then
+  begin
+    Parent := FindForm(Form.Parent);
+    if not Assigned(Parent) then Exit;
+    Parent.Locked := Value;
+    if not Value then
+      Pop(Parent);
+  end;
 end;
 
 { TGUIForm }
@@ -368,6 +411,11 @@ procedure TGUIForm.Update;
 var
   Cursor: TPoint;
 begin
+  if FClose then
+  begin
+    Self.Free;
+    Exit;
+  end;
   Cursor := Core.MouseCursor;
   MapCursor(Cursor);
   if IsMoving then
@@ -377,6 +425,11 @@ begin
   end;
   FLastActive := FActive;
   FActive := BtnAt(Cursor);
+end;
+
+procedure TGUIForm.Close;
+begin
+  FClose := true;
 end;
 
 procedure TGUIForm.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
