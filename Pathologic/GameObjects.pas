@@ -35,29 +35,51 @@ type
     property Pos: TVector3D read FPos write SetPos;
     property Visible: Boolean read FVisible write SetVisible;
   end;
+  CGameObject = class of TGameObject;
+  TGameObjectsArray = class
+  private
+    FObjects: array of TGameObject;
+    function GetCount: Integer;
+    function GetObject(Index: Integer): TGameObject;
+    function GetObjOfType(T: CGameObject; Index: Integer): TGameObject;
+  public
+    destructor Destroy; override;
+    function Add(Obj: TGameObject): Integer;
+    procedure Remove(Obj: TGameObject); overload;
+    procedure Remove(Index: Integer); overload;
+    procedure Clear;
+    property Count: Integer read GetCount;
+    property Objects[Index: Integer]: TGameObject read GetObject; default;
+    property ObjOfType[T: CGameObject; Index: Integer]: TGameObject read GetObjOfType;
+  end;
   TQuarter = class(TGameObject)
   protected
     FIndex: TQuarterIndex;
+    FObjects: TGameObjectsArray;
     function GetName: string;
   public
     constructor Create(Index: TQuarterIndex);
+    destructor Destroy; override;
     procedure Draw; override;
     procedure Update; override;
     procedure DrawHighlight(Color: TColor);
     property Index: TQuarterIndex read FIndex;
     property Name: string read GetName;
+    property Objects: TGameObjectsArray read FObjects;
   end;
   TCharacter = class(TGameObject)
-  private
   protected
     FName: string;
     FProfile: TCharProfile;
     FQuarantined: Boolean;
+    FQuarter: TQuarter;
     procedure SetQuarantined(const Value: Boolean); virtual;
+    procedure SetQuarter(const Value: TQuarter);
   public
     constructor Create(const Name: string; const Profile: TCharProfile);
     property Name: string read FName;
     property Quarantined: Boolean read FQuarantined write SetQuarantined;
+    property Quarter: TQuarter read FQuarter write SetQuarter;
     property Profile: TCharProfile read FProfile;
   end;
 
@@ -142,11 +164,85 @@ begin
   FVisible := Value;
 end;
 
+{ TGameObjectsArray }
+
+destructor TGameObjectsArray.Destroy;
+begin
+  Clear;
+  inherited;
+end;
+
+function TGameObjectsArray.Add(Obj: TGameObject): Integer;
+begin
+  SetLength(FObjects, Length(FObjects) + 1);
+  FObjects[High(FObjects)] := Obj;
+  Result := High(FObjects);
+end;
+
+procedure TGameObjectsArray.Remove(Obj: TGameObject);
+var
+  i: Integer;
+begin
+  for i := 0 to High(FObjects) do
+    if FObjects[i] = Obj then
+      Remove(i);
+end;
+
+procedure TGameObjectsArray.Remove(Index: Integer);
+var
+  i: Integer;
+begin
+  if (Index < 0) or (Index > High(FObjects)) then Exit;
+  for i := Index to High(FObjects) - 1 do
+    FObjects[i] := FObjects[i + 1];
+  SetLength(FObjects, Length(FObjects) - 1);
+end;
+
+procedure TGameObjectsArray.Clear;
+begin
+  Finalize(FObjects);
+end;
+
+function TGameObjectsArray.GetCount: Integer;
+begin
+  Result := Length(FObjects);
+end;
+
+function TGameObjectsArray.GetObject(Index: Integer): TGameObject;
+begin
+  if (Index >= 0) and (Index < Length(FObjects)) then
+    Result := FObjects[Index]
+  else
+    Result := nil;
+end;
+
+function TGameObjectsArray.GetObjOfType(T: CGameObject; Index: Integer): TGameObject;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to High(FObjects) do
+    if FObjects[i] is T then
+      if Index > 0 then
+        Dec(Index)
+      else begin
+        Result := FObjects[i];
+        Exit;
+      end;
+end;
+
 { TQuarter }
 
 constructor TQuarter.Create(Index: TQuarterIndex);
 begin
   FIndex := Index;
+  FObjects := TGameObjectsArray.Create;
+end;
+
+destructor TQuarter.Destroy;
+begin
+  FAN(FObjects);
+  inherited;
 end;
 
 procedure TQuarter.Draw;
@@ -158,7 +254,7 @@ begin
     glDepthMask(false);
     glColorMask(false, false, false, false);
     glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 12, Border);
+    glVertexPointer(3, GL_FLOAT, SizeOf(TVector3D), Border);
     glDrawArrays(GL_TRIANGLE_FAN, 0, BorderLength);
     glDisableClientState(GL_VERTEX_ARRAY);
     glPopAttrib;
@@ -180,7 +276,7 @@ begin
     glEnable(GL_COLOR_MATERIAL);
     gleColor(TColor($80000000) or Color);
     glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 12, Border);
+    glVertexPointer(3, GL_FLOAT, SizeOf(TVector3D), Border);
     glDrawArrays(GL_TRIANGLE_FAN, 0, BorderLength);
     glDisableClientState(GL_VERTEX_ARRAY);
     glPopAttrib;
@@ -207,13 +303,16 @@ begin
   inherited Create(CharModel);
   FName := Name;
   FProfile := Profile;
-  FQuarantined := true;
-  FModel.Materials[CharCardMtl].Texture := TexMan.GetTex(Format(CharTex, [Name]));
-  FHeight := CharHeight;
-  if Profile.IsDoctor then
+  if Name <> SPlague then
   begin
-    FModel.Objects[CharObj].Transform.Scale(DoctorScale, DoctorScale, DoctorScale);
-    FHeight := FHeight * DoctorScale;
+    FQuarantined := true;
+    FModel.Materials[CharCardMtl].Texture := TexMan.GetTex(Format(CharTex, [Name]));
+    FHeight := CharHeight;
+    if Profile.IsDoctor then
+    begin
+      FModel.Objects[CharObj].Transform.Scale(DoctorScale, DoctorScale, DoctorScale);
+      FHeight := FHeight * DoctorScale;
+    end;
   end;
 end;
 
@@ -227,6 +326,15 @@ begin
   end;
     //FModel.Objects[CharObj].Transform.Rotate(Pi, 1, 0, 0);
   FQuarantined := Value;
+end;
+
+procedure TCharacter.SetQuarter(const Value: TQuarter);
+begin
+  if Assigned(FQuarter) then
+    FQuarter.Objects.Remove(Self);
+  FQuarter := Value;
+  if Assigned(FQuarter) then
+    FQuarter.Objects.Add(Self);
 end;
 
 end.

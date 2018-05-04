@@ -2,7 +2,8 @@ program Pathologic;
 
 uses
   {$IFDEF VER150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
-  AvL, avlUtils, VSECore, VSETexMan, VSEMemPak, StateStart, StateMenu, StateGame;
+  AvL, avlUtils, avlEventBus, VSECore, VSETexMan, VSEMemPak, StateStart,
+  StateMenu, StateGame;
 
 {$R *.res}
 {$R MemPak.res}
@@ -11,6 +12,7 @@ function LoadTexture(Sender: TObject; const Name: string): Cardinal;
 begin
   try
     Result := TexMan.AddTexture(Name, GetFile(GetTexFileName(Name)), true, true, true);
+    TexMan.SetFilter(Result, tfAnisotropic);
   except
     Result := 0;
   end;
@@ -18,6 +20,8 @@ end;
 
 procedure InitStates;
 begin
+  Randomize;
+  EventBus.ClearEvents;
   TexMan.OnLostTex := LoadTexture;
   Core.AddState(TStateGame.Create);
   Core.AddState(TStateMenu.Create);

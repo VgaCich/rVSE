@@ -3,7 +3,7 @@ unit StateGame;
 interface
 
 uses
-  Windows, AvL, avlUtils, avlMath, avlVectors, OpenGL, oglExtensions,
+  Windows, AvL, avlUtils, avlEventBus, avlMath, avlVectors, OpenGL, oglExtensions,
   VSEOpenGLExt, VSECore, VSECamera, VSEGUI, Scene, Game;
 
 type
@@ -18,7 +18,10 @@ type
     FScene: TScene;
     FGame: TGame;
     FMouse3D: TVector3D;
+    FOnMouseEvent: Integer;
     function GetCanResumeGame: Boolean;
+    procedure PlayerActionsChanged(Sender: TObject; const Args: array of const);
+    procedure ActivePlayerChanged(Sender: TObject; const Args: array of const);
   protected
     function  GetName: string; override;
   public
@@ -39,6 +42,7 @@ type
 const
   SIDGame = 'Game';
 
+
 implementation
 
 uses VSERender2D, VSETexMan, VSEMemPak, VSEBindMan, VSEFormManager
@@ -54,18 +58,13 @@ const
   );
 
 constructor TStateGame.Create;
-
-  procedure SetMovable(Self: TObject; Form: TGUIForm);
-  begin
-    Form.Movable := true;
-  end;
-
 begin
   inherited Create;
-  Randomize;
+  FOnMouseEvent := EventBus.RegisterEvent(GameOnMouseEvent);
   FFormsSet := TGUIFormsSet.Create;
   {$IFDEF VSE_DEBUG}
-  FFormsSet.AddForm(IDLogPoints, TLogPointsForm.Create, '', false);
+  FFormsSet.AddForm(IDLogPoints, TLogPointsForm.Create, '');
+  FFormsSet.Visible[IDLogPoints] := false;
   {$IFDEF VSE_CONSOLE}
   Console.OnCommand['debuginfo ?show=eoff:on'] := Console.GetConVarHandler(FShowDebugInfo, cvBool);
   Console.OnCommand['logpoints ?show=eoff:on'] := Console.GetConVarHandler(FFormsSet.FindForm(IDLogPoints).Visible, cvBool);
@@ -74,12 +73,12 @@ begin
   FFont := Render2D.CreateFont('Courier New', 10);
   {$ENDIF}
   BindMan.AddBindings(Bindings);
-  FFormsSet.IterateForms(TOnForm(MakeMethod(@SetMovable)));
   FCamera := TCamera.Create;
 end;
 
 destructor TStateGame.Destroy;
 begin
+  EventBus.RemoveListeners([PlayerActionsChanged, ActivePlayerChanged]);
   FAN(FGame);
   FAN(FScene);
   FAN(FCamera);
@@ -129,16 +128,27 @@ begin
   inherited; //TODO: Move by screen edges?
   FCamera.Move(Vector2D(Move[BindMan.BindActive['CamLeft'], BindMan.BindActive['CamRight']],
     Move[BindMan.BindActive['CamFwd'], BindMan.BindActive['CamBwd']]), MapBounds.Min, MapBounds.Max);
-  FGame.Update;
-  FScene.Update;
+  if Assigned(FGame) then
+  begin
+    EventBus.SendEvent(FOnMouseEvent, FGame, [Integer(meMove), @FMouse3D]);
+    FGame.Update;
+    FScene.Update;
+  end;
 end;
 
 function TStateGame.Activate: Cardinal;
+
+  procedure SetMovable(Self: TObject; Form: TGUIForm);
+  begin
+    Form.Movable := true;
+  end;
+
 begin
   inherited Activate;
   Result := 20;
   glClearColor(0, 0, 0, 1);
   glClearStencil(0);
+  FFormsSet.IterateForms(TOnForm(MakeMethod(@SetMovable)));
   FormManager.FormsSet := FFormsSet;
   Draw;
   Core.ResetUpdateTimer;
@@ -159,10 +169,12 @@ begin
   case Event of
     meDown: if Button in [mbRight, mbMiddle] then
         Core.MouseCapture := true
-      else if (Button = mbLeft) and FormManager.Visible[IDLogPoints] then
-        (FormManager[IDLogPoints] as TLogPointsForm).AddPoint(FMouse3D);
+      else if Assigned(FGame) and (Button = mbLeft) then
+        EventBus.SendEvent(FOnMouseEvent, FGame, [Integer(meDown), @FMouse3D]);
     meUp: if Button in [mbRight, mbMiddle] then
-      Core.MouseCapture := false;
+        Core.MouseCapture := false
+      else if Assigned(FGame) and (Button = mbLeft) then
+        EventBus.SendEvent(FOnMouseEvent, FGame, [Integer(meUp), @FMouse3D]);
     meMove: if Core.MouseCapture then //TODO: Panning & Rotating speed to Options
       with FCamera do
         if Core.KeyPressed[VK_RBUTTON] then
@@ -186,11 +198,19 @@ begin
 end;
 
 function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
+
+  procedure RealignForm(Self: TObject; Form: TGUIForm);
+  begin
+    if Form is TAlignedForm then
+      (Form as TAlignedForm).Align;
+  end;
+
 begin
   Result := inherited SysNotify(Notify);
   case Notify of
     snMinimize: Core.SwitchState(SIDMenu);
     snConsoleActive: Result := true;
+    snResolutionChanged: FFormsSet.IterateForms(TOnForm(MakeMethod(@RealignForm)));
   end;
 end;
 
@@ -202,6 +222,12 @@ begin
   FAN(FScene);
   FScene := TScene.Create;
   FGame := TGame.Create(FScene);
+  EventBus.AddListener(PlayerOnActionsChanged, PlayerActionsChanged);
+  EventBus.AddListener(GameOnActivePlayerChanged, ActivePlayerChanged);
+  {$IFDEF VSE_DEBUG}
+  FFormsSet[IDPlayerSelect].Free;
+  FFormsSet.AddForm(IDPlayerSelect, TPlayerSelectForm.Create(FGame));
+  {$ENDIF}
 end;
 
 function TStateGame.GetName: string;
@@ -212,6 +238,31 @@ end;
 function TStateGame.GetCanResumeGame: Boolean;
 begin
   Result := Assigned(FGame);
+end;
+
+procedure TStateGame.PlayerActionsChanged(Sender: TObject; const Args: array of const);
+var
+  i: Integer;
+begin
+  if Sender <> FGame.ActivePlayer then Exit;
+  for i := 0 to High(FGame.ActivePlayer.AvailActions) do
+    with FGame.ActivePlayer.AvailActions[i] do
+      if Assigned(Form) and not Assigned(FFormsSet.FindForm(Form)) then
+        FFormsSet.AddForm(ClassName, Form, '');
+end;
+
+procedure TStateGame.ActivePlayerChanged(Sender: TObject; const Args: array of const);
+var
+  i: Integer;
+begin
+  Assert((Length(Args) = 2) and (Args[0].VType = vtObject) and (Args[1].VType = vtObject));
+  if Assigned(Args[0].VObject) then
+    with Args[0].VObject as TPlayer do
+      for i := 0 to High(AvailActions) do
+        with AvailActions[i] do
+          if Assigned(Form) then
+            FFormsSet.RemoveForm(Form);
+  PlayerActionsChanged(Args[1].VObject, []);
 end;
 
 end.

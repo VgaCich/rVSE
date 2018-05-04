@@ -35,12 +35,10 @@ type
     procedure KeyConfig(Btn: PBtn);
     procedure OKClick(Btn: PBtn);
     procedure CancelClick(Btn: PBtn);
-    procedure KeyConfigClose(Sender: TObject);
   public
     constructor Create;
     destructor Destroy; override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    procedure ReadOptions;
   end;
   TTextView = class(TGUIForm)
   protected
@@ -200,15 +198,13 @@ end;
 
 procedure TMainMenu.OptionsClick(Btn: PBtn);
 begin
-  (FormManager[IDOptions] as TOptions).ReadOptions;
+  FParentSet.AddForm(IDOptions, TOptions.Create, FParentSet.FormName(Self));
   FormManager.Show(IDOptions);
 end;
 
 procedure TMainMenu.TextClick(Btn: PBtn);
 begin
-  FormManager[IDTextView].Free;
-  FParentSet.AddForm(IDTextView, TTextView.Create(Btn.Caption, TextFiles[Btn.Tag]), IDMainMenu);
-  FormManager[IDTextView].Movable := true;
+  FParentSet.AddForm(IDTextView, TTextView.Create(Btn.Caption, TextFiles[Btn.Tag]), FParentSet.FormName(Self));
   FormManager.Show(IDTextView);
 end;
 
@@ -223,6 +219,7 @@ constructor TOptions.Create;
 var
   Btn: TBtn;
   Lbl: TLbl;
+  i: Integer;
 begin
   inherited Create(200, 130, 400, 350);
   FCaption := 'Настройки';
@@ -248,9 +245,11 @@ begin
     Type_ := btCheck;
     OnClick := nil;
     Caption := 'Полный экран';
+    Checked := Core.Fullscreen;
     FCFullscreen := AddButton(Btn);
     Y := 140;
     Caption := 'Верт. синхр.';
+    Checked := Core.VSync;
     FCVSync := AddButton(Btn);
     X := 140;
     Y := 310;
@@ -284,28 +283,6 @@ begin
     Caption := 'Качество графики';
     AddLabel(Lbl);
   end;
-end;
-
-destructor TOptions.Destroy;
-begin
-  Finalize(FResolutions);
-  inherited Destroy;
-end;
-
-procedure TOptions.KeyEvent(Key: Integer; Event: TKeyEvent);
-begin
-  if (Key = VK_ESCAPE) and (Event = keUp) then
-    CancelClick(nil)
-  else
-    inherited KeyEvent(Key, Event);
-end;
-
-procedure TOptions.ReadOptions;
-var
-  i: Integer;
-begin
-  Button[FCFullscreen].Checked := Core.Fullscreen;
-  Button[FCVSync].Checked := Core.VSync;
   FColorDepth := Core.ColorDepth;
   FQuality := TGraphicsQuality(Settings.Int[SSectionSettings, SGraphicsQuality]);
   FCurrentResolution := -1;
@@ -334,6 +311,20 @@ begin
     SetLength(FResolutions[FCurrentResolution].RefreshRates, FCurrentRefreshRate + 1);
     FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate] := Core.RefreshRate;
   end;
+end;
+
+destructor TOptions.Destroy;
+begin
+  Finalize(FResolutions);
+  inherited Destroy;
+end;
+
+procedure TOptions.KeyEvent(Key: Integer; Event: TKeyEvent);
+begin
+  if (Key = VK_ESCAPE) and (Event = keUp) then
+    CancelClick(nil)
+  else
+    inherited KeyEvent(Key, Event);
 end;
 
 procedure TOptions.DrawForm;
@@ -370,13 +361,8 @@ end;
 
 procedure TOptions.KeyConfig(Btn: PBtn);
 begin
-  if not Assigned(FormManager[IDKeyConfig]) then
-    with FParentSet.AddForm(IDKeyConfig, TBindManCfgForm.Create(200, 130, 400, 350, 'Сброс', 'OK'), IDOptions) as TBindManCfgForm do
-    begin
-      Caption := 'Управление';
-      OnClose := KeyConfigClose;
-    end;
-  (FormManager[IDKeyConfig] as TBindManCfgForm).Refresh;
+  with FParentSet.AddForm(IDKeyConfig, TBindManCfgForm.Create(200, 130, 400, 350, 'Сброс', 'OK'), FParentSet.FormName(Self)) as TBindManCfgForm do
+    Caption := 'Управление';
   FormManager.Show(IDKeyConfig);
 end;
 
@@ -391,17 +377,12 @@ begin
     Settings.Int[SSectionSettings, SGraphicsQuality] := Integer(FQuality);
     Core.SwitchState(SIDStart);
   end;
-  FormManager.Hide(FormManager.FormName(Self));
+  Close;
 end;
 
 procedure TOptions.CancelClick(Btn: PBtn);
 begin
-  FormManager.Hide(FormManager.FormName(Self));
-end;
-
-procedure TOptions.KeyConfigClose(Sender: TObject);
-begin
-  FormManager.Hide(IDKeyConfig);
+  Close;
 end;
 
 {TTextView}
@@ -509,7 +490,7 @@ end;
 
 procedure TTextView.Close(Btn: PBtn);
 begin
-  FormManager.Hide(FormManager.FormName(Self));
+  inherited Close;
 end;
 
 {TStateMenu}
@@ -520,7 +501,7 @@ begin
   {$IFDEF VSE_CONSOLE}Console.OnCommand['menubg file=s'] := MenuBgHandler;{$ENDIF}
   FFormsSet := TGUIFormsSet.Create;
   FFormsSet.AddForm(IDMainMenu, TMainMenu.Create);
-  FFormsSet.AddForm(IDOptions, TOptions.Create, IDMainMenu);
+  //FFormsSet.AddForm(IDOptions, TOptions.Create, IDMainMenu);
   FStart := TStateStart(Core.GetState(Core.FindState(SIDStart)));
   FGame := TStateGame(Core.GetState(Core.FindState(SIDGame)));
 end;

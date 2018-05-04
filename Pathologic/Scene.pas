@@ -3,7 +3,7 @@ unit Scene;
 interface
 
 uses
-  AvL, avlUtils, avlMath, avlVectors, OpenGL, VSEOpenGLExt, oglExtensions,
+  AvL, avlUtils, avlEventBus, avlMath, avlVectors, OpenGL, VSEOpenGLExt, oglExtensions,
   VSECore, VSEPrimitiveModel, GameObjects;
 
 type
@@ -15,11 +15,14 @@ type
   TScene = class
   private
     FMap: TPriModel;
-    FObjects: array of TGameObject;
+    FObjects: TGameObjectsArray;
+    FObjectAtMouse: TGameObject;
     FTitleFont, FInfoFont: Cardinal;
-    FTitleMsgStatus: TTitleMsgStatus;
-    function GetObjCount: Integer;
-    function GetObject(Index: Integer): TGameObject;
+    FTitleMsgs: array[0..2] of TTitleMsgStatus;
+    FQuarterHlColor: TColor;
+    FOnQuarterHighlight: Integer;
+    procedure ShowTitleMessage(Sender: TObject; const Args: array of const);
+    procedure SetQuarterHlColor(Sender: TObject; const Args: array of const);
     {$IF Defined(VSE_DEBUG) and Defined(VSE_CONSOLE)}
     function ClearSceneHandler(Sender: TObject; Args: array of const): Boolean;
     {$IFEND}
@@ -28,24 +31,23 @@ type
     destructor Destroy; override;
     procedure Draw;
     procedure Update;
-    function AddObject(Obj: TGameObject): Integer;
-    procedure RemoveObject(Obj: TGameObject); overload;
-    procedure RemoveObject(Index: Integer); overload;
-    procedure ShowTitleMessage(const Msg: string);
     function ObjectAt(X, Y: Integer): TGameObject;
-    property ObjectsCount: Integer read GetObjCount;
-    property Objects[Index: Integer]: TGameObject read GetObject; default;
+    property Objects: TGameObjectsArray read FObjects;
+    property ObjectAtMouse: TGameObject read FObjectAtMouse;
   end;
 
 const
+  SceneShowTitleMessage = 'Scene.ShowTitleMessage'; //<In> Message, Level, [Player]
+  SceneSetQuarterHlColor = 'Scene.SetQuarterHlColor'; //<In> Color
+  SceneOnQuarterHighlight = 'Scene.OnQuarterHighlight'; //<Out> Quarter
   MapBounds: record
     Min: TVector2D;
     Max: TVector2D;
-  end = (Min: (X: -60.0; Y: -30.0); Max: (X: 60.0; Y: 45.0));
+  end = (Min: (X: -60.0; Y: -35.0); Max: (X: 60.0; Y: 45.0));
 
 implementation
 
-uses VSERender2D, VSETexMan, VSEMemPak, VSEFormManager, StateMenu, StateGame
+uses VSERender2D, VSETexMan, VSEMemPak, VSEFormManager, StateMenu, StateGame, Game
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -61,8 +63,12 @@ constructor TScene.Create;
 begin
   inherited;
   FMap := TPriModel.Create('Models\Map.vpm');
+  FObjects := TGameObjectsArray.Create;
   FTitleFont := Render2D.CreateFont(UIFont, 20, false);
   FInfoFont := Render2D.CreateFont(UIFont, 12, true);
+  EventBus.AddListener(EventBus.RegisterEvent(SceneShowTitleMessage), ShowTitleMessage);
+  EventBus.AddListener(EventBus.RegisterEvent(SceneSetQuarterHlColor), SetQuarterHlColor);
+  FOnQuarterHighlight := EventBus.RegisterEvent(SceneOnQuarterHighlight);
   {$IF Defined(VSE_DEBUG) and Defined(VSE_CONSOLE)}
   Console.OnCommand['clearscene'] := ClearSceneHandler;
   {$IFEND}
@@ -70,7 +76,8 @@ end;
 
 destructor TScene.Destroy;
 begin
-  Finalize(FObjects);
+  EventBus.RemoveListeners([ShowTitleMessage, SetQuarterHlColor]);
+  FAN(FObjects);
   FAN(FMap);
   inherited;
 end;
@@ -82,7 +89,6 @@ const
   LightDiff: array[0..3] of GLfloat = (1, 1, 1, 1);
 var
   i, H: Integer;
-  Obj: TGameObject;
 begin
   glPushAttrib(GL_ENABLE_BIT);
   glEnable(GL_DEPTH_TEST);
@@ -97,22 +103,31 @@ begin
   glStencilFunc(GL_ALWAYS, StencilIsMap, $FF);
   glColor(1.0, 1.0, 1.0);
   FMap.Draw;
-  for i := 0 to High(FObjects) do
+  for i := 0 to FObjects.Count - 1 do
   begin
     glStencilFunc(GL_ALWAYS, StencilObjShift + i, $FF);
     FObjects[i].Draw;
+    {if FObjects[i] is TQuarter then //colorful quarters!
+      with FObjects[i] as TQuarter do
+        DrawHighlight((Index and 4) shl 21 + (Index and 8) shl 19 +
+                      (Index and 2) shl 14 + (Index and 8) shl 11 +
+                      (Index and 1) shl 7 + (Index and 8) shl 3);}
   end;
   with Core.MouseCursor do
     if (Core.CurState is TStateGame) and not (Core.MouseCapture or FormManager.MouseBusy(X, Y)) then
-      Obj := ObjectAt(X, Y)
+      FObjectAtMouse := ObjectAt(X, Y)
     else
-      Obj := nil;
-  if Assigned(Obj) and (Obj is TQuarter) then 
-    (Obj as TQuarter).DrawHighlight(clLime);
+      FObjectAtMouse := nil;
+  if Assigned(FObjectAtMouse) and (FObjectAtMouse is TQuarter) then
+  begin
+    FQuarterHlColor := clBlack;
+    EventBus.SendEvent(FOnQuarterHighlight, Self, [FObjectAtMouse]);
+    (FObjectAtMouse as TQuarter).DrawHighlight(FQuarterHlColor);
+  end;
   glPopAttrib;
   Render2D.Enter;
-  if Assigned(Obj) and (Obj is TCharacter) then
-    with Render2D.MapCursor(Core.MouseCursor), Obj as TCharacter do
+  if Assigned(FObjectAtMouse) and (FObjectAtMouse is TCharacter) then
+    with Render2D.MapCursor(Core.MouseCursor), FObjectAtMouse as TCharacter do
     begin
       H := Render2D.TextHeight(FInfoFont);
       gleColor($80000000);
@@ -121,22 +136,26 @@ begin
       gleColor(clWhite);
       Render2D.TextOut(FInfoFont, X + 2, Y - H, Profile.RuName);
     end;
-  with FTitleMsgStatus do
-    if Msg <> '' then
-    begin
-      gleColor($80000000);
-      with Render2D.VSBounds do
-        Render2D.DrawRect(Left, TitleMsgPos, Right - Left, Render2D.TextHeight(FTitleFont));
-      gleColor(clWhite);
-      Render2D.TextOut(FTitleFont, Pos, TitleMsgPos, Msg);
-    end;
+  H := Render2D.TextHeight(FTitleFont);
+  for i := 0 to High(FTitleMsgs) do
+    if FTitleMsgs[i].Msg <> '' then
+      with FTitleMsgs[i] do
+      begin
+        gleColor($80000000);
+        with Render2D.VSBounds do
+          Render2D.DrawRect(Left, TitleMsgPos + i * (H + 5), Right - Left, H);
+        gleColor(clWhite);
+        Render2D.TextOut(FTitleFont, Pos, TitleMsgPos + i * (H + 5), Msg);
+      end;
   Render2D.Leave;
 end;
 
 procedure TScene.Update;
+var
+  i: Integer;
 begin
-  with FTitleMsgStatus do
-    if Msg <> '' then
+  for i := 0 to High(FTitleMsgs) do
+    with FTitleMsgs[i] do
     begin
       case Time of
         0 .. TitleMsgMoveTime - 1,
@@ -144,45 +163,30 @@ begin
           Pos := Pos - Delta;
         2 * TitleMsgMoveTime + TitleMsgShowTime: Msg := '';
       end;
-      Inc(Time);
+      if Msg <> '' then
+        Inc(Time);
     end;
 end;
 
-function TScene.AddObject(Obj: TGameObject): Integer;
+procedure TScene.ShowTitleMessage(Sender: TObject; const Args: array of const);
 begin
-  SetLength(FObjects, Length(FObjects) + 1);
-  FObjects[High(FObjects)] := Obj;
-  Result := High(FObjects);
-end;
-
-procedure TScene.RemoveObject(Obj: TGameObject);
-var
-  i: Integer;
-begin
-  for i := 0 to High(FObjects) do
-    if FObjects[i] = Obj then
-      RemoveObject(i);
-end;
-
-procedure TScene.RemoveObject(Index: Integer);
-var
-  i: Integer;
-begin
-  if (Index < 0) or (Index > High(FObjects)) then Exit;
-  for i := Index to High(FObjects) - 1 do
-    FObjects[i] := FObjects[i + 1];
-  SetLength(FObjects, Length(FObjects) - 1);
-end;
-
-procedure TScene.ShowTitleMessage(const Msg: string);
-begin
-  FTitleMsgStatus.Msg := Msg;
-  with FTitleMsgStatus, Render2D.VSBounds do
+  Assert((Length(Args) >= 2) and (Args[0].VType = vtAnsiString) and (Args[1].VType = vtInteger));
+  Assert((Length(Args) = 2) or (Args[2].VType = vtObject));
+  with FTitleMsgs[Max(0, Min(Args[1].VInteger, High(FTitleMsgs)))], Render2D.VSBounds do
   begin
+    Msg := string(Args[0].VAnsiString);
+    if Length(Args) > 2 then
+      Msg := '[' + (Args[2].VObject as TPlayer).Character.Profile.RuName + '] ' + Msg;
     Time := 0;
     Pos := Right;
     Delta := (Right - Left + Render2D.TextWidth(FTitleFont, Msg)) / (2 * TitleMsgMoveTime);
   end;
+end;
+
+procedure TScene.SetQuarterHlColor(Sender: TObject; const Args: array of const);
+begin
+  Assert((Length(Args) = 1) and (Args[0].VType = vtInteger));
+  FQuarterHlColor := Args[0].VInteger;
 end;
 
 function TScene.ObjectAt(X, Y: Integer): TGameObject;
@@ -193,24 +197,11 @@ begin
   Result := Objects[StencilValue - StencilObjShift];
 end;
 
-function TScene.GetObjCount: Integer;
-begin
-  Result := Length(FObjects);
-end;
-
-function TScene.GetObject(Index: Integer): TGameObject;
-begin
-  if (Index >= 0) and (Index < Length(FObjects)) then
-    Result := FObjects[Index]
-  else
-    Result := nil;
-end;
-
 {$IF Defined(VSE_DEBUG) and Defined(VSE_CONSOLE)}
 function TScene.ClearSceneHandler(Sender: TObject; Args: array of const):
   Boolean;
 begin
-  Finalize(FObjects);
+  FObjects.Clear;
   Result := true;
 end;
 {$IFEND}

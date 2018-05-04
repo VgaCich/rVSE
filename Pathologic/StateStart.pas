@@ -209,7 +209,7 @@ end;
 procedure TStateStart.LoadTex;
 begin
   with FLoadThread do
-    TexMan.AddTexture(TexName, TexImage, true, true);
+    TexMan.SetFilter(TexMan.AddTexture(TexName, TexImage, true, true), tfAnisotropic);
 end;
 
 end.

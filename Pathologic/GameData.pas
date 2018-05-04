@@ -21,6 +21,7 @@ const
   SBachelor = 'Bachelor';
   SHaruspex = 'Haruspex';
   SChangeling = 'Changeling';
+  PlayerNames: array[0..3] of string = (SPlague, SBachelor, SHaruspex, SChangeling);
   SMariaKaina = 'MariaKaina';
   SVladTheYounger = 'VladTheYounger';
   SAndreyStamatin = 'AndreyStamatin';
@@ -30,6 +31,12 @@ const
   SAlexanderSaburov = 'AlexanderSaburov';
   SStanislavRubin = 'StanislavRubin';
   SAspity = 'Aspity';
+  CharPlague: TCharProfile = (
+    RuName: 'Чума';
+    IsDoctor: false;
+    Master: '';
+    Resource: TResourceType(0);
+  );
   CharBachelor: TCharProfile = (
     RuName: 'Бакалавр';
     IsDoctor: true;
@@ -102,10 +109,11 @@ const
     Master: SChangeling;
     Resource: rtKey;
   );
-  Characters: array[0..11] of record
+  Characters: array[0..12] of record
     Name: string;
     Profile: ^TCharProfile;
   end = (
+    (Name: SPlague; Profile: @CharPlague), 
     (Name: SBachelor; Profile: @CharBachelor),
     (Name: SHaruspex; Profile: @CharHaruspex),
     (Name: SChangeling; Profile: @CharChangeling),
@@ -129,7 +137,7 @@ const
     (X: 26.296; Y: 0.0; Z: 43.395),
     (X: 25.833; Y: 0.0; Z: 40.952),
     (X: 25.678; Y: 0.0; Z: 39.663),
-    (X: 25.370; Y: 0.0; Z: 37.480),
+    (X: 25.370; Y: 0.0; Z: 37.460),
     (X: 24.266; Y: 0.0; Z: 37.638),
     (X: 22.380; Y: 0.0; Z: 37.714),
     (X: 20.610; Y: 0.0; Z: 37.503),

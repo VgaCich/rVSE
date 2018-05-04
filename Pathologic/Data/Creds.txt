@@ -2,20 +2,20 @@
 
     
 	Concept & Design:
-	~~~~~~~~~~~~
+	~~~~~~~~~~~~~~~~~
     
 	CapsLock Games
 	Ice-Pick Lodge
 
 
 	Programming:
-	~~~~~~~~~
+	~~~~~~~~~~~~
     
 	Vga
 
 
 	Art:
-	~~~
+	~~~~
     
 	Ice-Pick Lodge
 	

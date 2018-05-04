@@ -3,48 +3,96 @@ unit GameStages;
 interface
 
 uses
-  AvL, avlUtils, avlMath, avlVectors, VSECore, Game;
+  AvL, avlUtils, avlEventBus, avlMath, avlVectors, VSECore, Game;
 
 type
   TStageStart = class(TGameStage)
+  private
+    FCurrentPlayer: Integer;
+    FSceneSetQuarterHlColor: Integer;
+    procedure ActionCompleted(Sender: TObject; const Args: array of const);
   public
     constructor Create(Game: TGame);
-    function Update: TGameStage; override; 
+    destructor Destroy; override;
+  end;
+  TStageDoctorPrepare = class(TGameStage)
+  private
+    FPlayer: TPlayer;
+  public
+    constructor Create(Game: TGame; Player: TPlayer);
   end;
 
 implementation
 
-uses VSEMemPak, GameData, GameObjects
+uses VSEMemPak, GameData, Scene, GameObjects, PlayerActions
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 { TStageStart }
 
 constructor TStageStart.Create(Game: TGame);
+var
+  i: Integer;
+  r: TResourceType;
+  Char: TCharacter;
 begin
   inherited;
-  FGame.Scene.ShowTitleMessage('Старт игры!');
-  FGame.ActivePlayer := FGame.Player[SBachelor];
+  FCurrentPlayer := 0;
+  FSceneSetQuarterHlColor := EventBus.GetEventId(SceneSetQuarterHlColor);
+  EventBus.AddListener(EventBus.RegisterEvent(PlayerOnActionCompleted), ActionCompleted);
+  EventBus.SendEvent(SceneShowTitleMessage, Self, ['Подготовка', 0]);
+  //TODO: Setup Missions
+  for i := 0 to High(PlayerNames) do
+    with FGame.Player[PlayerNames[i]] do
+      if Character.Profile.IsDoctor then
+      begin
+        Arguments := 3;
+        for r := Low(TResourceType) to High(TResourceType) do
+          Resources[r] := 0;
+        Resources[(Objects[Objects.Add(FGame.Character[Name])] as TCharacter).Profile.Resource] := 1;
+        //TODO: Give Recipes deck and one Recipe
+      end
+      else begin
+        //TODO: Give plague decks of Doomed and Strains, select Targets
+      end;
+  for i := 0 to High(Characters) do
+  begin
+    Char := FGame.Character[Characters[i].Name];
+    Char.Quarantined := true;
+    Char.Visible := false;
+    if not Char.Profile.IsDoctor and (Char.Profile.Master <> '') then
+      FGame.Player[Char.Profile.Master].Objects.Add(Char);
+  end;
+  ActionCompleted(Self, []);
 end;
 
-function TStageStart.Update: TGameStage;
-var
-  NewPos: TVector3D;
+destructor TStageStart.Destroy;
 begin
-  case Random(100) of
-    0: with FGame.Character[Characters[Random(Length(Characters))].Name] do
-      Quarantined := not Quarantined;
-    1: with FGame.Character[Characters[Random(Length(Characters))].Name] do
-      begin
-        NewPos := Vector3D(-60.0 + 120.0 * Random, Height, -30.0 + 60.0 * Random);
-        AddAnimationStep(aaMove, Vector4D(0, Height, 0, 0), 500);
-        AddAnimationStep(aaMoveTo, Vector4D(NewPos.X, NewPos.Y, NewPos.Z, 0),
-          Round(VectorSize(VectorSub(NewPos, Pos)) * 25));
-        AddAnimationStep(aaMove, Vector4D(0, -Height, 0, 0), 500);
-      end;
+  EventBus.RemoveListener(ActionCompleted);
+  inherited;
+end;
+
+procedure TStageStart.ActionCompleted(Sender: TObject; const Args: array of const);
+begin
+  if Sender = FGame.Player[SPlague] then
+  begin
+    FNextStage := TStageDoctorPrepare.Create(FGame, FGame.Player[SBachelor]);
+    Exit;
   end;
-  if Random(1000) = 0 then
-    FGame.Scene.ShowTitleMessage('~~ Random Hello! ~~');
-  Result := inherited Update;
+  Inc(FCurrentPlayer);
+  if FCurrentPlayer > High(PlayerNames) then
+    FCurrentPlayer := 1;
+  if Assigned(FGame.Player[PlayerNames[FCurrentPlayer]].Objects.ObjOfType[TCharacter, 0]) then
+    TPlaceCharacterAction.Create(FGame.Player[PlayerNames[FCurrentPlayer]])
+  else
+    TSelectQuarterAction.Create(FGame.Player[SPlague], qscFree);
+end;
+
+{ TStageDoctorPrepare }
+
+constructor TStageDoctorPrepare.Create(Game: TGame; Player: TPlayer);
+begin
+  inherited Create(Game);
+  EventBus.SendEvent(SceneShowTitleMessage, Self, [Player.Character.Profile.RuName + ': подготовка', 0])
 end;
 
 end.

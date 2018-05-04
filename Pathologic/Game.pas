@@ -3,7 +3,8 @@ unit Game;
 interface
 
 uses
-  AvL, avlUtils, avlMath, avlVectors, VSECore, Scene, GameObjects;
+  AvL, avlUtils, avlEventBus, avlMath, avlVectors, VSECore, VSEGUI, Scene,
+  GameData, GameObjects;
 
 type
   TPlayer = class;
@@ -28,27 +29,59 @@ type
     property Stage: TGameStage read FStage;
     property ActivePlayer: TPlayer read FActivePlayer write SetActivePlayer;
   end;
+  TPlayerAction = class;
+  TPlayerActionsArray = array of TPlayerAction;
   TPlayer = class
+  private
   protected
     FName: string;
     FCharacter: TCharacter;
     FGame: TGame;
+    FArguments: Integer;
+    FAvailActions: TPlayerActionsArray;
+    FObjects: TGameObjectsArray;
   public
-    constructor Create(Game: TGame);
+    Resources: array[TResourceType] of Integer;
+    constructor Create(Game: TGame; const Name: string);
+    destructor Destroy; override;
     procedure Update; virtual;
+    procedure AddAction(Action: TPlayerAction);
+    procedure RemoveAction(Action: TPlayerAction);
+    procedure ClearActions;
+    property Game: TGame read FGame;
     property Name: string read FName;
+    property Character: TCharacter read FCharacter;
+    property Arguments: Integer read FArguments write FArguments;
+    property AvailActions: TPlayerActionsArray read FAvailActions;
+    property Objects: TGameObjectsArray read FObjects;
+  end;
+  TPlayerAction = class
+  protected
+    FPlayer: TPlayer;
+    FForm: TGUIForm;
+  public
+    constructor Create(Player: TPlayer);
+    destructor Destroy; override;
+    property Form: TGUIForm read FForm;
   end;
   TGameStage = class
   protected
     FGame: TGame;
+    FNextStage: TGameStage;
   public
     constructor Create(Game: TGame);
     function Update: TGameStage; virtual;
   end;
 
+const
+  GameOnActivePlayerChanged = 'Game.OnActivePlayerChanged'; //<Out> PrevPlayer, NewPlayer
+  GameOnMouseEvent = 'Game.OnMouseEvent'; //<Out> Event, Mouse3D 
+  PlayerOnActionsChanged = 'Player.OnActionsChanged'; //<Out>
+  PlayerOnActionCompleted = 'Player.OnActionCompleted'; //<Out> Action
+
 implementation
 
-uses {VSERender2D, VSETexMan,} VSEMemPak, GameData, GameStages, Players
+uses {VSERender2D, VSETexMan,} VSEMemPak, GameStages
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 { TGame }
@@ -58,28 +91,18 @@ var
   i: Integer;
 begin
   inherited Create;
+  EventBus.RegisterEvent(GameOnActivePlayerChanged);
   FScene := Scene;
   for i := Low(TQuarterIndex) to High(TQuarterIndex) do
-    FScene.AddObject(TQuarter.Create(i));
-  FStage := TStageStart.Create(Self);
+    FScene.Objects.Add(TQuarter.Create(i));
   SetLength(FCharacters, Length(Characters));
   for i := 0 to High(FCharacters) do
-  begin
     with Characters[i] do
       FCharacters[i] := TCharacter.Create(Name, Profile^);
-    with FCharacters[i] do
-    begin
-      Pos := Vector3D(-60.0 + 120.0 * Random, 0, -30.0 + 60.0 * Random);
-      Quarantined := Random(2) = 1;
-      Visible := true;
-    end;
-    FScene.AddObject(FCharacters[i]);
-  end;
-  SetLength(FPlayers, 4);
-  FPlayers[0] := TPlayerPlague.Create(Self);
-  FPlayers[1] := TPlayerBachelor.Create(Self);
-  FPlayers[2] := TPlayerHaruspex.Create(Self);
-  FPlayers[3] := TPlayerChangeling.Create(Self);
+  SetLength(FPlayers, Length(PlayerNames));
+  for i := 0 to High(PlayerNames) do
+    FPlayers[i] := TPlayer.Create(Self, PlayerNames[i]);
+  FStage := TStageStart.Create(Self);
 end;
 
 destructor TGame.Destroy;
@@ -91,7 +114,7 @@ begin
   Finalize(FPlayers);
   for i := 0 to High(FCharacters) do
   begin
-    FScene.RemoveObject(FCharacters[i]);
+    FScene.Objects.Remove(FCharacters[i]);
     FAN(FCharacters[i]);
   end;
   Finalize(FCharacters);
@@ -137,22 +160,78 @@ begin
 end;
 
 procedure TGame.SetActivePlayer(const Value: TPlayer);
+var
+  PrevPlayer: TPlayer;
 begin
+  PrevPlayer := FActivePlayer;
   FActivePlayer := Value;
+  EventBus.SendEvent(GameOnActivePlayerChanged, Self, [PrevPlayer, Value]);
 end;
 
 { TPlayer }
 
-constructor TPlayer.Create(Game: TGame);
+constructor TPlayer.Create(Game: TGame; const Name: string);
 begin
   inherited Create;
+  FName := Name;
   FGame := Game;
   FCharacter := FGame.GetCharacter(FName);
+  FObjects := TGameObjectsArray.Create;
+end;
+
+destructor TPlayer.Destroy;
+begin
+  FAN(FObjects);
+  inherited;
 end;
 
 procedure TPlayer.Update;
 begin
 
+end;
+
+procedure TPlayer.AddAction(Action: TPlayerAction);
+begin
+  SetLength(FAvailActions, Length(FAvailActions) + 1);
+  FAvailActions[High(FAvailActions)] := Action;
+  EventBus.SendEvent(PlayerOnActionsChanged, Self, []);
+end;
+
+procedure TPlayer.RemoveAction(Action: TPlayerAction);
+var
+  i, j: Integer;
+begin
+  for i := 0 to High(FAvailActions) do
+    if FAvailActions[i] = Action then
+    begin
+      for j := i to High(FAvailActions) - 1 do
+        FAvailActions[j] := FAvailActions[j + 1];
+      SetLength(FAvailActions, Length(FAvailActions) - 1);
+      EventBus.SendEvent(PlayerOnActionsChanged, Self, []);
+      Break;
+    end;
+end;
+
+procedure TPlayer.ClearActions;
+begin
+  while Length(FAvailActions) > 0 do
+    FAvailActions[High(FAvailActions)].Free;
+  EventBus.SendEvent(PlayerOnActionsChanged, Self, []);
+end;
+
+{ TPlayerAction }
+
+constructor TPlayerAction.Create(Player: TPlayer);
+begin
+  inherited Create;
+  FPlayer := Player;
+  FPlayer.AddAction(Self);
+end;
+
+destructor TPlayerAction.Destroy;
+begin
+  FPlayer.RemoveAction(Self);
+  inherited;
 end;
 
 { TGameStage }
@@ -165,7 +244,13 @@ end;
 
 function TGameStage.Update: TGameStage;
 begin
-  Result := Self;
+  if Assigned(FNextStage) then
+  begin
+    Result := FNextStage;
+    Free;
+  end
+  else
+    Result := Self;
 end;
 
 end.
