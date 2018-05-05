@@ -3,11 +3,11 @@ unit GameObjects;
 interface
 
 uses
-  AvL, avlUtils, avlMath, avlVectors, OpenGL, VSEOpenGLExt, oglExtensions,
+  AvL, avlUtils, avlEventBus, avlMath, avlVectors, OpenGL, VSEOpenGLExt, oglExtensions,
   VSECore, VSEPrimitiveModel, GameData;
 
 type
-  TAnimationAction = (aaMove, aaMoveTo, aaRotate);
+  TAnimationAction = (aaMove, aaMoveTo, aaRotate, aaRemove);
   TAnimationStep = record
     Action: TAnimationAction;
     Param: TVector4D;
@@ -92,7 +92,7 @@ type
   private
     function GetCard(Index: Integer): TCard;
   public
-    constructor Create(Objects: TGameObjectsArray; T: TGameObjectClass);
+    constructor Create(Objects: TGameObjectsArray; T: TGameObjectClass); overload;
     procedure Shuffle;
     function Take: TCard;
     property Cards[Index: Integer]: TCard read GetCard; default;
@@ -100,7 +100,7 @@ type
 
 implementation
 
-uses VSETexMan, VSEMemPak
+uses VSETexMan, VSEMemPak, Scene
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 { TGameObject }
@@ -144,6 +144,7 @@ begin
           VectorScale(Param, 1 / Time);
         end;
         aaRotate: Param.W := Param.W / Time;
+        aaRemove: Time := 1;
       end;
     end;
     Move(FAnimationQueue[1], FAnimationQueue[0], (Length(FAnimationQueue) - 1) * SizeOf(TAnimationStep));
@@ -155,6 +156,7 @@ begin
       case Action of
         aaMove, aaMoveTo: FPos := VectorAdd(FPos, Vector3D(Param));
         aaRotate: FModel.Transform.Rotate(Param.W, Param.X, Param.Y, Param.Z);
+        aaRemove: EventBus.SendEvent(SceneRemoveObject, Self, [Self]);
       end;
       Dec(FAnimationStatus.Time);
     end;
@@ -317,7 +319,8 @@ begin
   begin
     FQuarantined := true;
     FModel.Materials[3].Texture := TexMan.GetTex(Format('Chars\%s.jpg', [Name]));
-    FHeight := 6.6;
+    FModel.Transform.Scale(1.5, 1.5, 1.5);
+    FHeight := 10;
     if Profile.IsDoctor then
     begin
       FModel.Objects[CharObj].Transform.Scale(DoctorScale, DoctorScale, DoctorScale);
@@ -383,7 +386,7 @@ procedure TDeck.Shuffle;
 var
   i: Integer;
 begin
-  for i := 0 to 10 * Count do
+  for i := 0 to 10 * Count - 1 do
     Swap(Random(Count), Random(Count));
 end;
 

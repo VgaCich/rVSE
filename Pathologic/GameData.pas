@@ -15,6 +15,11 @@ type
     Master: string;
     Resource: TResourceType;
   end;
+  TMissionData = record
+    Quarter: Integer;
+    Pos: TVector3D;
+    Resources: array[0..3] of TResourceType;
+  end;
 
 const
   SPlague = 'Plague';
@@ -881,8 +886,33 @@ const
       (X: -34.636; Y: 0.0; Z: 40.977))
     )
   );
+  Missions: array[0..14] of TMissionData = (
+    (Quarter: 1; Pos: (X: -39.002; Y: 0.0; Z: -14.704); Resources: (rtKey, rtSecret, rtCoin, rtKey)),
+    (Quarter: 2; Pos: (X: -40.872; Y: 0.0; Z: 9.659); Resources: (rtKey, rtSecret, rtKey, rtCoin)),
+    (Quarter: 3; Pos: (X: -22.503; Y: 0.0; Z: 21.210); Resources: (rtKey, rtKey, rtCoin, rtSecret)),
+    (Quarter: 4; Pos: (X: -2.752; Y: 0.0; Z: 21.914); Resources: (rtKey, rtKey, rtCoin, rtSecret)),
+    (Quarter: 5; Pos: (X: 15.107; Y: 0.0; Z: 26.512); Resources: (rtKey, rtCoin, rtSecret, rtKey)),
+    (Quarter: 6; Pos: (X: 36.795; Y: 0.0; Z: 15.868); Resources: (rtKey, rtCoin, rtKey, rtSecret)),
+    (Quarter: 7; Pos: (X: 48.242; Y: 0.0; Z: -4.144); Resources: (rtKey, rtCoin, rtSecret, rtKey)),
+    (Quarter: 8; Pos: (X: 34.263; Y: 0.0; Z: -28.924); Resources: (rtKey, rtSecret, rtKey, rtCoin)),
+    (Quarter: 9; Pos: (X: 1.078; Y: 0.0; Z: -28.924); Resources: (rtKey, rtKey, rtSecret, rtCoin)),
+    (Quarter: 10; Pos: (X: -18.448; Y: 0.0; Z: -20.137); Resources: (rtKey, rtKey, rtCoin, rtSecret)),
+    (Quarter: 11; Pos: (X: -20.072; Y: 0.0; Z: 0.257); Resources: (rtKey, rtCoin, rtSecret, rtKey)),
+    (Quarter: 12; Pos: (X: 8.263; Y: 0.0; Z: 2.752); Resources: (rtKey, rtSecret, rtKey, rtCoin)),
+    (Quarter: 13; Pos: (X: 33.989; Y: 0.0; Z: -4.581); Resources: (rtKey, rtKey, rtSecret, rtCoin)),
+    (Quarter: 14; Pos: (X: 21.635; Y: 0.0; Z: -20.424); Resources: (rtKey, rtSecret, rtCoin, rtkey)),
+    (Quarter: 15; Pos: (X: -4.331; Y: 0.0; Z: -8.814); Resources: (rtKey, rtCoin, rtKey, rtSecret))
+  );
 
+function PlayerIndex(const Name: string): Integer;
 
 implementation
+
+function PlayerIndex(const Name: string): Integer;
+begin
+  for Result := 0 to High(PlayerNames) do
+    if PlayerNames[Result] = Name then Exit;
+  Result := -1;
+end;
 
 end.

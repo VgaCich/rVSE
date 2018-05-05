@@ -16,6 +16,7 @@ type
     FActivePlayer: TPlayer;
     FCharacters: array of TCharacter;
     FPlayers: array of TPlayer;
+    FMissions: TDeck;
     function GetCharacter(const Name: string): TCharacter;
     function GetPlayer(const Name: string): TPlayer;
     procedure SetActivePlayer(const Value: TPlayer);
@@ -25,6 +26,7 @@ type
     procedure Update;
     property Character[const Name: string]: TCharacter read GetCharacter;
     property Player[const Name: string]: TPlayer read GetPlayer;
+    property Missions: TDeck read FMissions;
     property Scene: TScene read FScene;
     property Stage: TGameStage read FStage;
     property ActivePlayer: TPlayer read FActivePlayer write SetActivePlayer;
@@ -84,7 +86,7 @@ const
 
 implementation
 
-uses {VSERender2D, VSETexMan,} VSEMemPak, GameStages
+uses {VSERender2D, VSETexMan,} VSEMemPak, GameStages, Missions
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 { TGame }
@@ -105,6 +107,7 @@ begin
   SetLength(FPlayers, Length(PlayerNames));
   for i := 0 to High(PlayerNames) do
     FPlayers[i] := TPlayer.Create(Self, PlayerNames[i]);
+  FMissions := CreateMissionsDeck;
   FStage := TStageStart.Create(Self);
 end;
 
@@ -132,8 +135,6 @@ begin
   FStage := FStage.Update;
   for i := 0 to High(FPlayers) do
     FPlayers[i].Update;
-  for i := 0 to High(FCharacters) do
-    FCharacters[i].Update;
 end;
 
 function TGame.GetCharacter(const Name: string): TCharacter;
@@ -184,7 +185,7 @@ begin
   begin
     FVictoryChip := TChip.Create(FName);
     FVictoryChip.Pos := VictoryPos(3);
-    Game.Scene.Objects.Add(FVictoryChip);
+    EventBus.SendEvent(SceneAddObject, Self, [FVictoryChip]);
   end;
 end;
 

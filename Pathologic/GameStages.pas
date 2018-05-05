@@ -18,13 +18,15 @@ type
   TStageDoctorPrepare = class(TGameStage)
   private
     FPlayer: TPlayer;
+    FCtr: Integer;
   public
     constructor Create(Game: TGame; Player: TPlayer);
+    function Update: TGameStage; override;
   end;
 
 implementation
 
-uses VSEMemPak, GameData, Scene, GameObjects, PlayerActions
+uses VSEMemPak, GameData, Scene, GameObjects, PlayerActions, Missions
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 { TStageStart }
@@ -40,7 +42,6 @@ begin
   FSceneSetQuarterHlColor := EventBus.GetEventId(SceneSetQuarterHlColor);
   EventBus.AddListener(EventBus.RegisterEvent(PlayerOnActionCompleted), ActionCompleted);
   EventBus.SendEvent(SceneShowTitleMessage, Self, ['Подготовка', 0]);
-  //TODO: Setup Missions
   for i := 0 to High(PlayerNames) do
     with FGame.Player[PlayerNames[i]] do
       if Character.Profile.IsDoctor then
@@ -92,6 +93,14 @@ constructor TStageDoctorPrepare.Create(Game: TGame; Player: TPlayer);
 begin
   inherited Create(Game);
   EventBus.SendEvent(SceneShowTitleMessage, Self, [Player.Character.Profile.RuName + ': подготовка', 0])
+end;
+
+function TStageDoctorPrepare.Update: TGameStage;
+begin
+  Result := inherited Update;
+  Inc(FCtr);
+  if (FCtr mod 200 = 0) and (FGame.Missions.Count > 0) then
+    (FGame.Missions.Take as TMission).Activate(FGame.ActivePlayer);
 end;
 
 end.

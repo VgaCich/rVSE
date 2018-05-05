@@ -41,7 +41,10 @@ begin
   inherited;
   FForm := TCharSelectForm.Create(Player.Objects);
   (FForm as TCharSelectForm).OnSelect := CharSelected;
-  EventBus.SendEvent(SceneShowTitleMessage, Self, ['Размести персонажа', 1, Player]); 
+  EventBus.SendEvent(SceneShowTitleMessage, Self, ['Размести персонажа', 1, Player]);
+  {$IFDEF VSE_DEBUG}
+  Player.Game.ActivePlayer := Player;
+  {$ENDIF} 
 end;
 
 destructor TPlaceCharacterAction.Destroy;
@@ -77,7 +80,7 @@ begin
       FChar.Pos := Vector3D(X, 0, Z);
     FChar.Quarter := Obj as TQuarter;
     FPlayer.Objects.Remove(FChar);
-    FPlayer.Game.Scene.Objects.Add(FChar);
+    EventBus.SendEvent(SceneAddObject, Self, [FChar]);
     EventBus.SendEvent(PlayerOnActionCompleted, FPlayer, [Self]);
     Free;
   end;
@@ -100,6 +103,9 @@ begin
   EventBus.SendEvent(SceneShowTitleMessage, Self, ['Выбери квартал', 1, Player]);
   EventBus.AddListener(SceneOnQuarterHighlight, HighlightQuarter);
   EventBus.AddListener(GameOnMouseEvent, MouseEvent);
+  {$IFDEF VSE_DEBUG}
+  Player.Game.ActivePlayer := Player;
+  {$ENDIF} 
 end;
 
 destructor TSelectQuarterAction.Destroy;

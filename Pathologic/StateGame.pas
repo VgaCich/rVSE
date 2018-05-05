@@ -224,6 +224,7 @@ begin
   FGame := TGame.Create(FScene);
   EventBus.AddListener(PlayerOnActionsChanged, PlayerActionsChanged);
   EventBus.AddListener(GameOnActivePlayerChanged, ActivePlayerChanged);
+  ActivePlayerChanged(FGame, [TObject(nil), FGame.ActivePlayer]);
   {$IFDEF VSE_DEBUG}
   FFormsSet[IDPlayerSelect].Free;
   FFormsSet.AddForm(IDPlayerSelect, TPlayerSelectForm.Create(FGame));
@@ -244,7 +245,7 @@ procedure TStateGame.PlayerActionsChanged(Sender: TObject; const Args: array of 
 var
   i: Integer;
 begin
-  if Sender <> FGame.ActivePlayer then Exit;
+  if not Assigned(FGame) or (Sender <> FGame.ActivePlayer) then Exit;
   for i := 0 to High(FGame.ActivePlayer.AvailActions) do
     with FGame.ActivePlayer.AvailActions[i] do
       if Assigned(Form) and not Assigned(FFormsSet.FindForm(Form)) then

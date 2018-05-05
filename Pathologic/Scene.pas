@@ -21,6 +21,8 @@ type
     FTitleMsgs: array[0..2] of TTitleMsgStatus;
     FQuarterHlColor: TColor;
     FOnQuarterHighlight: Integer;
+    procedure AddObject(Sender: TObject; const Args: array of const);
+    procedure RemoveObject(Sender: TObject; const Args: array of const);
     procedure ShowTitleMessage(Sender: TObject; const Args: array of const);
     procedure SetQuarterHlColor(Sender: TObject; const Args: array of const);
     {$IF Defined(VSE_DEBUG) and Defined(VSE_CONSOLE)}
@@ -37,6 +39,8 @@ type
   end;
 
 const
+  SceneAddObject = 'Scene.AddObject'; //<In> Object
+  SceneRemoveObject = 'Scene.RemoveObject'; //<In> Object
   SceneShowTitleMessage = 'Scene.ShowTitleMessage'; //<In> Message, Level, [Player]
   SceneSetQuarterHlColor = 'Scene.SetQuarterHlColor'; //<In> Color
   SceneOnQuarterHighlight = 'Scene.OnQuarterHighlight'; //<Out> Quarter
@@ -66,6 +70,8 @@ begin
   FObjects := TGameObjectsArray.Create;
   FTitleFont := Render2D.CreateFont(UIFont, 20, false);
   FInfoFont := Render2D.CreateFont(UIFont, 12, true);
+  EventBus.AddListener(EventBus.RegisterEvent(SceneAddObject), AddObject);
+  EventBus.AddListener(EventBus.RegisterEvent(SceneRemoveObject), RemoveObject);
   EventBus.AddListener(EventBus.RegisterEvent(SceneShowTitleMessage), ShowTitleMessage);
   EventBus.AddListener(EventBus.RegisterEvent(SceneSetQuarterHlColor), SetQuarterHlColor);
   FOnQuarterHighlight := EventBus.RegisterEvent(SceneOnQuarterHighlight);
@@ -76,7 +82,7 @@ end;
 
 destructor TScene.Destroy;
 begin
-  EventBus.RemoveListeners([ShowTitleMessage, SetQuarterHlColor]);
+  EventBus.RemoveListeners([AddObject, RemoveObject, ShowTitleMessage, SetQuarterHlColor]);
   FAN(FObjects);
   FAN(FMap);
   inherited;
@@ -154,6 +160,8 @@ procedure TScene.Update;
 var
   i: Integer;
 begin
+  for i := 0 to FObjects.Count - 1 do
+    FObjects[i].Update;
   for i := 0 to High(FTitleMsgs) do
     with FTitleMsgs[i] do
     begin
@@ -166,6 +174,18 @@ begin
       if Msg <> '' then
         Inc(Time);
     end;
+end;
+
+procedure TScene.AddObject(Sender: TObject; const Args: array of const);
+begin
+  Assert((Length(Args) = 1) = (Args[0].VType = vtObject));
+  Objects.Add(Args[0].VObject as TGameObject);
+end;
+
+procedure TScene.RemoveObject(Sender: TObject; const Args: array of const);
+begin
+  Assert((Length(Args) = 1) = (Args[0].VType = vtObject));
+  Objects.Remove(Args[0].VObject as TGameObject);
 end;
 
 procedure TScene.ShowTitleMessage(Sender: TObject; const Args: array of const);
