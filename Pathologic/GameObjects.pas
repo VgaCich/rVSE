@@ -82,11 +82,14 @@ type
   end;
   TChip = class(TGameObject)
   public
-    constructor Create(const Name: string);
+    constructor Create(const Name: string; Scale: Single);
   end;
   TCard = class(TGameObject)
+  protected
+    FName: string;
   public
-    constructor Create(const Name: string; Index: Integer);
+    constructor Create(const TexName: string; Index: Integer);
+    property Name: string read FName;
   end;
   TDeck = class(TGameObjectsArray)
   private
@@ -94,7 +97,8 @@ type
   public
     constructor Create(Objects: TGameObjectsArray; T: TGameObjectClass); overload;
     procedure Shuffle;
-    function Take: TCard;
+    function Take(Index: Integer = 0): TCard;
+    function Find(const Name: string): Integer;
     property Cards[Index: Integer]: TCard read GetCard; default;
   end;
 
@@ -352,25 +356,36 @@ end;
 
 { TChip }
 
-constructor TChip.Create(const Name: string);
+constructor TChip.Create(const Name: string; Scale: Single);
 begin
   inherited Create('Models\Chip.vpm');
   FModel.Materials[1].Texture := TexMan.GetTex(Format('Chips\%s.png', [Name]));
-  FHeight := 0.006;
+  FModel.Transform.Scale(Scale, Scale, Scale);
+  FHeight := 0.2 * Scale;
 end;
 
 { TCard }
 
-constructor TCard.Create(const Name: string; Index: Integer);
+constructor TCard.Create(const TexName: string; Index: Integer);
 const
   Model: array[-1..2] of string = ('Card.vpm', 'Card0.vpm', 'Card1.vpm', 'Card2.vpm');
 begin
   inherited Create('Models\' + Model[Index]);
-  FModel.Materials[1].Texture := TexMan.GetTex(Format('Cards\%s.jpg', [Name]));
+  FModel.Materials[1].Texture := TexMan.GetTex(Format('Cards\%s.jpg', [TexName]));
   FHeight := 0.006;
 end;
 
 { TDeck }
+
+constructor TDeck.Create(Objects: TGameObjectsArray; T: TGameObjectClass);
+var
+  i: Integer;
+begin
+  inherited Create;
+  i := 0;
+  while Assigned(Objects.ObjOfType[T, i]) do
+    Add(Objects.ObjOfType[T, i]);
+end;
 
 procedure TDeck.Shuffle;
 
@@ -390,25 +405,23 @@ begin
     Swap(Random(Count), Random(Count));
 end;
 
-function TDeck.GetCard(Index: Integer): TCard;
+function TDeck.Take(Index: Integer): TCard;
 begin
-  Result := Objects[Index] as TCard;
-end;
-
-function TDeck.Take: TCard;
-begin
-  Result := Cards[0];
+  Result := Cards[Index];
   Remove(Result);
 end;
 
-constructor TDeck.Create(Objects: TGameObjectsArray; T: TGameObjectClass);
-var
-  i: Integer;
+function TDeck.Find(const Name: string): Integer;
 begin
-  inherited Create;
-  i := 0;
-  while Assigned(Objects.ObjOfType[T, i]) do
-    Add(Objects.ObjOfType[T, i]);
+  for Result := 0 to Count - 1 do
+    if Cards[Result].Name = Name then
+      Exit;
+  Result := -1;
+end;
+
+function TDeck.GetCard(Index: Integer): TCard;
+begin
+  Result := Objects[Index] as TCard;
 end;
 
 end.

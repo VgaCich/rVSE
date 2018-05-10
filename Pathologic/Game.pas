@@ -43,6 +43,7 @@ type
     FArguments: Integer;
     FAvailActions: TPlayerActionsArray;
     FObjects: TGameObjectsArray;
+    FDeck: TDeck;
     function VictoryPos(Arguments: Integer): TVector3D;
     procedure SetArguments(Value: Integer);
   public
@@ -59,6 +60,7 @@ type
     property Arguments: Integer read FArguments write SetArguments;
     property AvailActions: TPlayerActionsArray read FAvailActions;
     property Objects: TGameObjectsArray read FObjects;
+    property Deck: TDeck read FDeck;
   end;
   TPlayerAction = class
   protected
@@ -107,7 +109,8 @@ begin
   SetLength(FPlayers, Length(PlayerNames));
   for i := 0 to High(PlayerNames) do
     FPlayers[i] := TPlayer.Create(Self, PlayerNames[i]);
-  FMissions := CreateMissionsDeck;
+  FMissions := TDeck.Create;
+  CreateMissions(FMissions);
   FStage := TStageStart.Create(Self);
 end;
 
@@ -181,9 +184,10 @@ begin
   FGame := Game;
   FCharacter := FGame.GetCharacter(FName);
   FObjects := TGameObjectsArray.Create;
+  FDeck := TDeck.Create;
   if Name <> SPlague then
   begin
-    FVictoryChip := TChip.Create(FName);
+    FVictoryChip := TChip.Create(FName, 0.75);
     FVictoryChip.Pos := VictoryPos(3);
     EventBus.SendEvent(SceneAddObject, Self, [FVictoryChip]);
   end;
@@ -191,6 +195,7 @@ end;
 
 destructor TPlayer.Destroy;
 begin
+  FAN(FDeck);
   FAN(FObjects);
   inherited;
 end;
@@ -257,6 +262,7 @@ end;
 destructor TPlayerAction.Destroy;
 begin
   FPlayer.RemoveAction(Self);
+  EventBus.SendEvent(PlayerOnActionCompleted, FPlayer, [Self]);
   inherited;
 end;
 

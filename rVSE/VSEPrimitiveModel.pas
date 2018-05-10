@@ -478,19 +478,29 @@ var
   Slice, Stack, StackLen, VertBase, Start, Start2: Integer;
   R, H, V, dPhi, dTheta, U0, V0, dU, dV: Single;
   Vert: TVertex;
-  Smooth, TexGenUV: Boolean;
+  Smooth, TexGenUV, AltTexGen: Boolean;
 begin
   Result:=1;
   with Params^ do
   begin
     Smooth:=Flags and PMFSmooth <> 0;
     TexGenUV:=Flags and PMFTexInfo <> 0;
+    AltTexGen:=Flags and SphereAltTexGen <> 0;
     dTheta:=StacksSector*pi/(255*Stacks);
     dPhi:=2*SlicesSector*pi/(255*Slices);
-    U0:=UV.OrigU/255;
-    V0:=UV.OrigV/255;
-    dU:=UV.SizeU/(255*Slices);
-    dV:=UV.SizeV/(255*Stacks);
+    if AltTexGen then
+    begin
+      dU:=UV.SizeU/510;
+      dV:=UV.SizeV/510;
+      U0:=UV.OrigU/255+dU;
+      V0:=UV.OrigV/255+dV;
+    end
+    else begin
+      U0:=UV.OrigU/255;
+      V0:=UV.OrigV/255;
+      dU:=UV.SizeU/(255*Slices);
+      dV:=UV.SizeV/(255*Stacks);
+    end;
     StackLen:=SelI(Smooth, Slices+1, 4*Slices);
     VertBase:=SelI(Smooth, 0, -2*Slices);
     VectorClear(Vert.Normal);
@@ -519,12 +529,17 @@ begin
             Normal:=Vertex;
             VectorNormalize(Normal);
           end;
-          if TexGenUV then
-            with TexCoord do
-            begin
-              X:=U0+Slice*dU;
-              Y:=V;
-            end;
+          with TexCoord do
+            if TexGenUV then
+              if AltTexGen then
+              begin
+                X:=U0+dU*R*Cos(Slice*dPhi);
+                Y:=V0+dV*R*Sin(Slice*dPhi);
+              end
+              else begin
+                X:=U0+Slice*dU;
+                Y:=V;
+              end;
         end;
         if Smooth then VA[Start+Slice]:=Vert
         else begin

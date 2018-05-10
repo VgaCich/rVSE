@@ -190,7 +190,7 @@ type
     property TexUV[Index: Byte]: TPMUVRect read GetUV write SetUV;
     property TexSplitSides[Index: Byte]: Boolean read GetSplitSides write SetSplitSides;
   end;
-  TPMBPrimitiveSphere = class(TPMBPrimitive)
+  TPMBPrimitiveSphere = class(TPMBPrimitive) //TODO: Alternative TexGen flag
   private
     FSmooth: Boolean;
     FSlices, FStacks, FSlicesSector, FStacksSector: Byte;
@@ -303,7 +303,7 @@ type
     property Objects[Index: Integer]: TPMBObject read GetObject;
     property Material: TPMBMaterial read FMaterial write FMaterial;
     property Transform: TPMBTransform read FTransform;
-    property Mesh: TPMBMesh read FMesh write SetMesh;
+    property Mesh: TPMBMesh read FMesh write SetMesh; //TODO: Merge with Primitives
     property PrimitivesCount: Integer read GetPrimitivesCount;
     property Primitives[Index: Integer]: TPMBPrimitive read GetPrimitive;
     property Selected: Boolean read FSelected write SetSelected;

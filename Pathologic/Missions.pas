@@ -11,10 +11,12 @@ type
   protected
     FMissionData: TMissionData;
     FResource: TResourceType;
+    FActive: Boolean;
   public
     constructor Create(MissionData: TMissionData);
     procedure Activate(Player: TPlayer); virtual;
     function Execute(Player: TPlayer; Char: TCharacter): Boolean; virtual;
+    property Active: Boolean read FActive;
     property Resource: TResourceType read FResource;
   end;
   TMission1 = class(TMission)
@@ -63,55 +65,71 @@ type
     constructor Create;
   end;
 
-function CreateMissionsDeck: TDeck;
+procedure CreateMissions(Deck: TDeck);
+function ActiveMissions(Objects: TGameObjectsArray): Integer;
 
 implementation
 
 uses
   Scene;
 
-function CreateMissionsDeck: TDeck;
-
-  procedure Add(Mission: TMission);
-  begin
-    Result.Add(Mission);
-    Mission.Pos := Vector3D(-59.070, 0.0, 18.362);
-    Mission.FModel.Transform.Rotate(-Pi/2, 1.0, 0.0, 0.0);
-    EventBus.SendEvent(SceneAddObject, nil, [Mission]);
-  end;
-
+procedure CreateMissions(Deck: TDeck);
 var
   i: Integer;
 begin
-  Result := TDeck.Create;
-  Add(TMission1.Create);
-  Add(TMission2.Create);
-  Add(TMission3.Create);
-  Add(TMission4.Create);
-  Add(TMission5.Create);
-  Add(TMission6.Create);
-  Add(TMission7.Create);
-  Add(TMission8.Create);
-  Add(TMission9.Create);
-  Add(TMission10.Create);
-  Add(TMission11.Create);
-  Add(TMission12.Create);
-  Add(TMission13.Create);
-  Add(TMission14.Create);
-  Add(TMission15.Create);
-  Result.Shuffle;
-  for i := 0 to Result.Count - 2 do
-    Result[i].Follow := Result[i + 1];
+  with Deck do
+  begin
+    Add(TMission1.Create);
+    Add(TMission2.Create);
+    Add(TMission3.Create);
+    Add(TMission4.Create);
+    Add(TMission5.Create);
+    Add(TMission6.Create);
+    Add(TMission7.Create);
+    Add(TMission8.Create);
+    Add(TMission9.Create);
+    Add(TMission10.Create);
+    Add(TMission11.Create);
+    Add(TMission12.Create);
+    Add(TMission13.Create);
+    Add(TMission14.Create);
+    Add(TMission15.Create);
+    Shuffle;
+    for i := 0 to Count - 1 do
+      with Cards[i] as TMission do
+      begin
+        Pos := MissionsDeck;
+        FModel.Transform.Rotate(-Pi/2, 1.0, 0.0, 0.0);
+        EventBus.SendEvent(SceneAddObject, nil, [Cards[i]]);
+        if i < Count - 1 then
+          Follow := Cards[i + 1];
+      end;
+  end;
+end;
+
+function ActiveMissions(Objects: TGameObjectsArray): Integer;
+var
+  i: Integer;
+begin
+  i := 0;
+  Result := 0;
+  while Assigned(Objects.ObjOfType[TMission, i]) do
+  begin
+    if (Objects.ObjOfType[TMission, i] as TMission).Active then
+      Inc(Result);
+    Inc(i);
+  end;
 end;
 
 { TMission }
 
 constructor TMission.Create(MissionData: TMissionData);
 const
-  Scale = 5.0;
+  Scale = 5.0; //TODO: Fine-tune
 begin
   inherited Create('Missions' + IntToStr((MissionData.Quarter - 1) div 3), (MissionData.Quarter - 1) mod 3);
   FMissionData := MissionData;
+  FName := 'Mission' + IntToStr(MissionData.Quarter);
   FModel.Transform.Scale(Scale, Scale, Scale);
   FHeight := FHeight * Scale;
 end;
@@ -120,6 +138,7 @@ procedure TMission.Activate(Player: TPlayer);
 begin
   FResource := FMissionData.Resources[PlayerIndex(Player.Name)];
   Follow := nil;
+  FActive := true;
   with FPos do
     AddAnimationStep(aaMoveTo, Vector3D(X, 10.0, Z), 200);
   with FMissionData.Pos do

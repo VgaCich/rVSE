@@ -68,9 +68,10 @@ const
   //Flags
   MeshHasNormals=$01;
   MeshHasUV=$02;
-  {CubeTexMergeUDSides=$01;
+  CubeTexMergeUDSides=$01;
   CubeTexMergeRLSides=$02;
-  CubeTexMergeFBSides=$04;}
+  CubeTexMergeFBSides=$04;
+  SphereAltTexGen=$01;
   PMFInvertNormals=$20;
   PMFSmooth=$40;
   PMFTexInfo=$80;

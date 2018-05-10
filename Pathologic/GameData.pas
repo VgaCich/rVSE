@@ -854,7 +854,7 @@ const
   VictoryTracks: array[0..2] of record
     Name: string;
     Track: array[0..7] of TVector3D;
-  end = (
+  end = ( //TODO: Fine-tune
     (Name: SBachelor; Track: (
       (X: -58.830; Y: 0.0; Z: 32.669),
       (X: -55.443; Y: 0.0; Z: 32.792),
@@ -886,7 +886,8 @@ const
       (X: -34.636; Y: 0.0; Z: 40.977))
     )
   );
-  Missions: array[0..14] of TMissionData = (
+  MissionsDeck: TVector3D = (X: -59.070; Y: 0.0; Z: 18.362); //TODO: Fine-tune
+  Missions: array[0..14] of TMissionData = ( //TODO: Fine-tune Pos
     (Quarter: 1; Pos: (X: -39.002; Y: 0.0; Z: -14.704); Resources: (rtKey, rtSecret, rtCoin, rtKey)),
     (Quarter: 2; Pos: (X: -40.872; Y: 0.0; Z: 9.659); Resources: (rtKey, rtSecret, rtKey, rtCoin)),
     (Quarter: 3; Pos: (X: -22.503; Y: 0.0; Z: 21.210); Resources: (rtKey, rtKey, rtCoin, rtSecret)),
