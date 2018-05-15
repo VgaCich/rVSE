@@ -1,9 +1,8 @@
 program Pathologic;
 
 uses
-  {$IFDEF VER150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
-  AvL, avlUtils, avlEventBus, VSECore, VSETexMan, VSEMemPak, StateStart,
-  StateMenu, StateGame;
+  {$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows, AvL, avlUtils, avlEventBus,
+  VSECore, VSETexMan, VSEMemPak, StateStart, StateMenu, StateGame;
 
 {$R *.res}
 {$R MemPak.res}
@@ -40,4 +39,5 @@ begin
     Settings.Int[SSectionSettings, SGraphicsQuality] := Integer(gqMed);
   end;
   VSEStart;
+  EventBus.ClearEvents;
 end.

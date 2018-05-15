@@ -66,6 +66,7 @@ type
   protected
     FPlayer: TPlayer;
     FForm: TGUIForm;
+    procedure Complete;
   public
     constructor Create(Player: TPlayer);
     destructor Destroy; override;
@@ -118,16 +119,13 @@ destructor TGame.Destroy;
 var
   i: Integer;
 begin
+  FScene.Objects.Clear;
+  FStage.Free;
+  FAN(FMissions);
   for i := 0 to High(FPlayers) do
     FAN(FPlayers[i]);
   Finalize(FPlayers);
-  for i := 0 to High(FCharacters) do
-  begin
-    FScene.Objects.Remove(FCharacters[i]);
-    FAN(FCharacters[i]);
-  end;
   Finalize(FCharacters);
-  FStage.Free;
   inherited;
 end;
 
@@ -195,6 +193,7 @@ end;
 
 destructor TPlayer.Destroy;
 begin
+  ClearActions;
   FAN(FDeck);
   FAN(FObjects);
   inherited;
@@ -252,6 +251,12 @@ end;
 
 { TPlayerAction }
 
+procedure TPlayerAction.Complete;
+begin
+  EventBus.SendEvent(PlayerOnActionCompleted, FPlayer, [Self]);
+  Free;
+end;
+
 constructor TPlayerAction.Create(Player: TPlayer);
 begin
   inherited Create;
@@ -262,7 +267,6 @@ end;
 destructor TPlayerAction.Destroy;
 begin
   FPlayer.RemoveAction(Self);
-  EventBus.SendEvent(PlayerOnActionCompleted, FPlayer, [Self]);
   inherited;
 end;
 

@@ -50,6 +50,7 @@ end;
 destructor TPlaceCharacterAction.Destroy;
 begin
   EventBus.RemoveListeners([HighlightQuarter, MouseEvent]);
+  FAN(FForm);
   inherited;
 end;
 
@@ -81,7 +82,7 @@ begin
     FChar.Quarter := Obj as TQuarter;
     FPlayer.Objects.Remove(FChar);
     EventBus.SendEvent(SceneAddObject, Self, [FChar]);
-    Free;
+    Complete;
   end;
 end;
 
@@ -134,7 +135,7 @@ begin
     with TVector3D(Args[1].VPointer^) do
       FPlayer.Character.Pos := Vector3D(X, 0, Z);
     FPlayer.Character.Quarter := Obj as TQuarter;
-    Free; 
+    Complete; 
   end;
 end;
 

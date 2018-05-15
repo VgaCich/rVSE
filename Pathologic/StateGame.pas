@@ -13,6 +13,7 @@ type
     FFont: Cardinal;
     FShowDebugInfo: Boolean;
     {$ENDIF}
+    FFreeList: TList;
     FFormsSet: TGUIFormsSet;
     FCamera: TCamera;
     FScene: TScene;
@@ -20,6 +21,9 @@ type
     FMouse3D: TVector3D;
     FOnMouseEvent: Integer;
     function GetCanResumeGame: Boolean;
+    procedure FreeList;
+    procedure FreeListAdd(Sender: TObject; const Args: array of const);
+    procedure FreeListRemove(Sender: TObject; const Args: array of const);
     procedure PlayerActionsChanged(Sender: TObject; const Args: array of const);
     procedure ActivePlayerChanged(Sender: TObject; const Args: array of const);
   protected
@@ -42,12 +46,11 @@ type
 const
   SIDGame = 'Game';
 
-
 implementation
 
 uses VSERender2D, VSETexMan, VSEMemPak, VSEBindMan, VSEFormManager
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
-  StateMenu, GameForms;
+  StateMenu, GameForms, GameObjects;
 
 const
   Bindings: array[0..3] of TBindingRec = (
@@ -61,6 +64,9 @@ constructor TStateGame.Create;
 begin
   inherited Create;
   FOnMouseEvent := EventBus.RegisterEvent(GameOnMouseEvent);
+  FFreeList := TList.Create;
+  EventBus.AddListener(EventBus.RegisterEvent(GameObjects.FreeListAdd), FreeListAdd);
+  EventBus.AddListener(EventBus.RegisterEvent(GameObjects.FreeListRemove), FreeListRemove);
   FFormsSet := TGUIFormsSet.Create;
   {$IFDEF VSE_DEBUG}
   FFormsSet.AddForm(IDLogPoints, TLogPointsForm.Create, '');
@@ -78,11 +84,11 @@ end;
 
 destructor TStateGame.Destroy;
 begin
-  EventBus.RemoveListeners([PlayerActionsChanged, ActivePlayerChanged]);
-  FAN(FGame);
-  FAN(FScene);
+  EventBus.RemoveListeners([FreeListAdd, FreeListRemove, PlayerActionsChanged, ActivePlayerChanged]);
+  FreeList;
   FAN(FCamera);
   FAN(FFormsSet);
+  FAN(FFreeList);
   inherited Destroy;
 end;
 
@@ -216,12 +222,13 @@ end;
 
 procedure TStateGame.NewGame;
 begin
+  FreeList;
   FCamera.Eye := Vector3D(0, 50, 45);
   FCamera.Angle := Vector2D(180, -60);
-  FAN(FGame);
-  FAN(FScene);
   FScene := TScene.Create;
+  EventBus.SendEvent(GameObjects.FreeListAdd, FScene, []);
   FGame := TGame.Create(FScene);
+  EventBus.SendEvent(GameObjects.FreeListAdd, FGame, []);
   EventBus.AddListener(PlayerOnActionsChanged, PlayerActionsChanged);
   EventBus.AddListener(GameOnActivePlayerChanged, ActivePlayerChanged);
   ActivePlayerChanged(FGame, [TObject(nil), FGame.ActivePlayer]);
@@ -239,6 +246,31 @@ end;
 function TStateGame.GetCanResumeGame: Boolean;
 begin
   Result := Assigned(FGame);
+end;
+
+procedure TStateGame.FreeList;
+var
+  Item: TObject;
+begin
+  while FFreeList.Count > 0 do
+  begin
+    Item := TObject(FFreeList.Last);
+    FFreeList.Remove(Item);
+    Item.Free;
+  end;
+end;
+
+procedure TStateGame.FreeListAdd(Sender: TObject; const Args: array of const);
+begin
+  Assert(Assigned(Sender) and (Length(Args) = 0));
+  if FFreeList.IndexOf(Sender) < 0 then
+    FFreeList.Add(Sender);
+end;
+
+procedure TStateGame.FreeListRemove(Sender: TObject; const Args: array of const);
+begin
+  Assert(Assigned(Sender) and (Length(Args) = 0));
+  FFreeList.Remove(Sender);
 end;
 
 procedure TStateGame.PlayerActionsChanged(Sender: TObject; const Args: array of const);

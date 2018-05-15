@@ -68,6 +68,7 @@ procedure TLoadThread.Execute;
 var
   i: Integer;
   List: TStringList;
+  Data: TStream;
 begin
   inherited;
   Progress := 0;
@@ -76,7 +77,12 @@ begin
     for i := 0 to List.Count - 1 do
     try
       TexName := List[i];
-      TexImage.Load(GetFile(GetTexFileName(TexName)));
+      Data := GetFile(GetTexFileName(TexName));
+      try
+        TexImage.Load(Data);
+      finally
+        FAN(Data);
+      end;
       Progress := 100 * i div (List.Count - 1);
       if Assigned(OnLoad) then
         Synchronize(OnLoad);

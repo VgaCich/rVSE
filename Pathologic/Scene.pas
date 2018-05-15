@@ -113,11 +113,6 @@ begin
   begin
     glStencilFunc(GL_ALWAYS, StencilObjShift + i, $FF);
     FObjects[i].Draw;
-    {if FObjects[i] is TQuarter then //colorful quarters!
-      with FObjects[i] as TQuarter do
-        DrawHighlight((Index and 4) shl 21 + (Index and 8) shl 19 +
-                      (Index and 2) shl 14 + (Index and 8) shl 11 +
-                      (Index and 1) shl 7 + (Index and 8) shl 3);}
   end;
   with Core.MouseCursor do
     if (Core.CurState is TStateGame) and not (Core.MouseCapture or FormManager.MouseBusy(X, Y)) then
@@ -161,7 +156,7 @@ var
   i: Integer;
 begin
   for i := 0 to FObjects.Count - 1 do
-    FObjects[i].Update;
+    FObjects[i].Update; //TODO: Replace with UpdateAnim?
   for i := 0 to High(FTitleMsgs) do
     with FTitleMsgs[i] do
     begin
@@ -178,13 +173,13 @@ end;
 
 procedure TScene.AddObject(Sender: TObject; const Args: array of const);
 begin
-  Assert((Length(Args) = 1) = (Args[0].VType = vtObject));
+  Assert((Length(Args) = 1) and (Args[0].VType = vtObject));
   Objects.Add(Args[0].VObject as TGameObject);
 end;
 
 procedure TScene.RemoveObject(Sender: TObject; const Args: array of const);
 begin
-  Assert((Length(Args) = 1) = (Args[0].VType = vtObject));
+  Assert((Length(Args) = 1) and (Args[0].VType = vtObject));
   Objects.Remove(Args[0].VObject as TGameObject);
 end;
 

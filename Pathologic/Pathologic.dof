@@ -94,7 +94,7 @@ OutputDir=
 UnitOutputDir=.\DCU
 PackageDLLOutputDir=
 PackageDCPOutputDir=
-SearchPath=$(DELPHI)\lib\sysdcu;..\rVSE
+SearchPath=..\rVSE
 Packages=vcl;rtl;vclx;indy;inet;xmlrtl;vclie;inetdbbde;inetdbxpress;dbrtl;dsnap;dsnapcon;vcldb;soaprtl;VclSmp;dbexpress;dbxcds;inetdb;bdertl;vcldbx;webdsnap;websnap;adortl;ibxpress;teeui;teedb;tee;dss;visualclx;visualdbclx;vclactnband;vclshlctrls;IntrawebDB_50_70;Intraweb_50_70;Rave50CLX;Rave50VCL;dclOffice2k;GLControls;SynEdit_D6;DelphiX_for5;dxPack2D7;ExtLib_D6;FLV_PackD7;tb2k_d7;tbx_d7;SynUni_D7;XPComPack;RxCtl7;RxBDE7;RxDB7
 Conditionals=VSE_DEBUG;VSE_LOG;VSE_CONSOLE
 DebugSourceDirs=
@@ -158,8 +158,9 @@ Item22=VSE_ESC_EXIT;MEMPAK_PLAINFS;VSE_USE_SNAPSHOT_KEY
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [HistoryLists\hlSearchPath]
-Count=1
-Item0=$(DELPHI)\lib\sysdcu;..\rVSE
+Count=2
+Item0=..\rVSE
+Item1=$(DELPHI)\lib\sysdcu;..\rVSE
 [HistoryLists\hlUnitOutputDirectory]
 Count=1
 Item0=.\DCU

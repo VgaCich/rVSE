@@ -102,6 +102,10 @@ type
     property Cards[Index: Integer]: TCard read GetCard; default;
   end;
 
+const
+  FreeListAdd = 'FreeList.Add'; //<In>
+  FreeListRemove = 'FreeList.Remove'; //<In>
+
 implementation
 
 uses VSETexMan, VSEMemPak, Scene
@@ -112,12 +116,15 @@ uses VSETexMan, VSEMemPak, Scene
 constructor TGameObject.Create(const Model: string);
 begin
   inherited Create;
+  EventBus.SendEvent(FreeListAdd, Self, []);
   FModel := TPriModel.Create(Model);
   FPos := Vector3D(0);
 end;
 
 destructor TGameObject.Destroy;
 begin
+  EventBus.SendEvent(FreeListRemove, Self, []);
+  Finalize(FAnimationQueue);
   FAN(FModel);
   inherited;
 end;
@@ -256,12 +263,14 @@ end;
 
 constructor TQuarter.Create(Index: TQuarterIndex);
 begin
+  EventBus.SendEvent(FreeListAdd, Self, []);
   FIndex := Index;
   FObjects := TGameObjectsArray.Create;
 end;
 
 destructor TQuarter.Destroy;
 begin
+  EventBus.SendEvent(FreeListRemove, Self, []);
   FAN(FObjects);
   inherited;
 end;
