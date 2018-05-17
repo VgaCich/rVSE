@@ -1211,6 +1211,7 @@ begin
   if IsRunning(InitSettings.Caption) then Exit;
   {$IFDEF VSE_LOG}Log(llInfo, InitSettings.Caption+' '+InitSettings.Version+' started');
   Log(llInfo, VSECaptVer);{$ENDIF}
+  Set8087CW($133F);
   Fin:=false;
   ZeroMemory(@WndClass, SizeOf(WndClass));
   with WndClass do
