@@ -5,7 +5,7 @@ interface
 uses
   Windows, AvL, avlUtils, OpenGL, oglExtensions, VSELog;
 
-procedure LogSysInfo;
+function LogSysInfo: Boolean;
 function GetCPU: string;
 function GetMemory: Int64;
 function GetMemoryFree: Int64;
@@ -13,6 +13,9 @@ function GetMemoryFree: Int64;
 implementation
 
 uses VSECore;
+
+var
+  SysInfoLogged: Boolean = false;
 
 type
   TMemoryStatusEx=record
@@ -26,12 +29,15 @@ type
     ullAvailVirtual:Int64;
     ullAvailExtendedVirtual:Int64;
   end;
+
 procedure GlobalMemoryStatusEx(var lpBuffer:TMemoryStatusEx); stdcall; external kernel32;
 
-procedure LogSysInfo;
+function LogSysInfo: Boolean;
 var
   Tmp: Integer;
 begin
+  Result:=not SysInfoLogged;
+  if not Result then Exit;
   GetWinVer;
   LogRaw(llInfo, '');
   LogRaw(llInfo, 'System:');
@@ -68,6 +74,7 @@ begin
   glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS_ARB, @Tmp);
   LogRaw(llInfo, 'Maximum fragment uniform components: '+IntToStr(Tmp));
   LogRaw(llInfo, '');
+  SysInfoLogged:=true;
 end;
 
 function GetCPU: string;

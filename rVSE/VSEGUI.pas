@@ -75,12 +75,13 @@ type
     FRects: array of TRect; //internally used
     FLabels: array of TLbl; //internally used
     function IsMoving: Boolean;
+    function GetName: string;
   protected
     FCaption: string; //Form caption
     FCaptHeight: Integer; //Form caption height
     FX, FY, FWidth, FHeight: Integer; //Form position and size
     FParentSet: TGUIFormsSet; //Form set
-    function GetFont: Cardinal; //Form font
+    function Font: Cardinal;
     function  GetButton(Index: Integer): PBtn; //Get button by index
     function  GetLabel(Index: Integer): PLbl; //Get label by index
     procedure CheckClick(Btn: PBtn); //CheckBox click handler
@@ -111,6 +112,7 @@ type
     property Top: Integer read FY write FY; //Vertical position
     property Width: Integer read FWidth write FWidth; //Form width
     property Height: Integer read FHeight write FHeight; //Form height
+    property Name: string read GetName; //Form name
     property CustomFont: Cardinal read FCustomFont write FCustomFont; //Custom form font; InvalidFont: don't use
     property Movable: Boolean read FMovable write FMovable; //Form can be dragged by caption
   end;
@@ -339,7 +341,7 @@ begin
   FWidth := Width;
   FHeight := Height;
   FCustomFont := InvalidFont;
-  FCaptHeight := Render2D.TextHeight(GetFont) + 6;
+  FCaptHeight := Render2D.TextHeight(Font) + 6;
   FActive := -1;
   FLastActive := -1;
   FLast := -1;
@@ -525,7 +527,7 @@ begin
   gleColor(clFormBorder);
   Render2D.DrawRectBorder(0, 0, FWidth, FHeight);
   gleColor(clFormCaptText);
-  Render2D.TextOut(GetFont, (FWidth - Render2D.TextWidth(GetFont, FCaption)) div 2, (FCaptHeight - Render2D.TextHeight(GetFont)) div 2, FCaption);
+  Render2D.TextOut(Font, (FWidth - Render2D.TextWidth(Font, FCaption)) div 2, (FCaptHeight - Render2D.TextHeight(Font)) div 2, FCaption);
 end;
 
 procedure TGUIForm.DrawButton(const Btn: TBtn; State: TBtnState);
@@ -541,7 +543,7 @@ begin
         Render2D.DrawRect(Btn.X, Btn.Y, Btn.Width, Btn.Height);
         SetColor(State, BtnBorder, Btn.Enabled);
         Render2D.DrawRectBorder(Btn.X, Btn.Y, Btn.Width, Btn.Height);
-        TextX := Max((Btn.Width - Render2D.TextWidth(GetFont, Btn.Caption)) div 2, 0);
+        TextX := Max((Btn.Width - Render2D.TextWidth(Font, Btn.Caption)) div 2, 0);
       end;
     btCheck, btRadio:
       begin
@@ -553,11 +555,11 @@ begin
       end;
   end;
   Text := Btn.Caption;
-  TextY := (Btn.Height - Render2D.TextHeight(GetFont)) div 2;
-  while (Text <> '') and (Render2D.TextWidth(GetFont, Text) + TextX > Btn.Width) do
+  TextY := (Btn.Height - Render2D.TextHeight(Font)) div 2;
+  while (Text <> '') and (Render2D.TextWidth(Font, Text) + TextX > Btn.Width) do
     Delete(Text, Length(Text), 1);
   SetColor(State, BtnText, Btn.Enabled);
-  Render2D.TextOut(GetFont, Btn.X + TextX, Btn.Y + TextY, Text);
+  Render2D.TextOut(Font, Btn.X + TextX, Btn.Y + TextY, Text);
   if bsTabStop in State then
   begin
     glLineStipple(1, $F0F0);
@@ -586,14 +588,14 @@ begin
       then gleColor(Color)
       else gleColor(clText);
     Text := Caption;
-    while (Text <> '') and (Render2D.TextWidth(GetFont, Text) > Width) do
+    while (Text <> '') and (Render2D.TextWidth(Font, Text) > Width) do
       Delete(Text, Length(Text), 1);
     case Align of
       laLeft: TextX := X;
-      laCenter: TextX := X + (Width - Render2D.TextWidth(GetFont, Text)) div 2;
-      laRight: TextX := X + Width - Render2D.TextWidth(GetFont, Text);
+      laCenter: TextX := X + (Width - Render2D.TextWidth(Font, Text)) div 2;
+      laRight: TextX := X + Width - Render2D.TextWidth(Font, Text);
     end;
-    Render2D.TextOut(GetFont, TextX, Y, Text);
+    Render2D.TextOut(Font, TextX, Y, Text);
   end;
 end;
 
@@ -602,7 +604,15 @@ begin
   Result := FMovable and Core.KeyPressed[VK_LBUTTON] and (FDragPoint.X <> 0) and (FDragPoint.Y <> 0);
 end;
 
-function TGUIForm.GetFont: Cardinal;
+function TGUIForm.GetName: string;
+begin
+  if Assigned(FParentSet) then
+    Result := FParentSet.FormName(Self)
+  else
+    Result := ClassName;
+end;
+
+function TGUIForm.Font: Cardinal;
 begin
   if FCustomFont <> InvalidFont then
     Result := FCustomFont
@@ -685,7 +695,7 @@ begin
   Btn.Tag := 1;
   Form.AddButton(Btn);
   Lbl.X := X + Height;
-  Lbl.Y := Y + (Height - Render2D.TextHeight(Form.GetFont)) div 2;
+  Lbl.Y := Y + (Height - Render2D.TextHeight(Form.Font)) div 2;
   Lbl.Width := Width - 2 * Height;
   Lbl.Align := laCenter;
   Lbl.Color := 0;

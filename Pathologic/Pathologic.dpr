@@ -38,6 +38,7 @@ begin
     InitSettings.ResolutionY := Screen.Height;
     Settings.Int[SSectionSettings, SGraphicsQuality] := Integer(gqMed);
   end;
-  VSEStart;
+  while VSEStart = StopNeedRestart do
+    Settings.ReloadInitSettings;
   EventBus.ClearEvents;
 end.

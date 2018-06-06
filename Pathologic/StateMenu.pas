@@ -8,6 +8,7 @@ uses
 
 type
   TGraphicsQuality = (gqMin, gqMed, gqFull);
+  TOnMessageBox = procedure(Sender: TObject; BtnNum: Integer) of object;
   TStateMenu = class;
   TMainMenu = class(TGUIForm)
   protected
@@ -35,10 +36,18 @@ type
     procedure KeyConfig(Btn: PBtn);
     procedure OKClick(Btn: PBtn);
     procedure CancelClick(Btn: PBtn);
+    procedure RestartClick(Sender: TObject; BtnNum: Integer);
   public
     constructor Create;
     destructor Destroy; override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+  end;
+  TMessageBox = class(TGUIForm)
+  private
+    FHandler: TOnMessageBox; 
+    procedure Click(Btn: PBtn);
+  public
+    constructor Create(const Caption, Prompt: string; const Buttons: array of string; Handler: TOnMessageBox = nil);
   end;
   TTextView = class(TGUIForm)
   protected
@@ -198,13 +207,13 @@ end;
 
 procedure TMainMenu.OptionsClick(Btn: PBtn);
 begin
-  FParentSet.AddForm(IDOptions, TOptions.Create, FParentSet.FormName(Self));
+  FParentSet.AddForm(IDOptions, TOptions.Create, Name);
   FormManager.Show(IDOptions);
 end;
 
 procedure TMainMenu.TextClick(Btn: PBtn);
 begin
-  FParentSet.AddForm(IDTextView, TTextView.Create(Btn.Caption, TextFiles[Btn.Tag]), FParentSet.FormName(Self));
+  FParentSet.AddForm(IDTextView, TTextView.Create(Btn.Caption, TextFiles[Btn.Tag]), Name);
   FormManager.Show(IDTextView);
 end;
 
@@ -361,23 +370,28 @@ end;
 
 procedure TOptions.KeyConfig(Btn: PBtn);
 begin
-  with FParentSet.AddForm(IDKeyConfig, TBindManCfgForm.Create(200, 130, 400, 350, 'Сброс', 'OK'), FParentSet.FormName(Self)) as TBindManCfgForm do
+  with FParentSet.AddForm(IDKeyConfig, TBindManCfgForm.Create(200, 130, 400, 350, 'Сброс', 'OK'), Name) as TBindManCfgForm do
     Caption := 'Управление';
   FormManager.Show(IDKeyConfig);
 end;
 
 procedure TOptions.OKClick(Btn: PBtn);
+const
+  IDRestartBox = 'RestartBox';
+var
+  NeedRestart: Boolean;
 begin
+  NeedRestart := (FQuality <> TGraphicsQuality(Settings.Int[SSectionSettings, SGraphicsQuality])) or
+                 (Core.ColorDepth <> FColorDepth);
   Core.SetResolution(FResolutions[FCurrentResolution].Width, FResolutions[FCurrentResolution].Height,
     FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate], Button[FCFullscreen].Checked, true);
   Core.VSync := Button[FCVSync].Checked;
   Core.ColorDepth := FColorDepth;
-  if FQuality <> TGraphicsQuality(Settings.Int[SSectionSettings, SGraphicsQuality]) then
-  begin
-    Settings.Int[SSectionSettings, SGraphicsQuality] := Integer(FQuality);
-    Core.SwitchState(SIDStart);
-  end;
-  Close;
+  Settings.Int[SSectionSettings, SGraphicsQuality] := Integer(FQuality);
+  if NeedRestart then
+    FormManager.Show(FParentSet.AddForm(IDRestartBox, TMessageBox.Create(Caption, 'Выбранные настройки требуют перезапуска. Перезапустить игру?', ['Да', 'Нет'], RestartClick), Name).Name)
+  else
+    Close;
 end;
 
 procedure TOptions.CancelClick(Btn: PBtn);
@@ -385,10 +399,14 @@ begin
   Close;
 end;
 
-{TTextView}
+procedure TOptions.RestartClick(Sender: TObject; BtnNum: Integer);
+begin
+  if BtnNum = 0 then
+    Core.StopEngine(StopNeedRestart);
+  Close;
+end;
 
-const
-  SPage = '%d/%d';
+{TTextView}
 
 constructor TTextView.Create(const Caption, TextFile: string);
 var
@@ -404,7 +422,7 @@ begin
   begin
     Src := ProcessKeyTags(FText[Line]);
     Dst := '';
-    while (Src <> '') and (Render2D.TextWidth(GetFont, Src) > 620) do
+    while (Src <> '') and (Render2D.TextWidth(Font, Src) > 620) do
     begin
       Dst := Src[Length(Src)] + Dst;
       Delete(Src, Length(Src), 1);
@@ -466,7 +484,7 @@ var
   S: string;
 begin
   if FPages > 0 then
-    Lbl[FLPage].Caption := Format(SPage, [FCurPage + 1, FPages + 1]);
+    Lbl[FLPage].Caption := Format('%d/%d', [FCurPage + 1, FPages + 1]);
   inherited DrawForm;
   gleColor(clText);
   for i := 0 to 24 do
@@ -477,9 +495,9 @@ begin
       if (S <> '') and (S[1] = #9) then
       begin
         S := Copy(S, 2, MaxInt);
-        Inc(Left, 310 - Render2D.TextWidth(GetFont, S) div 2);
+        Inc(Left, 310 - Render2D.TextWidth(Font, S) div 2);
       end;
-      Render2D.TextOut(GetFont, Left, 35 + 16 * i, S);
+      Render2D.TextOut(Font, Left, 35 + 16 * i, S);
     end;
 end;
 
@@ -491,6 +509,57 @@ end;
 procedure TTextView.Close(Btn: PBtn);
 begin
   inherited Close;
+end;
+
+{TMessageBox}
+
+constructor TMessageBox.Create(const Caption, Prompt: string; const Buttons: array of string; Handler: TOnMessageBox);
+const
+  BtnWidth = 75;
+  WndHeight = 90;
+var
+  i, WndWidth: Integer;
+  Lbl: TLbl;
+  Btn: TBtn;
+begin
+  WndWidth := Min(Max(Render2D.TextWidth(GUIFont, Prompt) + 25, Length(Buttons) * (BtnWidth + 10) + 10), Render2D.VSWidth);
+  inherited Create((Render2D.VSWidth - WndWidth) div 2, (Render2D.VSHeight - WndHeight) div 2, WndWidth, WndHeight);
+  Self.Caption := Caption;
+  FHandler := Handler;
+  with Lbl do
+  begin
+    Align := laCenter;
+    Color := 0;
+    X := 10;
+    Y := 30;
+    Width := WndWidth - 20;
+    Caption := Prompt;
+  end;
+  AddLabel(Lbl);
+  WndWidth := Max(0, WndWidth - Length(Buttons) * BtnWidth - High(Buttons) * 10) div 2;
+  with Btn do
+  begin
+    Type_ := btPush;
+    Y := 55;
+    Width := BtnWidth;
+    Height := 25;
+    OnClick := Click;
+    Enabled := true;
+    for i := 0 to High(Buttons) do
+    begin
+      X := WndWidth + i * (BtnWidth + 10);
+      Tag := i;
+      Caption := Buttons[i];
+      AddButton(Btn);
+    end;
+  end;
+end;
+
+procedure TMessageBox.Click(Btn: PBtn);
+begin
+  if Assigned(FHandler) then
+    FHandler(Self, Btn.Tag);
+  Close;
 end;
 
 {TStateMenu}

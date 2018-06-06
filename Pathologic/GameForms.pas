@@ -236,7 +236,7 @@ end;
 procedure TLogPointsForm.GameMouseEvent(Sender: TObject; const Args: array of const);
 begin
   Assert((Length(Args) = 2) and (Args[0].VType = vtInteger) and (Args[1].VType = vtPointer));
-  if FParentSet.Visible[FParentSet.FormName(Self)] and (TMouseEvent(Args[0].VInteger) = meDown) then
+  if FParentSet.Visible[Name] and (TMouseEvent(Args[0].VInteger) = meDown) then
   begin
     SetLength(FPoints, Length(FPoints) + 1);
     FPoints[High(FPoints)] := TVector3D(Args[1].VPointer^);

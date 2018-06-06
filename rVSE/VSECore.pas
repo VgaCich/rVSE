@@ -11,6 +11,7 @@ uses
 type
   TStopState=( //Engine stop codes
     StopNormal, //Engine stopped normally
+    StopNeedRestart, //Engine needs restart
     //Critical errors
     StopInitError, //Cannot initialize engine
     StopInternalError, //Internal engine error
@@ -152,6 +153,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    procedure ReloadInitSettings; //Reload InitSettings from ini
     function ReadSection(const Section: string): TStringList; //Read section contents to TStringList
     procedure EraseSection(const Section: string); //Erase section
     property FirstRun: Boolean read FFirstRun; //True if ini file wasn't exist at time of engine's start
@@ -159,7 +161,7 @@ type
     property Int[const Section, Name: string]: Integer read GetInt write SetInt; //Read/write Integer value
     property Str[const Section, Name: string]: string read GetStr write SetStr; //Read/write String value
   end;
-  CModule = class of TModule;
+  CModule=class of TModule;
   TInitStates=procedure;
   TInitSettings=record
     InitStates: TInitStates; //Init states procedure pointer
@@ -195,7 +197,7 @@ var
 const
   InvalidState = $FFFFFFFF; //Non-existing state index
   StopCodeNames: array[TStopState] of string =
-    ('Normal', 'Init Error', 'Internal Error', 'User Exception', 'Display Mode Error', 'User Error');
+    ('Normal', 'Need Restart', 'Init Error', 'Internal Error', 'User Exception', 'Display Mode Error', 'User Error');
   SysNotifyNames: array[TSysNotify] of string =
     ('snMinimized', 'snMaximized', 'snConsoleActive', 'snUpdateOverload', 'snPause', 'snResume', 'snResolutionChanged', 'snStateChanged', 'snLogSysInfo');
   MouseEventNames: array[TMouseEvent] of string =
@@ -401,8 +403,8 @@ begin
     Core.StopEngine(StopInitError);
   end;
   {$IFDEF VSE_LOG}
-  LogSysInfo;
-  SendNotify(snLogSysInfo);
+  if LogSysInfo then
+    SendNotify(snLogSysInfo);
   {$ENDIF}
   SetResolution(InitSettings.ResolutionX, InitSettings.ResolutionY, InitSettings.RefreshRate, InitSettings.Fullscreen, false);
   VSync:=InitSettings.VSync;
@@ -1035,16 +1037,7 @@ begin
   {$IFNDEF VSE_NO_INI}
   FIni:=TIniFile.Create(IniName);
   if not FFirstRun then
-    with InitSettings do
-    begin
-      {$IFDEF VSE_LOG}Log(llInfo, 'Loading settings from ini file');{$ENDIF}
-      ResolutionX:=FIni.ReadInteger(SSectionSettings, SNameResolutionX, ResolutionX);
-      ResolutionY:=FIni.ReadInteger(SSectionSettings, SNameResolutionY, ResolutionY);
-      RefreshRate:=FIni.ReadInteger(SSectionSettings, SNameRefreshRate, RefreshRate);
-      ColorDepth:=FIni.ReadInteger(SSectionSettings, SNameColorDepth, ColorDepth);
-      Fullscreen:=FIni.ReadBool(SSectionSettings, SNameFullscreen, Fullscreen);
-      VSync:=FIni.ReadBool(SSectionSettings, SNameVSync, VSync);
-    end;
+    ReloadInitSettings;
   {$ENDIF}
 end;
 
@@ -1052,6 +1045,22 @@ destructor TSettings.Destroy;
 begin
   FAN(FIni);
   inherited;
+end;
+
+procedure TSettings.ReloadInitSettings;
+begin
+  {$IFNDEF VSE_NO_INI}
+  with InitSettings do
+  begin
+    {$IFDEF VSE_LOG}Log(llInfo, 'Loading settings from ini file');{$ENDIF}
+    ResolutionX:=FIni.ReadInteger(SSectionSettings, SNameResolutionX, ResolutionX);
+    ResolutionY:=FIni.ReadInteger(SSectionSettings, SNameResolutionY, ResolutionY);
+    RefreshRate:=FIni.ReadInteger(SSectionSettings, SNameRefreshRate, RefreshRate);
+    ColorDepth:=FIni.ReadInteger(SSectionSettings, SNameColorDepth, ColorDepth);
+    Fullscreen:=FIni.ReadBool(SSectionSettings, SNameFullscreen, Fullscreen);
+    VSync:=FIni.ReadBool(SSectionSettings, SNameVSync, VSync);
+  end;
+  {$ENDIF}
 end;
 
 procedure TSettings.EraseSection(const Section: string);
@@ -1209,8 +1218,11 @@ var
 begin
   Result:=StopInitError;
   if IsRunning(InitSettings.Caption) then Exit;
-  {$IFDEF VSE_LOG}Log(llInfo, InitSettings.Caption+' '+InitSettings.Version+' started');
-  Log(llInfo, VSECaptVer);{$ENDIF}
+  {$IFDEF VSE_LOG}
+  LogRaw(llInfo, '');
+  Log(llInfo, InitSettings.Caption+' '+InitSettings.Version+' started');
+  Log(llInfo, VSECaptVer);
+  {$ENDIF}
   Set8087CW($133F);
   Fin:=false;
   ZeroMemory(@WndClass, SizeOf(WndClass));
