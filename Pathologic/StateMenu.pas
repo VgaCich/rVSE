@@ -381,10 +381,13 @@ const
 var
   NeedRestart: Boolean;
 begin
-  NeedRestart := (FQuality <> TGraphicsQuality(Settings.Int[SSectionSettings, SGraphicsQuality])) or
-                 (Core.ColorDepth <> FColorDepth);
-  Core.SetResolution(FResolutions[FCurrentResolution].Width, FResolutions[FCurrentResolution].Height,
-    FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate], Button[FCFullscreen].Checked, true);
+  NeedRestart := (Core.ColorDepth <> FColorDepth) or
+    (FQuality <> TGraphicsQuality(Settings.Int[SSectionSettings, SGraphicsQuality]));
+  with FResolutions[FCurrentResolution] do
+    if (Core.ResolutionX <> Width) or (Core.ResolutionY <> Height) or (Core.RefreshRate <> RefreshRates[FCurrentRefreshRate]) then
+      Core.SetResolution(Width, Height, RefreshRates[FCurrentRefreshRate], Button[FCFullscreen].Checked, true)
+    else
+      Core.Fullscreen := Button[FCFullscreen].Checked;
   Core.VSync := Button[FCVSync].Checked;
   Core.ColorDepth := FColorDepth;
   Settings.Int[SSectionSettings, SGraphicsQuality] := Integer(FQuality);
