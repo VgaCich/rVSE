@@ -6,15 +6,28 @@ uses
   Windows, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions, VSECore, VSEGUI;
 
 type
+  TFormAlignment = (faLeft, faCenter, faRight, faTop, faMiddle, faBottom);
+  TFormAlignmentSet = set of TFormAlignment;
+  TAlignedForm = class(TGUIForm) //Alignable form
+  protected
+    FAlignment: TFormAlignmentSet;
+    procedure SetAlignment(Value: TFormAlignmentSet);
+  public
+    constructor Create(X, Y, Width, Height: Integer);
+    procedure Align; //Align form
+    property Alignment: TFormAlignmentSet read FAlignment write SetAlignment; //Desired alignment
+  end;
   TFormManager = class(TModule)
   private
     FFormsSet: TGUIFormsSet;
     FCapturedMouse: TGUIForm;
+    FAlignedSets: TList;
     {$IFDEF VSE_CONSOLE}
     function UIColorHandler(Sender: TObject; Args: array of const): Boolean;
     function UIFontHandler(Sender: TObject; Args: array of const): Boolean;
     {$ENDIF}
     function GetForm(const Name: string): TGUIForm;
+    procedure SetFormsSet(Value: TGUIFormsSet);
     function GetVisible(const Name: string): Boolean;
     procedure SetVisible(const Name: string; const Value: Boolean);
   public
@@ -26,12 +39,14 @@ type
     procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure CharEvent(C: Char); override;
+    function  SysNotify(Notify: TSysNotify): Boolean; override;
     procedure Show(const Name: string); //Show and pop form
     procedure Hide(const Name: string); //Hide form
     procedure Pop(const Name: string); //Pop form to front
+    procedure AlignForms; //Align alignable forms
     function MouseBusy(X, Y: Integer): Boolean; //Returns true if mouse processed by FormManager
     function Top: TGUIForm; //Topmost form
-    property FormsSet: TGUIFormsSet read FFormsSet write FFormsSet; //Current forms set
+    property FormsSet: TGUIFormsSet read FFormsSet write SetFormsSet; //Current forms set
     property Forms[const Name: string]: TGUIForm read GetForm; default; //Forms
     property Visible[const Name: string]: Boolean read GetVisible write SetVisible; //Form visibility
   end;
@@ -42,10 +57,41 @@ var
 implementation
 
 uses
-  VSECollisionCheck{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF};
+  VSECollisionCheck, VSERender2D{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF};
 
 const
   ColorNames = 'btnbg:btnbd:btntxt:frmbg:frmbd:frmcpt:frmcphl:frmcptxt:text:tabstop';
+
+{ TAlignedForm }
+
+constructor TAlignedForm.Create(X, Y, Width, Height: Integer);
+begin
+  inherited;
+  Movable := true;
+  FAlignment := [];
+end;
+
+procedure TAlignedForm.Align;
+begin
+  if faLeft in FAlignment then
+    Left := Round(Render2D.VSBounds.Left)
+  else if faCenter in FAlignment then
+    Left := (Render2D.VSWidth - Width) div 2
+  else if faRight in FAlignment then
+    Left := Round(Render2D.VSBounds.Right) - Width;
+  if faTop in FAlignment then
+    Top := Round(Render2D.VSBounds.Top)
+  else if faMiddle in FAlignment then
+    Top := (Render2D.VSHeight - Height) div 2
+  else if faBottom in FAlignment then
+    Top := Round(Render2D.VSBounds.Bottom) - Height;
+end;
+
+procedure TAlignedForm.SetAlignment(Value: TFormAlignmentSet);
+begin
+  FAlignment := Value;
+  Align;
+end;
 
 { TFormManager }
 
@@ -53,6 +99,7 @@ constructor TFormManager.Create;
 begin
   inherited;
   FormManager := Self;
+  FAlignedSets := TList.Create;
   SetGUIFont;
   {$IFDEF VSE_CONSOLE}
   Console.OnCommand['uicolor ?clr=e' + ColorNames + ' ?def=i ?hl=i ?act=i ?dis=i'] := UIColorHandler;
@@ -63,6 +110,7 @@ end;
 destructor TFormManager.Destroy;
 begin
   FormManager := nil;
+  FAN(FAlignedSets);
   inherited;
 end;
 
@@ -141,6 +189,15 @@ begin
       Form.CharEvent(C);
 end;
 
+function TFormManager.SysNotify(Notify: TSysNotify): Boolean;
+begin
+  if Notify = snResolutionChanged then
+  begin
+    FAlignedSets.Clear;
+    AlignForms;
+  end;
+end;
+
 procedure TFormManager.Show(const Name: string);
 begin
   Visible[Name] := true;
@@ -156,6 +213,23 @@ procedure TFormManager.Pop(const Name: string);
 begin
   if not Assigned(FFormsSet) then Exit;
   FFormsSet.Pop(FFormsSet.FindForm(Name));
+end;
+
+procedure TFormManager.AlignForms;
+
+  procedure RealignForm(Self: TObject; Form: TGUIForm);
+  begin
+    if Form is TAlignedForm then
+      (Form as TAlignedForm).Align;
+  end;
+
+begin
+  if Assigned(FFormsSet) then
+  begin
+    FFormsSet.IterateForms(TOnForm(MakeMethod(@RealignForm)));
+    if FAlignedSets.IndexOf(FFormsSet) < 0 then
+      FAlignedSets.Add(FFormsSet);
+  end;
 end;
 
 function TFormManager.MouseBusy(X, Y: Integer): Boolean;
@@ -177,6 +251,13 @@ end;
 function TFormManager.GetForm(const Name: string): TGUIForm;
 begin
   Result := FFormsSet[Name];
+end;
+
+procedure TFormManager.SetFormsSet(Value: TGUIFormsSet);
+begin
+  FFormsSet := Value;
+  if FAlignedSets.IndexOf(FFormsSet) < 0 then
+    AlignForms;
 end;
 
 function TFormManager.GetVisible(const Name: string): Boolean;

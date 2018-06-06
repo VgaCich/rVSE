@@ -341,7 +341,7 @@ begin
   FWidth := Width;
   FHeight := Height;
   FCustomFont := InvalidFont;
-  FCaptHeight := Render2D.TextHeight(Font) + 6;
+  FCaptHeight := Render2D.TextHeight(Font) + 6; //TODO: Recalc on font change
   FActive := -1;
   FLastActive := -1;
   FLast := -1;

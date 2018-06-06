@@ -4,19 +4,9 @@ interface
 
 uses
   Windows, AvL, avlUtils, avlEventBus, avlMath, avlVectors, OpenGL, oglExtensions,
-  VSEOpenGLExt, VSECore, VSEGUI, Game, GameObjects;
+  VSEOpenGLExt, VSECore, VSEGUI, VSEFormManager, Game, GameObjects;
 
 type
-  TFormAlignment = (faLeft, faCenter, faRight, faTop, faMiddle, faBottom);
-  TFormAlignmentSet = set of TFormAlignment;
-  TAlignedForm = class(TGUIForm)
-  protected
-    FAlignment: TFormAlignmentSet;
-    procedure SetAlignment(Value: TFormAlignmentSet);
-  public
-    procedure Align;
-    property Alignment: TFormAlignmentSet read FAlignment write SetAlignment;
-  end;
   {$IFDEF VSE_DEBUG}
   TLogPointsForm = class(TAlignedForm)
   private
@@ -66,31 +56,7 @@ const
 implementation
 
 uses
-  VSERender2D, VSEFormManager, GameData{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF};
-
-{ TAlignedForm }
-
-procedure TAlignedForm.Align;
-begin
-  if faLeft in FAlignment then
-    Left := Round(Render2D.VSBounds.Left)
-  else if faCenter in FAlignment then
-    Left := (Render2D.VSWidth - Width) div 2
-  else if faRight in FAlignment then
-    Left := Round(Render2D.VSBounds.Right) - Width;
-  if faTop in FAlignment then
-    Top := Round(Render2D.VSBounds.Top)
-  else if faMiddle in FAlignment then
-    Top := (Render2D.VSHeight - Height) div 2
-  else if faBottom in FAlignment then
-    Top := Round(Render2D.VSBounds.Bottom) - Height;
-end;
-
-procedure TAlignedForm.SetAlignment(Value: TFormAlignmentSet);
-begin
-  FAlignment := Value;
-  Align;
-end;
+  VSERender2D, GameData{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF};
 
 {$IFDEF VSE_DEBUG}
 

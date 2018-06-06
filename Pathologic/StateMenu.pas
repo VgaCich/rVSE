@@ -4,13 +4,13 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions, VSECore,
-  VSEGUI, VSEBindMan, StateStart, StateGame;
+  VSEGUI, VSEFormManager, VSEBindMan, StateStart, StateGame;
 
 type
   TGraphicsQuality = (gqMin, gqMed, gqFull);
   TOnMessageBox = procedure(Sender: TObject; BtnNum: Integer) of object;
   TStateMenu = class;
-  TMainMenu = class(TGUIForm)
+  TMainMenu = class(TAlignedForm)
   protected
     FResumeButton: Integer;
     procedure GameClick(Btn: PBtn);
@@ -22,7 +22,7 @@ type
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure ResumeEnable(Enable: Boolean);
   end;
-  TOptions = class(TGUIForm)
+  TOptions = class(TAlignedForm)
   protected
     FLResolution, FLRefreshRate, FLColorDepth, FLQuality, FCFullscreen, FCVSync,
       FCurrentResolution, FCurrentRefreshRate, FColorDepth: Integer;
@@ -42,14 +42,14 @@ type
     destructor Destroy; override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
   end;
-  TMessageBox = class(TGUIForm)
+  TMessageBox = class(TAlignedForm)
   private
     FHandler: TOnMessageBox; 
     procedure Click(Btn: PBtn);
   public
     constructor Create(const Caption, Prompt: string; const Buttons: array of string; Handler: TOnMessageBox = nil);
   end;
-  TTextView = class(TGUIForm)
+  TTextView = class(TAlignedForm)
   protected
     FCurPage, FPages, FLPage: Integer;
     FText: TStringList;
@@ -91,7 +91,7 @@ function GetTexFileName(const Name: string): string;
 implementation
 
 uses
-  VSETexMan, VSERender2D, VSEFormManager, VSEMemPak, VSEImageCodec
+  VSETexMan, VSERender2D, VSEMemPak, VSEImageCodec
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -230,7 +230,8 @@ var
   Lbl: TLbl;
   i: Integer;
 begin
-  inherited Create(200, 130, 400, 350);
+  inherited Create(0, 0, 400, 350);
+  Alignment := [faCenter, faMiddle];
   FCaption := 'Настройки';
   FResolutions := gleGetResolutions;
   FLResolution := CreateSelect(Self, 10, 60, 190, 20, ResClick, '-', '+');
@@ -371,7 +372,10 @@ end;
 procedure TOptions.KeyConfig(Btn: PBtn);
 begin
   with FParentSet.AddForm(IDKeyConfig, TBindManCfgForm.Create(200, 130, 400, 350, 'Сброс', 'OK'), Name) as TBindManCfgForm do
+  begin
+    Movable := true;
     Caption := 'Управление';
+  end;
   FormManager.Show(IDKeyConfig);
 end;
 
@@ -417,7 +421,8 @@ var
   Src, Dst: string;
   Btn: TBtn;
 begin
-  inherited Create(80, 60, 640, 480);
+  inherited Create(0, 0, 640, 480);
+  Alignment := [faCenter, faMiddle];
   FCaption := Caption;
   FText := GetFileText(TextFile);
   Line := 0;
@@ -526,8 +531,9 @@ var
   Btn: TBtn;
 begin
   WndWidth := Min(Max(Render2D.TextWidth(GUIFont, Prompt) + 25, Length(Buttons) * (BtnWidth + 10) + 10), Render2D.VSWidth);
-  inherited Create((Render2D.VSWidth - WndWidth) div 2, (Render2D.VSHeight - WndHeight) div 2, WndWidth, WndHeight);
-  Self.Caption := Caption;
+  inherited Create(0, 0, WndWidth, WndHeight);
+  Alignment := [faCenter, faMiddle];
+  FCaption := Caption;
   FHandler := Handler;
   with Lbl do
   begin

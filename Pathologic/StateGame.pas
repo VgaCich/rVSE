@@ -143,18 +143,11 @@ begin
 end;
 
 function TStateGame.Activate: Cardinal;
-
-  procedure SetMovable(Self: TObject; Form: TGUIForm);
-  begin
-    Form.Movable := true;
-  end;
-
 begin
   inherited Activate;
   Result := 20;
   glClearColor(0, 0, 0, 1);
   glClearStencil(0);
-  FFormsSet.IterateForms(TOnForm(MakeMethod(@SetMovable)));
   FormManager.FormsSet := FFormsSet;
   Draw;
   Core.ResetUpdateTimer;
@@ -204,19 +197,11 @@ begin
 end;
 
 function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
-
-  procedure RealignForm(Self: TObject; Form: TGUIForm);
-  begin
-    if Form is TAlignedForm then
-      (Form as TAlignedForm).Align;
-  end;
-
 begin
   Result := inherited SysNotify(Notify);
   case Notify of
     snMinimize: Core.SwitchState(SIDMenu);
     snConsoleActive: Result := true;
-    snResolutionChanged: FFormsSet.IterateForms(TOnForm(MakeMethod(@RealignForm)));
   end;
 end;
 
