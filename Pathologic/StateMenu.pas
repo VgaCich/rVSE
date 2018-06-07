@@ -28,7 +28,7 @@ type
       FCurrentResolution, FCurrentRefreshRate, FColorDepth: Integer;
     FResolutions: TResolutions;
     FQuality: TGraphicsQuality;
-    procedure DrawForm; override;
+    procedure DrawForm(State: TBtnState); override;
     procedure ResClick(Btn: PBtn);
     procedure RefrClick(Btn: PBtn);
     procedure DepthClick(Btn: PBtn);
@@ -53,7 +53,7 @@ type
   protected
     FCurPage, FPages, FLPage: Integer;
     FText: TStringList;
-    procedure DrawForm; override;
+    procedure DrawForm(State: TBtnState); override;
     procedure ChangePage(Btn: PBtn);
     procedure Close(Btn: PBtn);
   public
@@ -337,13 +337,13 @@ begin
     inherited KeyEvent(Key, Event);
 end;
 
-procedure TOptions.DrawForm;
+procedure TOptions.DrawForm(State: TBtnState);
 begin
   Lbl[FLResolution].Caption := Format('%dx%d', [FResolutions[FCurrentResolution].Width, FResolutions[FCurrentResolution].Height]);
   Lbl[FLRefreshRate].Caption := IntToStr(FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate]);
   Lbl[FLColorDepth].Caption := IntToStr(FColorDepth);
   Lbl[FLQuality].Caption := GraphicsQualityName[FQuality];
-  inherited DrawForm;
+  inherited;
 end;
 
 procedure TOptions.ResClick(Btn: PBtn);
@@ -486,14 +486,14 @@ begin
   inherited KeyEvent(Key, Event);
 end;
 
-procedure TTextView.DrawForm;
+procedure TTextView.DrawForm(State: TBtnState);
 var
   i, Left: Integer;
   S: string;
 begin
   if FPages > 0 then
     Lbl[FLPage].Caption := Format('%d/%d', [FCurPage + 1, FPages + 1]);
-  inherited DrawForm;
+  inherited;
   gleColor(clText);
   for i := 0 to 24 do
     if 25 * FCurPage + i < FText.Count then

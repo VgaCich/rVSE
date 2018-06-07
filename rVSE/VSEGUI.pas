@@ -26,7 +26,7 @@ type
     Align: TLabelAlign; //Text aligning
     Color: TColor; //Text color, 0 for default
   end;
-  TBtnStates = (bsHighlighted, bsPushed, bsTabStop); //Button state - highlighted (mouse over), pushed, selected from keyboard
+  TBtnStates = (bsHighlighted, bsPushed, bsTabStop, fsLocked = bsTabStop); //Button state - highlighted (mouse over), pushed, selected from keyboard
   TBtnState = set of TBtnStates;
   TColorSet = record
     Default, Highlighted, Activated, Disabled: TColor;
@@ -74,6 +74,7 @@ type
     FButtons: array of TBtn; //internally used
     FRects: array of TRect; //internally used
     FLabels: array of TLbl; //internally used
+    function BtnState(Highlighted, Pushed, TabStop: Boolean): TBtnState;
     function IsMoving: Boolean;
     function GetName: string;
   protected
@@ -89,7 +90,7 @@ type
     procedure MapCursor(var Cursor: TPoint); //Map cursor to form coordinates
     function  BtnAt(Point: TPoint): Integer; //Get button at specified coordinates
     procedure SetColor(State: TBtnState; const ColorSet: TColorSet; Enabled: Boolean = true); //Set color from color set
-    procedure DrawForm; dynamic; //Override for custom form drawing
+    procedure DrawForm(State: TBtnState); dynamic; //Override for custom form drawing
     procedure DrawButton(const Btn: TBtn; State: TBtnState); dynamic; //Override for custom buttons drawing
     procedure DrawRect(const Rect: TRect); dynamic; //Override for custom rectangles drawing
     procedure DrawLabel(const Lbl: TLbl); dynamic; //Override for custom labels drawing
@@ -129,10 +130,9 @@ var
   BtnBackground: TColorSet = (Default: $FF80FF80; Highlighted: $FF8080FF; Activated: $FF7070E0; Disabled: $FF80FF80);
   BtnBorder: TColorSet = (Default: $FF00D000; Highlighted: $FF0000FF; Activated: $FF0000FF; Disabled: $FF20FF20);
   BtnText: TColorSet = (Default: $FF00B200; Highlighted: $FF00C000; Activated: $FF00A000; Disabled: $FF00F000);
+  FormCapt: TColorSet = (Default: $FF80E600; Highlighted: $FF80DC00; Activated: $FF73CF00; Disabled: $FF80FF80);
   clFormBackground: TColor = $FF80FF80;
   clFormBorder: TColor = $FF00FF00;
-  clFormCapt: TColor = $FF80E600;
-  clFormCaptHl: TColor = $FF73CF00;
   clFormCaptText: TColor = $FF00FFFF;
   clText: TColor = $FF00B200;
   clTabStop: TColor = $FF000080;
@@ -140,10 +140,9 @@ var
   BtnBackground: TColorSet = (Default: $FFC0C0C0; Highlighted: $FFC8C8C8; Activated: $FFA0A0A0; Disabled: $FFC0C0C0);
   BtnBorder: TColorSet = (Default: $FF404040; Highlighted: $FF404040; Activated: $FF404040; Disabled: $FF808080);
   BtnText: TColorSet = (Default: $FF000000; Highlighted: $FF000000; Activated: $FF000000; Disabled: $FF808080);
+  FormCapt: TColorSet = (Default: $FF800000; Highlighted: $FF8A0000; Activated: $FF880000; Disabled: $FF808080);
   clFormBackground: TColor = {$IFDEF CLRSCM_WINMO}$FFFFFFFF{$ELSE}$FFC0C0C0{$ENDIF};
   clFormBorder: TColor = $FF404040;
-  clFormCapt: TColor = $FF800000;
-  clFormCaptHl: TColor = $FF880000;
   clFormCaptText: TColor = $FFFFFFFF;
   clText: TColor = $FF000000;
   clTabStop: TColor = $FF000000;
@@ -382,30 +381,23 @@ begin
 end;
 
 procedure TGUIForm.Draw;
-
-  function BtnState(Index: Integer): TBtnState;
-  begin
-    Result := [];
-    if Index = FActive then
-      Result := Result + [bsHighlighted];
-    if Index = FLast then
-      Result := Result + [bsPushed];
-    if Index = FTabStop then
-      Result := Result + [bsTabStop];
-  end;
-
 var
   i: Integer;
+  FormRec: PFormRec;
 begin
   Render2D.Enter;
   Render2D.Move(FX, FY, false);
-  DrawForm;
+  if Assigned(FParentSet) then
+    FormRec := FParentSet.FindForm(Self)
+  else
+    FormRec := nil;
+  DrawForm(BtnState(Assigned(FParentSet) and (FParentSet.FirstForm = FormRec), IsMoving, Assigned(FormRec) and FormRec.Locked));
   for i := 0 to High(FRects) do
     DrawRect(FRects[i]);
   for i := 0 to High(FLabels) do
     DrawLabel(FLabels[i]);
   for i := 0 to High(FButtons) do
-    DrawButton(FButtons[i], BtnState(i));
+    DrawButton(FButtons[i], BtnState(i = FActive, i = FLast, i = FTabStop));
   Render2D.Leave;
 end;
 
@@ -515,14 +507,12 @@ begin
   gleColor(Color);
 end;
 
-procedure TGUIForm.DrawForm;
+procedure TGUIForm.DrawForm(State: TBtnState);
 begin
   Render2D.LineWidth(1);
   gleColor(clFormBackground);
   Render2D.DrawRect(0, 0, FWidth, FHeight);
-  if IsMoving or (Assigned(FParentSet) and (FParentSet.FirstForm.Form = Self))
-    then gleColor(clFormCaptHl)
-    else gleColor(clFormCapt);
+  SetColor(State, FormCapt, not (fsLocked in State));
   Render2D.DrawRect(0, 0, FWidth, FCaptHeight);
   gleColor(clFormBorder);
   Render2D.DrawRectBorder(0, 0, FWidth, FHeight);
@@ -597,6 +587,17 @@ begin
     end;
     Render2D.TextOut(Font, TextX, Y, Text);
   end;
+end;
+
+function TGUIForm.BtnState(Highlighted, Pushed, TabStop: Boolean): TBtnState;
+begin
+  Result := [];
+  if Highlighted then
+    Result := Result + [bsHighlighted];
+  if Pushed then
+    Result := Result + [bsPushed];
+  if TabStop then
+    Result := Result + [bsTabStop];
 end;
 
 function TGUIForm.IsMoving: Boolean;

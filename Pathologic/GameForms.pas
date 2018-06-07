@@ -18,7 +18,7 @@ type
     procedure SaveClick(Btn: PBtn);
     procedure GameMouseEvent(Sender: TObject; const Args: array of const); 
   protected
-    procedure DrawForm; override;
+    procedure DrawForm(State: TBtnState); override;
     procedure DrawButton(const Btn: TBtn; State: TBtnState); override;
   public
     constructor Create;
@@ -136,7 +136,7 @@ begin
   glPopAttrib;
 end;
 
-procedure TLogPointsForm.DrawForm;
+procedure TLogPointsForm.DrawForm(State: TBtnState);
 var
   i: Integer;
 begin

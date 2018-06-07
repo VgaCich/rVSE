@@ -60,7 +60,7 @@ uses
   VSECollisionCheck, VSERender2D{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF};
 
 const
-  ColorNames = 'btnbg:btnbd:btntxt:frmbg:frmbd:frmcpt:frmcphl:frmcptxt:text:tabstop';
+  ColorNames = 'btnbg:btnbd:btntxt:frmcpt:frmbg:frmbd:frmcptxt:text:tabstop';
 
 { TAlignedForm }
 
@@ -233,12 +233,8 @@ begin
 end;
 
 function TFormManager.MouseBusy(X, Y: Integer): Boolean;
-var
-  Form: PFormRec;
 begin
-  if Assigned(FFormsSet) then
-    Form := FFormsSet.FormAt(X, Y);
-  Result := Assigned(FCapturedMouse) or Assigned(Form);
+  Result := Assigned(FCapturedMouse) or (Assigned(FFormsSet) and Assigned(FFormsSet.FormAt(X, Y)));
 end;
 
 function TFormManager.Top: TGUIForm;
@@ -284,14 +280,13 @@ type
 
 function TFormManager.UIColorHandler(Sender: TObject; Args: array of const): Boolean;
 const
-  Colors: array[0..9] of TColorRec = (
+  Colors: array[0..8] of TColorRec = (
     (IsColorSet: true; ColorSet: @BtnBackground),
     (IsColorSet: true; ColorSet: @BtnBorder),
     (IsColorSet: true; ColorSet: @BtnText),
+    (IsColorSet: true; ColorSet: @FormCapt),
     (IsColorSet: false; Color: @clFormBackground),
     (IsColorSet: false; Color: @clFormBorder),
-    (IsColorSet: false; Color: @clFormCapt),
-    (IsColorSet: false; Color: @clFormCaptHl),
     (IsColorSet: false; Color: @clFormCaptText),
     (IsColorSet: false; Color: @clText),
     (IsColorSet: false; Color: @clTabStop));
