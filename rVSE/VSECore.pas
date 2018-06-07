@@ -11,6 +11,7 @@ uses
 type
   TStopState=( //Engine stop codes
     StopNormal, //Engine stopped normally
+    StopDefault, //Engine stopped by something other than StopEngine
     StopNeedRestart, //Engine needs restart
     //Critical errors
     StopInitError, //Cannot initialize engine
@@ -195,9 +196,10 @@ var
   );
 
 const
+  UM_STOPENGINE = WM_USER;
   InvalidState = $FFFFFFFF; //Non-existing state index
   StopCodeNames: array[TStopState] of string =
-    ('Normal', 'Need Restart', 'Init Error', 'Internal Error', 'User Exception', 'Display Mode Error', 'User Error');
+    ('Normal', 'Default', 'Need Restart', 'Init Error', 'Internal Error', 'User Exception', 'Display Mode Error', 'User Error');
   SysNotifyNames: array[TSysNotify] of string =
     ('snMinimized', 'snMaximized', 'snConsoleActive', 'snUpdateOverload', 'snPause', 'snResume', 'snResolutionChanged', 'snStateChanged', 'snLogSysInfo');
   MouseEventNames: array[TMouseEvent] of string =
@@ -700,7 +702,7 @@ procedure TCore.StopEngine(StopState: TStopState);
 begin
   {$IFDEF VSE_LOG}LogF(llInfo, 'Stopping engine with code %d (%s)', [Ord(StopState), StopCodeNames[StopState]]);{$ENDIF}
   VSEStopState:=StopState;
-  PostMessage(Handle, WM_CLOSE, 0, 0);
+  PostMessage(Handle, UM_STOPENGINE, 0, 0);
 end;
 
 function TCore.AddState(State: TGameState): Cardinal;
@@ -1134,7 +1136,7 @@ begin
           except
             {$IFDEF VSE_LOG}LogException('while initializing engine');{$ENDIF}
             VSEStopState:=StopInitError;
-            SendMessage(hWnd, WM_CLOSE, 0, 0);
+            SendMessage(hWnd, UM_STOPENGINE, 0, 0);
           end;
         end;
       end;
@@ -1196,6 +1198,7 @@ begin
         {$IFDEF VSE_LOG}LogException('while resizing window');{$ENDIF}
         {$IFNDEF VSE_DEBUG}Core.StopEngine(StopInternalError);{$ENDIF}
       end;
+    UM_STOPENGINE: DestroyWindow(hWnd);  
     else
       Result:=DefWindowProc(hWnd, Msg, wParam, lParam);
   end;
@@ -1218,6 +1221,7 @@ var
 begin
   Result:=StopInitError;
   if IsRunning(InitSettings.Caption) then Exit;
+  VSEStopState:=StopDefault;
   {$IFDEF VSE_LOG}
   LogRaw(llInfo, '');
   Log(llInfo, InitSettings.Caption+' '+InitSettings.Version+' started');
