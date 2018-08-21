@@ -7,7 +7,7 @@ uses
 {$R *.res}
 {$R MemPak.res}
 
-function LoadTexture(Sender: TObject; const Name: string): Cardinal;
+function LoadTexture(Self, Sender: TObject; const Name: string): Cardinal;
 begin
   try
     Result := TexMan.AddTexture(Name, GetFile(GetTexFileName(Name)), true, true, true);
@@ -21,7 +21,7 @@ procedure InitStates;
 begin
   Randomize;
   EventBus.ClearEvents;
-  TexMan.OnLostTex := LoadTexture;
+  TexMan.OnLostTex := TOnLostTex(MakeMethod(@LoadTexture));
   Core.AddState(TStateGame.Create);
   Core.AddState(TStateMenu.Create);
   Core.SwitchState(Core.AddState(TStateStart.Create));

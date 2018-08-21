@@ -7,7 +7,7 @@ uses
   VSEImageCodec, VSECore{$IFDEF VSE_LOG}, VSELog{$ENDIF}{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF};
 
 type
-  TOnLostTex=function(Sender: TObject; const Name: string): Cardinal;
+  TOnLostTex=function(Sender: TObject; const Name: string): Cardinal of object;
   TRTTMethod=(rttCopy, rttFBO); //Render-to-Texture method - CopyTexture (slow), FrameBuffer Object
   TTextureFilter=(tfNone, tfBilinear, tfTrilinear, tfAnisotropic, tfCustomAnisotropy); //Use tfCustomAnisotropy+AnisoLevel to set custom anisotropy level
   TTexture=record //internally used
