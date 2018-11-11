@@ -3,7 +3,7 @@ program VSEWater;
 uses
   {$IFDEF VER150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
   AvL, avlUtils, avlMath, avlVectors, OpenGL, oglExtensions, VSEOpenGLExt,
-  VSECore, VSETexMan, VSERender2D, VSEShaders, VSEMemPak, VSEConsole, VSELog, Scene;
+  VSECore, VSEConsole, VSETexMan, VSERender2D, VSEShaders, VSEMemPak, VSELog, Scene;
 
 type
   TStateMain=class(TGameState)
@@ -36,8 +36,8 @@ var
   Temp: array[0..TEX_SIZE*TEX_SIZE*3] of Byte;
 begin
   inherited Create;
-  FPos:=VectorSetValue(-12, 5, -20);
-  FAngle:=VectorSetValue(0, 160, 0);
+  FPos:=Vector3D(-12, 5, -20);
+  FAngle:=Vector3D(0, 160, 0);
   FScene.Load('scene');
   FWaterTex[0]:=TexMan.AddTexture('water0', @Temp, TEX_SIZE, TEX_SIZE, GL_RGB8, GL_RGB, true, false);
   FWaterTex[1]:=TexMan.AddTexture('water1', @Temp, TEX_SIZE, TEX_SIZE, GL_RGB8, GL_RGB, true, false);
@@ -97,7 +97,7 @@ begin
       glMatrixMode(GL_PROJECTION);
       glScalef(1, -1, 1);
       glMatrixMode(GL_MODELVIEW);
-      FScene.RenderSkyBox(VectorSetValue(FPos.X, FPos.Y*(i*2-1), FPos.Z));
+      FScene.RenderSkyBox(Vector3D(FPos.X, FPos.Y*(i*2-1), FPos.Z));
       glEnable(GL_CLIP_PLANE0);
       glClipPlane(GL_CLIP_PLANE0, @Plane[i xor 1]);
       if Assigned(FShader) and FShader.Valid then
@@ -152,17 +152,17 @@ var
   Speed: TVector3D;
   S, C: Single;
 begin
-  Speed:=VectorSetValue(0);
-  if Core.KeyPressed[ord('W')] then Speed:=VectorAdd(Speed, VectorSetValue(0, 0, -1));
-  if Core.KeyPressed[ord('S')] then Speed:=VectorAdd(Speed, VectorSetValue(0, 0, 1));
-  if Core.KeyPressed[ord('A')] then Speed:=VectorAdd(Speed, VectorSetValue(-1, 0, 0));
-  if Core.KeyPressed[ord('D')] then Speed:=VectorAdd(Speed, VectorSetValue(1, 0, 0));
+  Speed:=Vector3D(0);
+  if Core.KeyPressed[ord('W')] then Speed:=VectorAdd(Speed, Vector3D(0, 0, -1));
+  if Core.KeyPressed[ord('S')] then Speed:=VectorAdd(Speed, Vector3D(0, 0, 1));
+  if Core.KeyPressed[ord('A')] then Speed:=VectorAdd(Speed, Vector3D(-1, 0, 0));
+  if Core.KeyPressed[ord('D')] then Speed:=VectorAdd(Speed, Vector3D(1, 0, 0));
   VectorNormalize(Speed);
   VectorScale(Speed, 0.1);
   S:=sin(DegToRad(FAngle.Y));
   C:=cos(DegToRad(FAngle.Y));
   with Speed do
-    FPos:=VectorAdd(FPos, VectorSetValue(X*C-Z*S, 0, X*S+Z*C));
+    FPos:=VectorAdd(FPos, Vector3D(X*C-Z*S, 0, X*S+Z*C));
 end;
 
 function TStateMain.Activate: Cardinal;

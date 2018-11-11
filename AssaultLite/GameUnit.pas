@@ -34,7 +34,7 @@ begin
   inherited Create;
   FModel:=TPriModel.Create('Tank.vpm');
   FTerrain:=TStateGame(Core.GetState(Core.FindState('Game'))).Terrain;
-  Pos:=VectorSetValue(68);
+  Pos:=Vector3D(68);
 end;
 
 destructor TUnit.Destroy;

@@ -4,12 +4,13 @@ interface
 
 uses
   Windows, AvL, avlUtils, avlMath, avlVectors, OpenGL, VSEOpenGLExt, oglExtensions,
-  VSECore, VSEShaders, VSETerrain, Sky, GameUnit, GamePlayer;
+  VSECore, VSEShaders, VSECamera, VSETerrain, Sky, GameUnit, GamePlayer;
 
 type
   TStateGame=class(TGameState)
   private
     FShader: TShader;
+    FCamera: TCamera;
     FTerrain: TTerrain;
     FSky: TSky;
     FFont: Cardinal;
@@ -37,7 +38,7 @@ type
 
 implementation
 
-uses VSERender2D, VSECamera, VSEMemPak, VSESound, VSEBindMan, VSETexMan
+uses VSERender2D, VSEMemPak, VSESound, VSEBindMan, VSETexMan
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -59,7 +60,7 @@ begin
   Console['loadshader file=s']:=LoadShaderHandler;
   {$ENDIF}
   BindMan.AddBindings(Bindings);
-  Camera:=TCamera.Create;
+  FCamera:=TCamera.Create;
   FFont:=Render2D.CreateFont('Courier New', 10);
   FTerrain:=TTerrain.Create;
   TexMan.AddTexture('white', @White, 1, 1, GL_RGBA8, GL_RGBA, false, false);
@@ -74,7 +75,7 @@ begin
   Finalize(FPlayers);
   FAN(FTerrain);
   FAN(FSky);
-  FAN(Camera);
+  FAN(FCamera);
   FAN(FShader);
   inherited Destroy;
 end;
@@ -91,11 +92,10 @@ begin
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
   glePerspectiveMatrix(60, Core.ResolutionX, Core.ResolutionY);
   glMatrixMode(GL_PROJECTION);
-  Camera.CalcVertex;
-  Camera.SetPos;
+  FCamera.Apply;
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity;
-  FSky.Draw;
+  FSky.Draw(FCamera);
   glEnable(GL_DEPTH_TEST);
   glColor(1.0, 1.0, 1.0);
   glLightfv(GL_LIGHT0, GL_POSITION, @LightPos);
@@ -107,7 +107,7 @@ begin
   begin
     TexMan.Bind(TexMan.GetTex('white'), 1);
     FShader.Enabled:=true;
-    with Camera.Eye do
+    with FCamera.Eye do
       FShader['eye'].Value(X, Y, Z);
     FShader['tex'].Value(0);
   end;
@@ -128,12 +128,12 @@ begin
     with Render2D.VSBounds do
     begin
       Render2D.TextOut(FFont, Left + 5, Top + 5, 'FPS: '+IntToStr(Core.FPS));
-      with Camera.Eye do
+      with FCamera.Eye do
         Render2D.TextOut(FFont, Left + 5, Top + 25, Format('Pos=%s, %s, %s',
           [FloatToStr2(X, 4, 2), FloatToStr2(Y, 4, 2), FloatToStr2(Z, 4, 2)]));
-      with Camera do
+      with FCamera.Angle do
         Render2D.TextOut(FFont, Left + 5, Top + 45, Format('Angles=%s, %s',
-          [FloatToStr2(XAngle, 4, 2), FloatToStr2(YAngle, 4, 2)]));
+          [FloatToStr2(X, 4, 2), FloatToStr2(Y, 4, 2)]));
     end;
     Render2D.Leave;
   end;
@@ -155,31 +155,21 @@ const
   end;
 
 var
-  Spd: TVector3D;
+  Spd: TVector2D;
   Offs: TVector3D;
-  C, S: Single;
   i, j, Pass: Integer;
 begin
   inherited;
   VectorClear(Spd);
-  if BindMan.BindActive['Fwd'] then Spd.Z:=Spd.Z+1;
-  if BindMan.BindActive['Bwd'] then Spd.Z:=Spd.Z-1;
+  if BindMan.BindActive['Fwd'] then Spd.Y:=Spd.Y+1;
+  if BindMan.BindActive['Bwd'] then Spd.Y:=Spd.Y-1;
   if BindMan.BindActive['SLeft'] then Spd.X:=Spd.X+1;
   if BindMan.BindActive['SRight'] then Spd.X:=Spd.X-1;
   VectorNormalize(Spd);
   if BindMan.BindActive['SpdDn'] then VectorScale(Spd, 0.2);
   if not BindMan.BindActive['SpdUp'] then VectorScale(Spd, 0.2);
-  C:=Cos(Camera.XAngle*DegToRad);
-  S:=Sin(Camera.XAngle*DegToRad);
-  Offs.Z:=C*Spd.Z+S*Spd.X;
-  Offs.X:=C*Spd.X-S*Spd.Z;
-  Offs.Y:=0;
-  Camera.Eye:=VectorAdd(Camera.Eye, Offs);
-  if Camera.Eye.X<CamBorder then Camera.Eye.X:=CamBorder;
-  if Camera.Eye.X>FTerrain.Width-CamBorder then Camera.Eye.X:=FTerrain.Width-CamBorder;
-  if Camera.Eye.Z<CamBorder then Camera.Eye.Z:=CamBorder;
-  if Camera.Eye.Z>FTerrain.Height-CamBorder then Camera.Eye.Z:=FTerrain.Height-CamBorder;
-  Camera.Eye.Y:=FTerrain.Altitude(Camera.Eye.X, Camera.Eye.Z)+4;
+  FCamera.Move(Spd, Vector2D(CamBorder), Vector2D(FTerrain.Width-CamBorder, FTerrain.Height-CamBorder), true);
+  FCamera.Height:=FTerrain.Altitude(FCamera.Eye.X, FCamera.Eye.Z)+4;
   FSky.Update;
   for i:=0 to High(FPlayers) do
     FPlayers[i].Update;
@@ -187,8 +177,8 @@ begin
   begin
     for i:=0 to High(FUnits) do
     begin
-      Offs:=CalcShift(FUnits[i].Pos, Camera.Eye);
-      Camera.Eye:=VectorSub(Camera.Eye, VectorMultiply(Offs, 0.1));
+      Offs:=CalcShift(FUnits[i].Pos, FCamera.Eye);
+      FCamera.Eye:=VectorSub(FCamera.Eye, VectorMultiply(Offs, 0.1));
       for j:=0 to High(FUnits) do
       begin
         Offs:=CalcShift(FUnits[i].Pos, FUnits[j].Pos);
@@ -197,11 +187,8 @@ begin
       end;
     end;
   end;
-  if Camera.Eye.X<CamBorder then Camera.Eye.X:=CamBorder;
-  if Camera.Eye.X>FTerrain.Width-CamBorder then Camera.Eye.X:=FTerrain.Width-CamBorder;
-  if Camera.Eye.Z<CamBorder then Camera.Eye.Z:=CamBorder;
-  if Camera.Eye.Z>FTerrain.Height-CamBorder then Camera.Eye.Z:=FTerrain.Height-CamBorder;
-  Camera.Eye.Y:=FTerrain.Altitude(Camera.Eye.X, Camera.Eye.Z)+4;
+  FCamera.Move(Vector2D(0), Vector2D(CamBorder), Vector2D(FTerrain.Width-CamBorder, FTerrain.Height-CamBorder));
+  FCamera.Height:=FTerrain.Altitude(FCamera.Eye.X, FCamera.Eye.Z)+4;
 end;
 
 function TStateGame.Activate: Cardinal;
@@ -226,10 +213,7 @@ procedure TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integ
 begin
   inherited;
   if Event<>meMove then Exit;
-  Camera.XAngle:=Camera.XAngle+X/10;
-  Camera.YAngle:=Camera.YAngle-Y/10;
-  if Camera.YAngle<-89 then Camera.YAngle:=-89;
-  if Camera.YAngle>89 then Camera.YAngle:=89;
+  FCamera.Angle:=Vector2D(FCamera.Angle.X+X/10, Max(-89.9, Min(FCamera.Angle.Y-Y/10, 89.9)));
 end;
 
 procedure TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent);
@@ -256,9 +240,8 @@ procedure TStateGame.NewGame;
 var
   i: Integer;
 begin
-  Camera.Eye:=VectorSetValue(256, 1, 256);
-  Camera.XAngle:=-45;
-  Camera.YAngle:=25;
+  FCamera.Eye:=Vector3D(256, 1, 256);
+  FCamera.Angle:=Vector2D(-45, 25);
   //FTerrain.Texture:=TexMan.GetTex('Grass');
   if not Assigned(FSky) then FSky:=TSky.Create;
   for i:=0 to High(FPlayers) do
@@ -269,7 +252,7 @@ begin
   for i:=0 to High(FPlayers) do
     FPlayers[i]:=TPlayer.Create(4);
   for i:=0 to FPlayers[0].UnitsCount-1 do
-    FPlayers[0].Units[i].Pos:=VectorAdd(FPlayers[0].Units[i].Pos, VectorSetValue(-8, 0, 0));
+    FPlayers[0].Units[i].Pos:=VectorAdd(FPlayers[0].Units[i].Pos, Vector3D(-8, 0, 0));
   SetLength(FUnits, 8);
   for i:=0 to 3 do
   begin

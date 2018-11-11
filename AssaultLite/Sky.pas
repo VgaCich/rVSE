@@ -13,7 +13,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Draw; //Draw sky
+    procedure Draw(Camera: TCamera); //Draw sky
     procedure Update; //Update sky
   end;
 
@@ -31,7 +31,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TSky.Draw;
+procedure TSky.Draw(Camera: TCamera);
 begin
   glPushAttrib(GL_ENABLE_BIT or GL_TRANSFORM_BIT or GL_CURRENT_BIT);
   glMatrixMode(GL_TEXTURE);

@@ -1,5 +1,6 @@
-Tools\Compress\StripReloc /b /c AssaultLite.exe
-del MemPak.pas
+StripReloc /b /c AssaultLite.exe
+del MemPak.bin
+del MemPak.res
 del *.~*
 del *.dcu
 del DCU\*.dcu

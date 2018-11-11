@@ -1,4 +1,4 @@
-cd ..\MemPak
+cd MemPak
 call Clean
 cd ..\PMBuild
 call Clean

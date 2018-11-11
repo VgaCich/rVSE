@@ -1,3 +1,4 @@
+StripReloc /b /c *.exe
 del MemPak.bin
 del MemPak.res
 del *.~*

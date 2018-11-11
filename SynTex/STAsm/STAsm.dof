@@ -94,7 +94,7 @@ OutputDir=
 UnitOutputDir=
 PackageDLLOutputDir=
 PackageDCPOutputDir=
-SearchPath=$(DELPHI)\Lib\sysdcu;..\..\..\SynTex
+SearchPath=$(DELPHI)\Lib\sysdcu;..
 Packages=vcl;rtl;vclactnband;vclx;dbrtl;adortl;vcldb;bdertl;vcldbx;dbexpress;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;dsnap;VclSmp;dbxcds;soaprtl;ibxpress;dclOfficeXP;vclshlctrls;DelphiX_for5
 Conditionals=
 DebugSourceDirs=
@@ -134,6 +134,7 @@ Comments=
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 [HistoryLists\hlSearchPath]
-Count=2
-Item0=$(DELPHI)\Lib\sysdcu;..\..\SynTex
-Item1=$(DELPHI)\Lib\sysdcu;..\..
+Count=3
+Item0=$(DELPHI)\Lib\sysdcu;..
+Item1=$(DELPHI)\Lib\sysdcu;..\..\SynTex
+Item2=$(DELPHI)\Lib\sysdcu;..\..

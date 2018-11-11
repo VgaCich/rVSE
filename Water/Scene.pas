@@ -93,7 +93,7 @@ procedure TSceneObj.Render;
 
   procedure SetColor(Target: GLenum; Color: TColor);
   var
-    C: TVector4f;
+    C: TVector4D;
   begin
     C:=gleColorTo4f(Color or $FF000000);
     glMaterialfv(GL_FRONT_AND_BACK, Target, @C);

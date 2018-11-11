@@ -52,7 +52,7 @@ var
   N0, N1, N2, N3, D0, D1, D2, D3: TVector3D;
   H0, H1, H2, H3, SX, SY, AvgX0, AvgX1: Single;
 begin
-  Pos:=VectorSetValue(X*FFreq, Y*FFreq, 0);
+  Pos:=Vector3D(X*FFreq, Y*FFreq, 0);
   X0:=Floor(Pos.X);
   X1:=X0+1;
   Y0:=Floor(Pos.Y);
@@ -61,10 +61,10 @@ begin
   N1:=Normal(X0, Y1);
   N2:=Normal(X1, Y0);
   N3:=Normal(X1, Y1);
-  D0:=VectorSetValue(Pos.X-X0, Pos.Y-Y0, 0);
-  D1:=VectorSetValue(Pos.X-X0, Pos.Y-Y1, 0);
-  D2:=VectorSetValue(Pos.X-X1, Pos.Y-Y0, 0);
-  D3:=VectorSetValue(Pos.X-X1, Pos.Y-Y1, 0);
+  D0:=Vector3D(Pos.X-X0, Pos.Y-Y0, 0);
+  D1:=Vector3D(Pos.X-X0, Pos.Y-Y1, 0);
+  D2:=Vector3D(Pos.X-X1, Pos.Y-Y0, 0);
+  D3:=Vector3D(Pos.X-X1, Pos.Y-Y1, 0);
   H0:=VectorDotProduct(D0, N0);
   H1:=VectorDotProduct(D1, N1);
   H2:=VectorDotProduct(D2, N2);
@@ -87,6 +87,6 @@ var
 initialization
 
   for i:=0 to 255 do
-    Normals[i]:=VectorSetValue(cos(Step*i), sin(Step*i), 0);
+    Normals[i]:=Vector3D(cos(Step*i), sin(Step*i), 0);
 
 end.

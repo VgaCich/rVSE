@@ -1,5 +1,7 @@
 unit StateMenu;
 
+//TODO: backport menu updates from pathologic
+
 interface
 
 uses
@@ -17,7 +19,7 @@ type
     procedure TextClick(Btn: PBtn);
     procedure ExitClick(Btn: PBtn);
   public
-    constructor Create(Parent: TStateMenu; Font: Cardinal);
+    constructor Create(Parent: TStateMenu);
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure ResumeEnable(Enable: Boolean);
   end;
@@ -27,7 +29,7 @@ type
     FLResolution, FLRefreshRate, FLColorDepth, FLCacheSize, FCFullscreen, FCVSync, FCEnableBGM, FBToggleCache,
       FBClearCache, FCurrentResolution, FCurrentRefreshRate, FColorDepth: Integer;
     FResolutions: TResolutions;
-    procedure DrawForm; override;
+    procedure DrawForm(State: TBtnState); override;
     procedure ResClick(Btn: PBtn);
     procedure RefrClick(Btn: PBtn);
     procedure DepthClick(Btn: PBtn);
@@ -37,7 +39,7 @@ type
     procedure OKClick(Btn: PBtn);
     procedure CancelClick(Btn: PBtn);
   public
-    constructor Create(Parent: TStateMenu; Font: Cardinal);
+    constructor Create(Parent: TStateMenu);
     destructor Destroy; override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure ReadOptions;
@@ -47,11 +49,11 @@ type
     FParent: TStateMenu;
     FCurPage, FPages, FLPage: Integer;
     FText: TStringList;
-    procedure DrawForm; override;
+    procedure DrawForm(State: TBtnState); override;
     procedure ChangePage(Btn: PBtn);
     procedure Close(Btn: PBtn);
   public
-    constructor Create(Parent: TStateMenu; const Caption, TextFile: string; Font: Cardinal);
+    constructor Create(Parent: TStateMenu; const Caption, TextFile: string);
     destructor Destroy; override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
   end;
@@ -109,9 +111,9 @@ var
     (Caption: 'Help'; Tag: 1),
     (Caption: 'Exit'; Tag: 0));
 
-constructor TMainMenu.Create(Parent: TStateMenu; Font: Cardinal);
+constructor TMainMenu.Create(Parent: TStateMenu);
 begin
-  inherited Create(300, 130, 200, 350, Font);
+  inherited Create(300, 130, 200, 350);
   FParent:=Parent;
   FCaption:='Assault Lite';
   MainMenuItems[0].OnClick:=GameClick;
@@ -157,7 +159,7 @@ end;
 procedure TMainMenu.TextClick(Btn: PBtn);
 begin
   FAN(FParent.FTextView);
-  FParent.FTextView:=TTextView.Create(FParent, Btn.Caption, TextFiles[Btn.Tag], Font);
+  FParent.FTextView:=TTextView.Create(FParent, Btn.Caption, TextFiles[Btn.Tag]);
   FParent.FCurFrm:=FParent.FTextView;
 end;
 
@@ -172,12 +174,12 @@ const
   CacheState: array[Boolean] of string = ('Enable cache', 'Disable cache');
   SCacheSize='Cache: ';
 
-constructor TOptions.Create(Parent: TStateMenu; Font: Cardinal);
+constructor TOptions.Create(Parent: TStateMenu);
 var
   Btn: TBtn;
   Lbl: TLbl;
 begin
-  inherited Create(200, 130, 400, 350, Font);
+  inherited Create(200, 130, 400, 350);
   FParent:=Parent;
   FCaption:='Options';
   FResolutions:=gleGetResolutions;
@@ -306,12 +308,12 @@ begin
   Button[FBClearCache].Enabled:=UseCache;
 end;
 
-procedure TOptions.DrawForm;
+procedure TOptions.DrawForm(State: TBtnState);
 begin
   Lbl[FLResolution].Caption:=Format('%dx%d', [FResolutions[FCurrentResolution].Width, FResolutions[FCurrentResolution].Height]);
   Lbl[FLRefreshRate].Caption:=IntToStr(FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate]);
   Lbl[FLColorDepth].Caption:=IntToStr(FColorDepth);
-  inherited DrawForm;
+  inherited DrawForm(State);
 end;
 
 procedure TOptions.ResClick(Btn: PBtn);
@@ -374,13 +376,13 @@ end;
 const
   SPage='%d/%d';
 
-constructor TTextView.Create(Parent: TStateMenu; const Caption, TextFile: string; Font: Cardinal);
+constructor TTextView.Create(Parent: TStateMenu; const Caption, TextFile: string);
 var
   Line: Integer;
   Src, Dst: string;
   Btn: TBtn;
 begin
-  inherited Create(80, 60, 640, 480, Font);
+  inherited Create(80, 60, 640, 480);
   FParent:=Parent;
   FCaption:=Caption;
   FText:=GetFileText(TextFile);
@@ -389,7 +391,7 @@ begin
   begin
     Src:=ProcessKeyTags(FText[Line]);
     Dst:='';
-    while (Src<>'') and (Render2D.TextWidth(FFont, Src)>620) do
+    while (Src<>'') and (Render2D.TextWidth(Font, Src)>620) do
     begin
       Dst:=Src[Length(Src)]+Dst;
       Delete(Src, Length(Src), 1);
@@ -443,13 +445,13 @@ begin
   inherited KeyEvent(Key, Event);
 end;
 
-procedure TTextView.DrawForm;
+procedure TTextView.DrawForm(State: TBtnState);
 var
   i, Left: Integer;
   S: string;
 begin
   if FPages>0 then Lbl[FLPage].Caption:=Format(SPage, [FCurPage+1, FPages+1]);
-  inherited DrawForm;
+  inherited DrawForm(State);
   gleColor(clText);
   for i:=0 to 24 do
     if 25*FCurPage+i<FText.Count then
@@ -459,9 +461,9 @@ begin
       if (S<>'') and (S[1]=#9) then
       begin
         S:=Copy(S, 2, MaxInt);
-        Inc(Left, 310-Render2D.TextWidth(FFont, S) div 2);
+        Inc(Left, 310-Render2D.TextWidth(Font, S) div 2);
       end;
-      Render2D.TextOut(FFont, Left, 35+16*i, S);
+      Render2D.TextOut(Font, Left, 35+16*i, S);
     end;
 end;
 
@@ -478,11 +480,9 @@ end;
 {TStateMenu}
 
 const
-  ColorNames = 'btnbg:btnbd:btntxt:frmbg:frmbd:frmcpt:frmcphl:frmcptxt:text:tabstop';
+  ColorNames = 'btnbg:btnbd:btntxt:frmcpt:frmbg:frmbd:frmcptxt:text:tabstop';
 
 constructor TStateMenu.Create;
-var
-  Font: Cardinal;
 begin
   inherited Create;
   {$IFDEF VSE_CONSOLE}
@@ -490,10 +490,10 @@ begin
   Console.OnCommand['uicolor ?clr=e'+ColorNames+' ?def=i ?hl=i ?act=i ?dis=i']:=UIColorHandler;
   Console.OnCommand['uifont name=s ?size=i8:24 ?weight=en:b']:=UIFontHandler;
   {$ENDIF}
-  Font:=Render2D.CreateFont(UIFont, UIFontSize, true);
-  FMainMenu:=TMainMenu.Create(Self, Font);
-  FOptions:=TOptions.Create(Self, Font);
-  FKeyConfig:=TBindManCfgForm.Create(200, 130, 400, 350, Font, 'Default', 'OK');
+  SetGUIFont(UIFont, UIFontSize, true);
+  FMainMenu:=TMainMenu.Create(Self);
+  FOptions:=TOptions.Create(Self);
+  FKeyConfig:=TBindManCfgForm.Create(200, 130, 400, 350, 'Default', 'OK');
   FKeyConfig.Caption:='Controls';
   FKeyConfig.OnClose:=KeyConfigClose;
   FCurFrm:=FMainMenu;
@@ -607,14 +607,13 @@ type
 
 function TStateMenu.UIColorHandler(Sender: TObject; Args: array of const): Boolean;
 const
-  Colors: array[0..9] of TColorRec = (
+  Colors: array[0..8] of TColorRec = (
     (IsColorSet: true; ColorSet: @BtnBackground),
     (IsColorSet: true; ColorSet: @BtnBorder),
     (IsColorSet: true; ColorSet: @BtnText),
+    (IsColorSet: true; ColorSet: @FormCapt),
     (IsColorSet: false; Color: @clFormBackground),
     (IsColorSet: false; Color: @clFormBorder),
-    (IsColorSet: false; Color: @clFormCapt),
-    (IsColorSet: false; Color: @clFormCaptHl),
     (IsColorSet: false; Color: @clFormCaptText),
     (IsColorSet: false; Color: @clText),
     (IsColorSet: false; Color: @clTabStop));
@@ -646,19 +645,14 @@ begin
 end;
 
 function TStateMenu.UIFontHandler(Sender: TObject; Args: array of const): Boolean;
-var
-  Font: Cardinal;
 begin
   Result:=true;
   if Length(Args)=4 then
-    Font:=Render2D.CreateFont(string(Args[1].VAnsiString), Args[2].VInteger, Boolean(Args[3].VInteger))
+    SetGUIFont(string(Args[1].VAnsiString), Args[2].VInteger, Boolean(Args[3].VInteger))
   else if Length(Args)=3 then
-    Font:=Render2D.CreateFont(string(Args[1].VAnsiString), Args[2].VInteger, true)
+    SetGUIFont(string(Args[1].VAnsiString), Args[2].VInteger, true)
   else
-    Font:=Render2D.CreateFont(string(Args[1].VAnsiString), UIFontSize, true);
-  FMainMenu.Font:=Font;
-  FOptions.Font:=Font;
-  FKeyConfig.Font:=Font;
+    SetGUIFont(string(Args[1].VAnsiString), UIFontSize, true);
 end;
 {$ENDIF}
 
