@@ -99,7 +99,7 @@ end;
 constructor TStateStart.Create;
 begin
   inherited Create;
-  FFont := Render2D.CreateFont(UIFont, 20, false);
+  FFont := Render2D.CreateFont(UIFont, 20, true);
 end;
 
 destructor TStateStart.Destroy;

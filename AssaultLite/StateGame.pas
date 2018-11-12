@@ -36,9 +36,12 @@ type
     property Terrain: TTerrain read FTerrain;
   end;
 
+const
+  SIDGame='Game';
+
 implementation
 
-uses VSERender2D, VSEMemPak, VSESound, VSEBindMan, VSETexMan
+uses VSERender2D, VSEMemPak, VSESound, VSEBindMan, VSETexMan, StateMenu
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -222,7 +225,7 @@ begin
   if Event=keUp then
   begin
     case Key of
-      VK_ESCAPE: Core.SwitchState('Menu');
+      VK_ESCAPE: Core.SwitchState(SIDMenu);
     end;
   end;
 end;
@@ -231,7 +234,7 @@ function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result:=inherited SysNotify(Notify);
   case Notify of
-    snMinimize: Core.SwitchState('Menu');
+    snMinimize: Core.SwitchState(SIDMenu);
     snConsoleActive: Result:=true;
   end;
 end;
@@ -263,7 +266,7 @@ end;
 
 function TStateGame.GetName: string;
 begin
-  Result:='Game';
+  Result:=SIDGame;
 end;
 
 function TStateGame.GetCanResumeGame: Boolean;

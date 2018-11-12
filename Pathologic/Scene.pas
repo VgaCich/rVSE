@@ -68,7 +68,7 @@ begin
   inherited;
   FMap := TPriModel.Create('Models\Map.vpm');
   FObjects := TGameObjectsArray.Create;
-  FTitleFont := Render2D.CreateFont(UIFont, 20, false);
+  FTitleFont := Render2D.CreateFont(UIFont, 20, true);
   FInfoFont := Render2D.CreateFont(UIFont, 12, true);
   EventBus.AddListener(EventBus.RegisterEvent(SceneAddObject), AddObject);
   EventBus.AddListener(EventBus.RegisterEvent(SceneRemoveObject), RemoveObject);

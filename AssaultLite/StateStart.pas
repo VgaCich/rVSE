@@ -47,6 +47,9 @@ var
   UseCache: Boolean;
   CacheDir: string;
 
+const
+  SIDStart='Start';
+
 implementation
 
 uses VSEMemPak, VSETexMan, VSEImageCodec, VSERender2D
@@ -67,7 +70,7 @@ const
   SRVSE='reduced VS Engine';
   STitle='Assault Lite';
 
-{TLoadThread} //I'm don't sure that is correct... May be a source of AV's
+{TLoadThread} //I'm not sure that is correct... May be a source of AV's
 
 procedure TLoadThread.Execute;
 var
@@ -230,7 +233,7 @@ end;
 
 function TStateStart.GetName: string;
 begin
-  Result:='Start';
+  Result:=SIDStart;
 end;
 
 procedure TStateStart.DrawSegs(X, Y: Single; Segs: Integer);
@@ -330,7 +333,7 @@ end;
 procedure TStateStart.OnLoaded(Sender: TObject);
 begin
   if LoadResult
-    then Core.SwitchState('Menu')
+    then Core.SwitchState(SIDMenu)
     else begin
       {$IFDEF VSE_LOG}Log(llError, 'Loading textures failed');{$ENDIF}
       Core.StopEngine(StopUserError);

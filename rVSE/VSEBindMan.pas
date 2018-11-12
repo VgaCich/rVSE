@@ -23,9 +23,10 @@ type
     Key, DefKey: Byte;
     Events: PEventQueue;
   end;
+  TBindings = array of TBinding;
   TBindMan=class(TModule)
   private
-    FBindings: array of TBinding;
+    FBindings: TBindings;
     FQueuePool: array of TEventQueue;
     FScrollStateClicks: Integer;
     FScrollStateUp: Boolean;
@@ -34,7 +35,6 @@ type
     function GetBindActive(Name: string): Boolean;
     function FindBinding(Name: string; NoLogLost: Boolean = false): Integer;
     function NewEvent(Event_: TBindEvent): PEventQueue;
-    procedure SaveBindings;
     {$IFDEF VSE_CONSOLE}
     function BindHandler(Sender: TObject; Args: array of const): Boolean;
     function BindCmdHandler(Sender: TObject; Args: array of const): Boolean;
@@ -52,25 +52,9 @@ type
     function  GetBindKeyName(const BindName: string): string; //Get name of binded to BindName key
     function  GetBindEvent(const Name: string): TBindEvent; //Get oldest event from queue for binding, returns beNone if no events
     procedure ResetKeys; //Reset all keys to default
+    procedure SaveBindings; //Save bindings to ini
     property  BindActive[Name: string]: Boolean read GetBindActive; //True if binded key pressed, mouse wheel up/down cannot be pressed, only events
-  end;
-  TBindManCfgForm=class(TGUIForm) // Keys configuration form
-  private
-    FLabels, FButtons: array of Integer;
-    FPageLabel, FPage, FPages, FActive: Integer;
-    FOnClose: TOnEvent;
-    procedure ChangePage(Btn: PBtn);
-    procedure KeyBtnClick(Btn: PBtn);
-    procedure CloseClick(Btn: PBtn);
-    procedure DefaultClick(Btn: PBtn);
-    procedure SetKey(Key: Integer);
-  public
-    constructor Create(X, Y, Width, Height: Integer; const DefaultCapt, CloseCapt: string);
-    destructor Destroy; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    procedure Refresh;
-    property  OnClose: TOnEvent read FOnClose write FOnClose; //Triggered at click on 'close' button
+    property  Bindings: TBindings read FBindings; //Raw bindings info array
   end;
 
 function KeyToStr(Key: Integer): string; //Get name for key code
@@ -85,6 +69,7 @@ const
   VK_XBUTTON5=6; //Mouse button 5
   VK_MWHEELUP=VK_F23; //Mouse wheel up
   VK_MWHEELDOWN=VK_F24; //Mouse wheel down
+  MBtnMap: array[mbLeft..mbX2] of Integer = (VK_LBUTTON, VK_RBUTTON, VK_MBUTTON, VK_XBUTTON4, VK_XBUTTON5);
 
 implementation
 
@@ -92,10 +77,8 @@ uses
   VSERender2D;
 
 const
-  MBtnMap: array[mbLeft..mbX2] of Integer = (VK_LBUTTON, VK_RBUTTON, VK_MBUTTON, VK_XBUTTON4, VK_XBUTTON5);
   MaxEventAge=5;
   DeadEvent=255;
-  PageLabel='%d/%d';
   TagDelim='$';
 
 var
@@ -510,177 +493,6 @@ begin
     else Console.WriteLn('Unknown key name: '+string(Args[1].VAnsiString)+PostfixError);
 end;
 {$ENDIF}
-
-{ TBindManCfgForm }
-
-constructor TBindManCfgForm.Create(X, Y, Width, Height: Integer; const DefaultCapt, CloseCapt: string);
-var
-  Btn: TBtn;
-  Lbl: TLbl;
-  BHeight, i: Integer;
-begin
-  inherited Create(X, Y, Width, Height);
-  FActive:=-1;
-  BHeight:=Render2D.TextHeight(Font)+10;
-  SetLength(FLabels, Min(Length(BindMan.FBindings), (Height-20-Render2D.TextHeight(Font)) div (BHeight+10)));
-  SetLength(FButtons, Length(FLabels));
-  FPages:=High(BindMan.FBindings) div Max(Length(FLabels), 1);
-  with Btn do
-  begin
-    Type_:=btPush;
-    X:=2*FWidth div 3;
-    Width:=FWidth-X-10;
-    Height:=BHeight;
-    OnClick:=KeyBtnClick;
-    Enabled:=true;
-  end;
-  with Lbl do
-  begin
-    X:=10;
-    Width:=Btn.X-20;
-    Align:=laLeft;
-    Color:=0;
-  end;
-  for i:=0 to High(FLabels) do
-  begin
-    with Btn do
-    begin
-      Y:=20+Render2D.TextHeight(Font)+i*(BHeight+10);
-      Tag:=i;
-    end;
-    Lbl.Y:=25+Render2D.TextHeight(Font)+i*(BHeight+10);
-    FButtons[i]:=AddButton(Btn);
-    FLabels[i]:=AddLabel(Lbl);
-  end;
-  Refresh;
-  if FPages>0 then
-  begin
-    FPageLabel:=CreateSelect(Self, 10, Height-40, Min(Width div 2, Width-280), 30, ChangePage, '<', '>');
-    Self.Lbl[FPageLabel]^.Caption:=Format(PageLabel, [FPage+1, FPages+1]);
-  end;
-  with Btn do
-  begin
-    Width:=120;
-    Y:=FHeight-40;
-    X:=FWidth-260;
-    Caption:=DefaultCapt;
-    OnClick:=DefaultClick;
-    AddButton(Btn);
-    X:=FWidth-130;
-    Caption:=CloseCapt;
-    OnClick:=CloseClick;
-    AddButton(Btn);
-  end;
-end;
-
-procedure TBindManCfgForm.ChangePage(Btn: PBtn);
-begin
-  FPage:=Min(FPages, Max(0, FPage+Btn^.Tag));
-  Lbl[FPageLabel].Caption:=Format(PageLabel, [FPage+1, FPages+1]);
-  Refresh;
-end;
-
-procedure TBindManCfgForm.Refresh;
-var
-  i: Integer;
-begin
-  for i:=0 to High(FLabels) do
-  begin
-    if FPage*Length(FLabels)+i>High(BindMan.FBindings) then
-    begin
-      Lbl[FLabels[i]]^.Caption:='';
-      with Button[FButtons[i]]^ do
-      begin
-        Caption:='';
-        Enabled:=false;
-      end;
-      Continue;
-    end;
-    Lbl[FLabels[i]]^.Caption:=BindMan.FBindings[FPage*Length(FLabels)+i].Description;
-    with Button[FButtons[i]]^ do
-    begin
-      Caption:=KeyToStr(BindMan.FBindings[FPage*Length(FLabels)+i].Key);
-      Enabled:=true;
-    end;
-  end;
-end;
-
-procedure TBindManCfgForm.KeyBtnClick(Btn: PBtn);
-begin
-  FActive:=FPage*Length(FLabels)+Btn^.Tag;
-  Btn^.Caption:='???';
-end;
-
-procedure TBindManCfgForm.KeyEvent(Key: Integer; Event: TKeyEvent);
-begin
-  if FActive>-1 then
-  begin
-    if Event<>keUp then Exit;
-    if Key=VK_ESCAPE then
-    begin
-      FActive:=-1;
-      Refresh;
-    end
-      else if Key=VK_BACK
-        then SetKey(0)
-        else SetKey(Key);
-  end
-  else begin
-    if (Event=keUp) and (Key=VK_ESCAPE)
-      then CloseClick(nil)
-      else inherited KeyEvent(Key, Event);
-  end;
-end;
-
-procedure TBindManCfgForm.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
-begin
-  if FActive>-1 then
-  begin
-    if not (Event in [meDown, meWheel]) then Exit;
-    if Event=meWheel then
-    begin
-      if Button>0
-        then SetKey(VK_MWHEELUP)
-        else SetKey(VK_MWHEELDOWN);
-    end
-      else SetKey(MBtnMap[Button]);
-  end
-    else inherited MouseEvent(Button, Event, X, Y);
-end;
-
-procedure TBindManCfgForm.CloseClick(Btn: PBtn);
-begin
-  BindMan.SaveBindings;
-  if Assigned(FOnClose) then FOnClose(Self);
-  Close;
-end;
-
-destructor TBindManCfgForm.Destroy;
-begin
-  Finalize(FLabels);
-  Finalize(FButtons);
-  inherited Destroy;
-end;
-
-procedure TBindManCfgForm.DefaultClick(Btn: PBtn);
-begin
-  Settings.EraseSection(SSectionBindings);
-  BindMan.ResetKeys;
-  Refresh;
-end;
-
-procedure TBindManCfgForm.SetKey(Key: Integer);
-var
-  i: Integer;
-begin
-  if Key in [VK_SNAPSHOT] then Exit;
-  for i:=0 to High(BindMan.FBindings) do
-    if (i<>FActive) and (BindMan.FBindings[i].Key=Key)
-      then BindMan.FBindings[i].Key:=BindMan.FBindings[FActive].Key;
-  BindMan.FBindings[FActive].Key:=Key;
-  FActive:=-1;
-  Refresh;
-end;
 
 initialization
   InitKeyNames;

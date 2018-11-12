@@ -9,7 +9,7 @@ type
   TGUIForm = class;
   TBtnType = (btPush, btCheck, btRadio); //Button type: push button, check box, radio button
   PBtn = ^TBtn;
-  TGUIOnClick = procedure(Btn: PBtn) of object;
+  TGUIOnClick = procedure(Btn: PBtn) of object; //OnClick handler; Btn: pressed button info
   TOnForm = procedure(Form: TGUIForm) of object;
   TBtn = record //Button
     Caption: string; //Button caption
@@ -95,7 +95,7 @@ type
     procedure DrawRect(const Rect: TRect); dynamic; //Override for custom rectangles drawing
     procedure DrawLabel(const Lbl: TLbl); dynamic; //Override for custom labels drawing
   public
-    constructor Create(X, Y, Width, Height: Integer); //Creates form; VertScr*: virtual screen resolution (all dimensions defined in virtual screen coordinates); X, Y, Width, Height: form bounds
+    constructor Create(X, Y, Width, Height: Integer); //Creates form; X, Y, Width, Height: form bounds
     destructor Destroy; override;
     function  AddButton(Btn: TBtn): Integer; //Add button, returns button index
     function  AddLabel(const Lbl: TLbl): Integer; //Add label, returns label index
@@ -676,6 +676,11 @@ end;
 
 { Functions }
 
+procedure SetGUIFont(const Name: string; Size: Integer; Bold: Boolean);
+begin
+  GUIFont := Render2D.CreateFont(Name, Size, Bold);
+end;
+
 function CreateSelect(Form: TGUIForm; X, Y, Width, Height: Integer; OnChange: TGUIOnClick; const PrevCaption, NextCaption: string): Integer;
 var
   Lbl: TLbl;
@@ -723,11 +728,6 @@ begin
     Btn.OnClick := Items[i].OnClick;
     Result[i] := Form.AddButton(Btn);
   end;
-end;
-
-procedure SetGUIFont(const Name: string; Size: Integer; Bold: Boolean);
-begin
-  GUIFont := Render2D.CreateFont(Name, Size, Bold);
 end;
 
 end.

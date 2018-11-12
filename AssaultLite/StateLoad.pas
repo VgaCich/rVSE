@@ -29,6 +29,9 @@ type
     property LevelName: string read FLevelName write FLevelName;
   end;
 
+const
+  SIDLoad='Load';
+
 implementation
 
 uses VSEMemPak, VSETexMan, VSERender2D {$IFDEF VSE_LOG}, VSELog{$ENDIF}, StateMenu;
@@ -41,7 +44,7 @@ constructor TStateLoad.Create;
 begin
   inherited Create;
   FFont:=Render2D.CreateFont(UIFont, 20, false);
-  FGame:=TStateGame(Core.GetState(Core.FindState('Game')));
+  FGame:=TStateGame(Core.GetState(Core.FindState(SIDGame)));
 end;
 
 procedure TStateLoad.Draw;
@@ -83,7 +86,7 @@ end;
 
 function TStateLoad.GetName: string;
 begin
-  Result:='Load';
+  Result:=SIDLoad;
 end;
 
 procedure TStateLoad.Delay;
@@ -129,7 +132,7 @@ end;
 
 procedure TStateLoad.StartGame;
 begin
-  Core.SwitchState('Game');
+  Core.SwitchState(SIDGame);
   FLoadStage:=nil;
 end;
 
