@@ -17,7 +17,7 @@ type
     procedure CredsClick(Btn: PBtn);
     procedure ExitClick(Btn: PBtn);
   public
-    constructor Create(Parent: TStateMenu; Font: Cardinal);
+    constructor Create(Parent: TStateMenu);
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure ResumeEnable(Enable: Boolean);
   end;
@@ -26,7 +26,7 @@ type
     FParent: TStateMenu;
     procedure BtnClick(Btn: PBtn);
   public
-    constructor Create(Parent: TStateMenu; Font: Cardinal);
+    constructor Create(Parent: TStateMenu);
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
   end;
   TOptions=class(TGUIForm)
@@ -36,7 +36,7 @@ type
       FCFullscreen, FCVSync, FCEnableBGM, FBToggleCache, FBClearCache,
       FCurrentResolution, FCurrentRefreshRate, FColorDepth, FMouseSens: Integer;
     FResolutions: TResolutions;
-    procedure DrawForm; override;
+    procedure DrawForm(State: TBtnState); override;
     procedure ResClick(Btn: PBtn);
     procedure RefrClick(Btn: PBtn);
     procedure DepthClick(Btn: PBtn);
@@ -46,7 +46,7 @@ type
     procedure OKClick(Btn: PBtn);
     procedure CancelClick(Btn: PBtn);
   public
-    constructor Create(Parent: TStateMenu; Font: Cardinal);
+    constructor Create(Parent: TStateMenu);
     destructor Destroy; override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure ReadOptions;
@@ -55,10 +55,10 @@ type
   protected
     FParent: TStateMenu;
     FText: TStringList;
-    procedure DrawForm; override;
+    procedure DrawForm(State: TBtnState); override;
     procedure Close(Btn: PBtn);
   public
-    constructor Create(Parent: TStateMenu; const Caption, TextFile: string; Font: Cardinal);
+    constructor Create(Parent: TStateMenu; const Caption, TextFile: string);
     destructor Destroy; override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
   end;
@@ -112,9 +112,9 @@ var
     (Caption: 'Credits'; Tag: 0),
     (Caption: 'Exit'; Tag: 0));
 
-constructor TMainMenu.Create(Parent: TStateMenu; Font: Cardinal);
+constructor TMainMenu.Create(Parent: TStateMenu);
 begin
-  inherited Create(300, 150, 200, 300, Font);
+  inherited Create(300, 150, 200, 300);
   FParent:=Parent;
   FCaption:=GameTitle;
   MainMenuItems[0].OnClick:=GameClick;
@@ -158,7 +158,7 @@ end;
 procedure TMainMenu.CredsClick(Btn: PBtn);
 begin
   if not Assigned(FParent.FTextView) then
-    FParent.FTextView:=TTextView.Create(FParent, Btn.Caption, 'Creds.txt', Font);
+    FParent.FTextView:=TTextView.Create(FParent, Btn.Caption, 'Creds.txt');
   FParent.FCurFrm:=FParent.FTextView;
 end;
 
@@ -175,11 +175,11 @@ var
     (Caption: 'Normal'; Tag: 3),
     (Caption: 'Hard'; Tag: 1));
 
-constructor TDiffMenu.Create(Parent: TStateMenu; Font: Cardinal);
+constructor TDiffMenu.Create(Parent: TStateMenu);
 var
   i: Integer;
 begin
-  inherited Create(300, 200, 200, 200, Font);
+  inherited Create(300, 200, 200, 200);
   FParent:=Parent;
   FCaption:='Difficulty';
   for i:=Low(DiffMenuItems) to High(DiffMenuItems) do
@@ -207,12 +207,12 @@ const
   CacheState: array[Boolean] of string = ('Enable cache', 'Disable cache');
   SCacheSize='Cache: ';
 
-constructor TOptions.Create(Parent: TStateMenu; Font: Cardinal);
+constructor TOptions.Create(Parent: TStateMenu);
 var
   Btn: TBtn;
   Lbl: TLbl;
 begin
-  inherited Create(200, 130, 400, 350, Font);
+  inherited Create(200, 130, 400, 350);
   FParent:=Parent;
   FCaption:='Options';
   FResolutions:=gleGetResolutions;
@@ -342,13 +342,13 @@ begin
   Button[FBClearCache].Enabled:=UseCache;
 end;
 
-procedure TOptions.DrawForm;
+procedure TOptions.DrawForm(State: TBtnState);
 begin
   Lbl[FLResolution].Caption:=Format('%dx%d', [FResolutions[FCurrentResolution].Width, FResolutions[FCurrentResolution].Height]);
   Lbl[FLRefreshRate].Caption:=IntToStr(FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate]);
   Lbl[FLColorDepth].Caption:=IntToStr(FColorDepth);
   Lbl[FLMouseSens].Caption:=IntToStr(FMouseSens);
-  inherited DrawForm;
+  inherited;
 end;
 
 procedure TOptions.ResClick(Btn: PBtn);
@@ -416,11 +416,11 @@ end;
 
 {TTextView}
 
-constructor TTextView.Create(Parent: TStateMenu; const Caption, TextFile: string; Font: Cardinal);
+constructor TTextView.Create(Parent: TStateMenu; const Caption, TextFile: string);
 var
   Btn: TBtn;
 begin
-  inherited Create(80, 60, 640, 480, Font);
+  inherited Create(80, 60, 640, 480);
   FParent:=Parent;
   FCaption:=Caption;
   FText:=GetFileText(TextFile);
@@ -450,12 +450,12 @@ begin
   inherited KeyEvent(Key, Event);
 end;
 
-procedure TTextView.DrawForm;
+procedure TTextView.DrawForm(State: TBtnState);
 var
   i, Left: Integer;
   S: string;
 begin
-  inherited DrawForm;
+  inherited;
   gleColor(clText);
   for i:=0 to Min(FText.Count-1, 24) do
   begin
@@ -464,9 +464,9 @@ begin
     if (S<>'') and (S[1]=#9) then
     begin
       S:=Copy(S, 2, MaxInt);
-      Inc(Left, 310-Render2D.TextWidth(FFont, S) div 2);
+      Inc(Left, 310-Render2D.TextWidth(Font, S) div 2);
     end;
-    Render2D.TextOut(FFont, Left, 35+16*i, S);
+    Render2D.TextOut(Font, Left, 35+16*i, S);
   end;
 end;
 
@@ -478,17 +478,15 @@ end;
 {TStateMenu}
 
 constructor TStateMenu.Create;
-var
-  Font: Cardinal;
 begin
   inherited Create;
   {$IFDEF VSE_CONSOLE}
   Console.OnCommand['menubg file=s']:=MenuBgHandler;
   {$ENDIF}
-  Font:=Render2D.CreateFont(UIFont, UIFontSize, true);
-  FMainMenu:=TMainMenu.Create(Self, Font);
-  FDiffMenu:=TDiffMenu.Create(Self, Font);
-  FOptions:=TOptions.Create(Self, Font);
+  SetGUIFont(UIFont, UIFontSize, true);
+  FMainMenu:=TMainMenu.Create(Self);
+  FDiffMenu:=TDiffMenu.Create(Self);
+  FOptions:=TOptions.Create(Self);
   FCurFrm:=FMainMenu;
   FStart:=TStateStart(Core.GetState(Core.FindState('Start')));
   FGame:=TStateGame(Core.GetState(Core.FindState('Game')));
