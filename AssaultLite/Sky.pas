@@ -3,7 +3,7 @@ unit Sky;
 interface
 
 uses
-  AvL, avlUtils, OpenGL, VSECamera, VSEPrimitiveModel;
+  AvL, avlUtils, OpenGL, oglExtensions, VSECamera, VSEPrimitiveModel;
 
 type
   TSky=class(TObject)
@@ -34,6 +34,8 @@ end;
 procedure TSky.Draw(Camera: TCamera);
 begin
   glPushAttrib(GL_ENABLE_BIT or GL_TRANSFORM_BIT or GL_CURRENT_BIT);
+  if GL_ARB_multitexture then
+    glActiveTextureARB(GL_TEXTURE0_ARB);
   glMatrixMode(GL_TEXTURE);
   glPushMatrix;
   glLoadIdentity;
