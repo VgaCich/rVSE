@@ -41,5 +41,6 @@ begin
     end;
   end
     else StateStart.UseCache:=DirectoryExists(CacheDir);
-  VSEStart;
+  while VSEStart = StopNeedRestart do
+    Settings.ReloadInitSettings;
 end.
