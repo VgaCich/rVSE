@@ -66,7 +66,7 @@ procedure ShowMessage(const Caption, Prompt: string; const Buttons: array of str
 implementation
 
 uses
-  VSEMemPak, VSERender2D, VSEBindMan;
+  VSERender2D, VSEBindMan;
 
 { TMessageBox }
 

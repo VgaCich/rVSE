@@ -26,7 +26,7 @@ type
 
 implementation
 
-uses VSEMemPak, GameData, Scene, GameObjects, PlayerActions, Missions
+uses GameData, Scene, GameObjects, PlayerActions, Missions
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 { TStageStart }

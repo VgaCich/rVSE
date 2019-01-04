@@ -55,7 +55,7 @@ const
 
 implementation
 
-uses VSESound, VSETexMan, VSERender2D, VSEMemPak, VSEImageCodec
+uses VSESound, VSETexMan, VSERender2D, VSEImageCodec
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 {TMainMenu}
@@ -125,7 +125,7 @@ end;
 
 procedure TMainMenu.TextClick(Btn: PBtn);
 begin
-  FParentSet.AddForm(IDTextView, TTextView.Create(640, 480, Btn.Caption, 'Close', GetFileText(TextFiles[Btn.Tag])), Name);
+  FParentSet.AddForm(IDTextView, TTextView.Create(640, 480, Btn.Caption, 'Close', Core.GetFileText(TextFiles[Btn.Tag])), Name);
   FormManager.Show(IDTextView);
 end;
 

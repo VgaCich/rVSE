@@ -51,7 +51,7 @@ const
 
 implementation
 
-uses VSERender2D, VSETexMan, VSEMemPak, VSEFormManager, StateMenu, StateGame, Game
+uses VSERender2D, VSETexMan, VSEFormManager, StateMenu, StateGame, Game
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -66,7 +66,7 @@ const
 constructor TScene.Create;
 begin
   inherited;
-  FMap := TPriModel.Create('Models\Map.vpm');
+  FMap := TPriModel.Create(Core.GetFile('Models\Map.vpm'), true);
   FObjects := TGameObjectsArray.Create;
   FTitleFont := Render2D.CreateFont(UIFont, 20, true);
   FInfoFont := Render2D.CreateFont(UIFont, 12, true);

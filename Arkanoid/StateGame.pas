@@ -96,7 +96,7 @@ type
 implementation
 
 uses
-  VSERender2D, VSEMemPak, VSESound, VSETexMan, VSEGUI, VSECollisionCheck,
+  VSERender2D, VSESound, VSETexMan, VSEGUI, VSECollisionCheck,
   {$IFDEF VSE_CONSOLE}VSEConsole,{$ENDIF}{$IFDEF VSE_LOG}VSELog,{$ENDIF}
   StateMenu, StateGameEnd;
 
@@ -389,7 +389,7 @@ constructor TBall.Create(Parent: TStateGame);
 begin
   inherited;
   FPaddle := FParent.FPaddle;
-  FModel := TPriModel.Create('Ball.vpm');
+  FModel := TPriModel.Create(Core.GetFile('Ball.vpm'), true);
   FWidth := BallSize;
   FHeight := BallSize;
 end;
@@ -480,7 +480,7 @@ end;
 constructor TBrick.Create(Parent: TStateGame);
 begin
   inherited;
-  FModel := TPriModel.Create('Brick.vpm');
+  FModel := TPriModel.Create(Core.GetFile('Brick.vpm'), true);
   FHealth := Random(Parent.Level) + 1;
   if FHealth <= 2 then
     FModel.Materials[1].Texture := TexMan.GetTex('Grass');
@@ -520,7 +520,7 @@ end;
 constructor TPaddle.Create(Parent: TStateGame);
 begin
   inherited;
-  FModel := TPriModel.Create('Paddle.vpm');
+  FModel := TPriModel.Create(Core.GetFile('Paddle.vpm'), true);
   FWidth := PaddleWidth;
   FHeight := PaddleHeight;
 end;
@@ -541,7 +541,7 @@ const
 constructor TWall.Create(Parent: TStateGame);
 begin
   inherited;
-  FModel := TPriModel.Create('Wall.vpm');
+  FModel := TPriModel.Create(Core.GetFile('Wall.vpm'), true);
   FWidth := BoardWidth * 2;
   FHeight := BoardHeight * 2;
 end;

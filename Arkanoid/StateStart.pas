@@ -49,7 +49,7 @@ var
 
 implementation
 
-uses VSEMemPak, VSETexMan, VSEImageCodec, VSERender2D, VSEGUI,
+uses VSETexMan, VSEImageCodec, VSERender2D, VSEGUI,
   {$IFDEF VSE_CONSOLE}VSEConsole,{$ENDIF}{$IFDEF VSE_LOG}VSELog,{$ENDIF}
   StateMenu;
 
@@ -66,7 +66,7 @@ const
   SLoading='Loading...';
   SRVSE='reduced VS Engine';
 
-{TLoadThread} //I'm don't sure that is correct... May be a source of AV's
+{TLoadThread} 
 
 procedure TLoadThread.Execute;
 var
@@ -74,7 +74,7 @@ var
   STF: TSynTexFilters;
   STCode: TStream;
 begin
-  STCode:=GetFile('Textures.stc');
+  STCode:=Core.GetFile('Textures.stc');
   ST:=nil;
   STF:=nil;
   if STCode=nil then

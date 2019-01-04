@@ -52,7 +52,7 @@ const
 
 implementation
 
-uses VSEMemPak, VSETexMan, VSEImageCodec, VSERender2D
+uses VSETexMan, VSEImageCodec, VSERender2D
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
   StateMenu;
 
@@ -70,7 +70,7 @@ const
   SRVSE='reduced VS Engine';
   STitle='Assault Lite';
 
-{TLoadThread} //I'm not sure that is correct... May be a source of AV's
+{TLoadThread}
 
 procedure TLoadThread.Execute;
 var
@@ -78,7 +78,7 @@ var
   STF: TSynTexFilters;
   STCode: TStream;
 begin
-  STCode:=GetFile('Textures.stc');
+  STCode:=Core.GetFile('Textures.stc');
   ST:=nil;
   STF:=nil;
   if STCode=nil then

@@ -32,7 +32,7 @@ uses
 constructor TUnit.Create;
 begin
   inherited Create;
-  FModel:=TPriModel.Create('Tank.vpm');
+  FModel:=TPriModel.Create(Core.GetFile('Tank.vpm'), true);
   FTerrain:=TStateGame(Core.GetState(Core.FindState('Game'))).Terrain;
   Pos:=Vector3D(68);
 end;

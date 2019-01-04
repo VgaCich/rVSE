@@ -2,7 +2,7 @@ program AssaultLite;
 
 uses
   {$IFDEF VER150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
-  AvL, avlUtils, VSECore, StateStart, StateMenu, StateGame, StateLoad;
+  AvL, avlUtils, VSECore, VSEMemPak, StateStart, StateMenu, StateGame, StateLoad;
 
 {$R *.res}
 {$R MemPak.res}

@@ -31,7 +31,7 @@ type
 
 implementation
 
-uses VSEMemPak, GameData, GameForms, Scene
+uses GameData, GameForms, Scene
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 { TPlaceCharacterAction }

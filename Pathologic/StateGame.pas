@@ -48,7 +48,7 @@ const
 
 implementation
 
-uses VSERender2D, VSETexMan, VSEMemPak, VSEBindMan, VSEFormManager
+uses VSERender2D, VSETexMan, VSEBindMan, VSEFormManager
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
   StateMenu, GameForms, GameObjects;
 

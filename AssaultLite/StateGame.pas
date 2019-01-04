@@ -41,7 +41,7 @@ const
 
 implementation
 
-uses VSERender2D, VSEMemPak, VSESound, VSEBindMan, VSETexMan, StateMenu
+uses VSERender2D, VSESound, VSEBindMan, VSETexMan, StateMenu
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -280,7 +280,7 @@ var
   Data: TStream;
 begin
   FAN(FShader);
-  Data:=GetFile(string(Args[1].VAnsiString));
+  Data:=Core.GetFile(string(Args[1].VAnsiString));
   if Assigned(Data) then
   try
     Log(llInfo, 'Loading shader '+string(Args[1].VAnsiString));

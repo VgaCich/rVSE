@@ -3,7 +3,7 @@ unit Sky;
 interface
 
 uses
-  AvL, avlUtils, OpenGL, oglExtensions, VSECamera, VSEPrimitiveModel;
+  AvL, avlUtils, OpenGL, oglExtensions, VSECore, VSECamera, VSEPrimitiveModel;
 
 type
   TSky=class(TObject)
@@ -22,7 +22,7 @@ implementation
 constructor TSky.Create;
 begin
   inherited Create;
-  FDome:=TPriModel.Create('Sky.vpm');
+  FDome:=TPriModel.Create(Core.GetFile('Sky.vpm'), true);
 end;
 
 destructor TSky.Destroy;

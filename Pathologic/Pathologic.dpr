@@ -10,7 +10,7 @@ uses
 function LoadTexture(Self, Sender: TObject; const Name: string): Cardinal;
 begin
   try
-    Result := TexMan.AddTexture(Name, GetFile(GetTexFileName(Name)), true, true, true);
+    Result := TexMan.AddTexture(Name, Core.GetFile(GetTexFileName(Name)), true, true, true);
     TexMan.SetFilter(Result, tfAnisotropic);
   except
     Result := 0;

@@ -108,7 +108,7 @@ const
 
 implementation
 
-uses VSETexMan, VSEMemPak, Scene
+uses VSETexMan, Scene
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 { TGameObject }
@@ -117,7 +117,7 @@ constructor TGameObject.Create(const Model: string);
 begin
   inherited Create;
   EventBus.SendEvent(FreeListAdd, Self, []);
-  FModel := TPriModel.Create(Model);
+  FModel := TPriModel.Create(Core.GetFile(Model), true);
   FPos := Vector3D(0);
 end;
 

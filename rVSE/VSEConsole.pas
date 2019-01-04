@@ -110,7 +110,7 @@ const
 implementation
 
 uses
-  VSERender2D, VSEMemPak;
+  VSERender2D;
 
 const
   SConsoleVariableTypeMismatch = 'Console: console variable type mismatch';
@@ -626,7 +626,7 @@ var
 begin
   Result := false;
   CmdFileName := string(Args[1].VAnsiString);
-  CmdFile := GetFileText(CmdFileName);
+  CmdFile := Core.GetFileText(CmdFileName);
   if not Assigned(CmdFile) then
   begin
     Error('Console: can''t execute file "%s": file not found', [CmdFileName]);
@@ -667,7 +667,7 @@ function TConsole.ExistHandler(Sender: TObject; Args: array of const): Boolean;
 var
   F: TStream;
 begin
-  F := GetFile(string(Args[1].VAnsiString));
+  F := Core.GetFile(string(Args[1].VAnsiString));
   Result := Assigned(F);
   F.Free;
 end;

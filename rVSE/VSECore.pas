@@ -33,6 +33,7 @@ type
   );
   TMouseEvent=(meDown, meUp, meMove, meWheel); //Mouse event: button pressed, button release, mouse moving, mouse wheel
   TKeyEvent=(keDown, keUp); //Keyboard event: key pressed, key released
+  TOnGetFile=function(const FileName: string): TStream of object; //GetFile extension handler
   TCoreModule=class
   public
     procedure Draw; virtual; //Draw event
@@ -68,6 +69,7 @@ type
     FHPETFreq: Int64;
     FStates: array of TGameState;
     FModules: array of TModule;
+    FOnGetFile: TOnGetFile;
     FState, FSwitchTo: Cardinal;
     FCurState: TGameState;
     FPrevStateName: string;
@@ -118,6 +120,8 @@ type
     procedure SetResolution(ResolutionX, ResolutionY, RefreshRate: Cardinal; Fullscreen: Boolean; CanReset: Boolean = true);  //Set resolution ResX*ResY@Refresh; CanReset: return to previous resolution if fail
     procedure MakeScreenshot(Name: string; Format: TImageFormat; Numerate: Boolean = true); //Makes screenshot in exe folder; Name: screentshot file name; Format: screenshot file format; Numerate: append counter to name
     procedure ResetUpdateTimer; //Reset update timer and clear pending updates
+    function GetFile(const FileName: string): TStream; //Get file as stream
+    function GetFileText(const FileName: string): TStringList; //Get text file as TStringList
     ///
     property Handle: THandle read FHandle; //Engine window handle
     property DC: HDC read FDC; //Engine window GDI device context
@@ -140,6 +144,7 @@ type
     property FPS: Cardinal read FFPS; //Current FPS
     property UpdateInterval: Cardinal read FUpdInt write FUpdInt; //Current state updates interval
     property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold; //Update Overload Detection threshold, overloaded update cycles before triggering
+    property OnGetFile: TOnGetFile read FOnGetFile write FOnGetFile;
   end;
   TSettings=class
   private
@@ -168,6 +173,7 @@ type
     InitStates: TInitStates; //Init states procedure pointer
     Caption: string; //Engine window caption
     Version: string; //Application version
+    DataDir: string; //Data directory (absolute path with trailing backslash)
     ResolutionX: Integer; //Horizontal resolution
     ResolutionY: Integer; //Vertical resolution
     RefreshRate: Integer; //Screen refresh rate, fullscreen only
@@ -187,6 +193,7 @@ var
     InitStates: nil;
     Caption: '';
     Version: '';
+    DataDir: '';
     ResolutionX: 640;
     ResolutionY: 480;
     RefreshRate: 0;
@@ -852,6 +859,30 @@ begin
   FPreviousUpdate:=Time;
 end;
 
+function TCore.GetFile(const FileName: string): TStream;
+begin
+  Result:=nil;
+  if FileExists(InitSettings.DataDir+FileName) then
+    Result:=TFileStream.Create(InitSettings.DataDir+FileName, fmOpenRead or fmShareDenyWrite)
+  else if Assigned(FOnGetFIle) then
+    Result:=FOnGetFile(FileName);
+end;
+
+function TCore.GetFileText(const FileName: string): TStringList;
+var
+  F: TStream;
+begin
+  Result:=nil;
+  F:=GetFile(FileName);
+  if Assigned(F) then
+  try
+    Result:=TStringList.Create;
+    Result.LoadFromStream(F);
+  finally
+    FAN(F);
+  end;
+end;
+
 //Private
 
 procedure TCore.SetFullscreen(Value: Boolean);
@@ -1036,6 +1067,7 @@ begin
   inherited;
   IniName:=ChangeFileExt(FullExeName, '.ini');
   FFirstRun:=not FileExists(IniName);
+  InitSettings.DataDir:=ExePath+'data\';
   {$IFNDEF VSE_NO_INI}
   FIni:=TIniFile.Create(IniName);
   if not FFirstRun then

@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, AvL, avlUtils, avlVectors, OpenGL, oglExtensions, VSEOpenGLExt,
-  VSECore, VSEMemPak, VSETexMan, VSEImageCodec;
+  VSECore, VSETexMan, VSEImageCodec;
 
 type
   TFace = array [0..2] of WORD;
@@ -43,7 +43,7 @@ begin
   Name:=ChangeFileExt(ExtractFileName(FileName), '');
   Result:=TexMan.GetTex(Name, true);
   if Result<>0 then Exit;
-  Result:=TexMan.AddTexture(Name, GetFile(FileName), Clamp, MipMap, true);
+  Result:=TexMan.AddTexture(Name, Core.GetFile(FileName), Clamp, MipMap, true);
 end;
 
 procedure LightColor(ID: Integer; R, G, B: Single);
@@ -136,7 +136,7 @@ var
   end;
 
 begin
-  F:=GetFile(SceneName+'.exs');
+  F:=Core.GetFile(SceneName+'.exs');
   try
     F.Read(O_Count, SizeOf(O_Count));
     SetLength(Objects, O_Count);

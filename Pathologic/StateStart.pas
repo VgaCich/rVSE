@@ -42,7 +42,7 @@ const
 implementation
 
 uses
-  VSEMemPak, VSETexMan, VSERender2D, VSEGUI
+  VSETexMan, VSERender2D, VSEGUI
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
   StateMenu;
 
@@ -72,12 +72,12 @@ var
 begin
   inherited;
   Progress := 0;
-  List := GetFileText('Preload.txt');
+  List := Core.GetFileText('Preload.txt');
   try
     for i := 0 to List.Count - 1 do
     try
       TexName := List[i];
-      Data := GetFile(GetTexFileName(TexName));
+      Data := Core.GetFile(GetTexFileName(TexName));
       try
         TexImage.Load(Data);
       finally

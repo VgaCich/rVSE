@@ -3,7 +3,7 @@ program VSEWater;
 uses
   {$IFDEF VER150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
   AvL, avlUtils, avlMath, avlVectors, OpenGL, oglExtensions, VSEOpenGLExt,
-  VSECore, VSEConsole, VSETexMan, VSERender2D, VSEShaders, VSEMemPak, VSELog, Scene;
+  VSECore, VSEMemPak, VSEConsole, VSETexMan, VSERender2D, VSEShaders, VSELog, Scene;
 
 type
   TStateMain=class(TGameState)
@@ -202,7 +202,7 @@ var
 
 begin
   Shader:=nil;
-  Data:=GetFile(string(Args[2].VAnsiString));
+  Data:=Core.GetFile(string(Args[2].VAnsiString));
   if Assigned(Data) then
   try
     Log(llInfo, 'Loading shader '+string(Args[2].VAnsiString));

@@ -2,7 +2,7 @@ program Arkanoid;
 
 uses
   {$IFDEF VER150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
-  AvL, avlUtils, VSECore, StateStart, StateMenu, StateGame, StateGameEnd;
+  AvL, avlUtils, VSECore, VSEMemPak, StateStart, StateMenu, StateGame, StateGameEnd;
 
 {$R MemPak.res}
 

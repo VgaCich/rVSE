@@ -99,7 +99,7 @@ var
 
 implementation
 
-uses VSESound, VSETexMan, VSERender2D, VSEMemPak, VSEImageCodec
+uses VSESound, VSETexMan, VSERender2D, VSEImageCodec
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 {TMainMenu}
@@ -423,7 +423,7 @@ begin
   inherited Create(80, 60, 640, 480);
   FParent:=Parent;
   FCaption:=Caption;
-  FText:=GetFileText(TextFile);
+  FText:=Core.GetFileText(TextFile);
   with Btn do
   begin
     Type_:=btPush;

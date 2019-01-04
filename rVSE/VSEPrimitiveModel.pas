@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, AvL, avlUtils, avlMath, avlVectors, OpenGL, oglExtensions,
-  VSEOpenGLExt, VSEArrayBuffer, VSEVertexArrayUtils, VSEMemPak;
+  VSEOpenGLExt, VSEArrayBuffer, VSEVertexArrayUtils;
 
 {$I VSEPrimitiveModel.inc}
 
@@ -88,7 +88,7 @@ type
     function GetObject(ID: Cardinal): TPriModelObject;
     function GetMaterial(ID: Byte): TPriModelMaterial;
   public
-    constructor Create(const FileName: string); //Create model from file
+    constructor Create(Data: TStream; FreeData: Boolean = false); //Create model
     destructor Destroy; override;
     procedure Draw; //Draw model
     property Objects[ID: Cardinal]: TPriModelObject read GetObject; default; //Model objects
@@ -106,8 +106,8 @@ const
   SPriModelObjectReadChunkPrimitive = 'PriModelObject.ReadChunk: primitive %d generation failed at %d';
   SPriModelObjectReadChunkUnknownPr = 'PriModelObject.ReadChunk: unknown primitive chunk %d at %d';
   SPriModelReadChunkUnknownChunkAt = 'PriModel.ReadChunk: unknown chunk %d at %d';
-  SPriModelCreateCannotLoadModel = 'PriModel.Create(%s): Cannot load model';
-  SPriModelCreateCannotOpenFile = 'PriModel.Create(%s): Cannot open file';
+  SPriModelCreateCannotLoadModel = 'PriModel.Create: Cannot load model';
+  SPriModelCreateNoData = 'PriModel.Create: No data';
   MatrixE: TMatrix4D=((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1));
 
 function SelI(Expr: Boolean; ValTrue, ValFalse: Integer): Integer;
@@ -704,9 +704,8 @@ end;
 
 {TPriModel}
 
-constructor TPriModel.Create(const FileName: string);
+constructor TPriModel.Create(Data: TStream; FreeData: Boolean);
 var
-  Data: TStream;
   VertexBuffer: TMemoryStream;
   ChunkID: Byte;
   ChunkSize: Word;
@@ -717,20 +716,19 @@ var
   {$ENDIF}
 begin
   inherited Create;
-  FTransform := TTransform.Create;
-  Data:=GetFile(FileName);
   if not Assigned(Data)
-    then raise Exception.CreateFmt(SPriModelCreateCannotOpenFile, [FileName]);
+    then raise Exception.Create(SPriModelCreateNoData);
+  FTransform := TTransform.Create;
   FVertexBuffer:=TArrayBuffer.Create;
   VertexBuffer:=TMemoryStream.Create;
   try
     Data.Read(ChunkID, SizeOf(ChunkID));
-    if ChunkID<>ChunkModel then raise Exception.CreateFmt(SPriModelCreateCannotLoadModel, [FileName]);
+    if ChunkID<>ChunkModel then raise Exception.Create(SPriModelCreateCannotLoadModel);
     Data.Read(ChunkSize, SizeOf(ChunkSize));
     while Data.Position<ChunkSize do
       if not ReadChunk(Data, VertexBuffer)
-        then raise Exception.CreateFmt(SPriModelCreateCannotLoadModel, [FileName]);
-    if Data.Position<>ChunkSize then raise Exception.CreateFmt(SPriModelCreateCannotLoadModel, [FileName]);
+        then raise Exception.Create(SPriModelCreateCannotLoadModel);
+    if Data.Position<>ChunkSize then raise Exception.Create(SPriModelCreateCannotLoadModel);
     {$IFDEF PM_DRAWNORMALS}
     SetLength(VA, VertexBuffer.Size div SizeOf(TVertex));
     VertexBuffer.Seek(0, soFromBeginning);
@@ -746,8 +744,8 @@ begin
     {$ENDIF}
     FVertexBuffer.SetData(VertexBuffer.Memory, VertexBuffer.Size);
   finally
+    if FreeData then FAN(Data);
     FAN(VertexBuffer);
-    FAN(Data);
     {$IFDEF PM_DRAWNORMALS}
     Finalize(VA);
     Finalize(NA);

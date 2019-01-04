@@ -60,7 +60,7 @@ function GetTexFileName(const Name: string): string;
 implementation
 
 uses
-  VSETexMan, VSERender2D, VSEMemPak, VSEImageCodec
+  VSETexMan, VSERender2D, VSEImageCodec
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
@@ -182,7 +182,7 @@ end;
 
 procedure TMainMenu.TextClick(Btn: PBtn);
 begin
-  FParentSet.AddForm(IDTextView, TTextView.Create(640, 480, Btn.Caption, 'Закрыть', GetFileText(TextFiles[Btn.Tag])), Name);
+  FParentSet.AddForm(IDTextView, TTextView.Create(640, 480, Btn.Caption, 'Закрыть', Core.GetFileText(TextFiles[Btn.Tag])), Name);
   FormManager.Show(IDTextView);
 end;
 
@@ -335,7 +335,7 @@ var
   Data: TStream;
 begin
   Result := false;
-  Data := GetFile(string(Args[1].VAnsiString));
+  Data := Core.GetFile(string(Args[1].VAnsiString));
   if Assigned(Data) then
   begin
     BgTex := TexMan.AddTexture('MenuBg', Data, true, false, true);

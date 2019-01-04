@@ -36,7 +36,7 @@ var
 implementation
 
 uses
-  VSEMemPak{$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+  {$IFDEF VSE_CONSOLE}VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 {uFMOD}
 
@@ -180,7 +180,7 @@ var
 begin
   if not Assigned(FMusicBuffer) then Exit;
   if Assigned(FMusicFile) then StopMusic;
-  Data:=GetFile(FileName);
+  Data:=Core.GetFile(FileName);
   if not Assigned(Data) then Exit;
   if Data is TCustomMemoryStream then
     FMusicFile:=Data as TCustomMemoryStream

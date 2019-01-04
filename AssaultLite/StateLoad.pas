@@ -34,7 +34,7 @@ const
 
 implementation
 
-uses VSEMemPak, VSETexMan, VSERender2D {$IFDEF VSE_LOG}, VSELog{$ENDIF}, StateMenu;
+uses VSETexMan, VSERender2D {$IFDEF VSE_LOG}, VSELog{$ENDIF}, StateMenu;
 
 const
   SLoad='Loading level %s: %s...';
@@ -100,7 +100,7 @@ var
   ST: TSynTex;
   STF: TSynTexFilters;
 begin
-  STCode:=GetFile(FLevelName+'.stc');
+  STCode:=Core.GetFile(FLevelName+'.stc');
   ST:=nil;
   STF:=nil;
   if STCode=nil then

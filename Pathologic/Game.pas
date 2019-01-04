@@ -89,7 +89,7 @@ const
 
 implementation
 
-uses {VSERender2D, VSETexMan,} VSEMemPak, GameStages, Missions
+uses GameStages, Missions
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 { TGame }

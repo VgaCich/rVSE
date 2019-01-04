@@ -3,7 +3,7 @@ unit VSEBindMan;
 interface
 
 uses
-  Windows, AvL, avlUtils, VSECore, VSEGUI, VSEMemPak
+  Windows, AvL, avlUtils, VSECore
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 type
@@ -72,9 +72,6 @@ const
   MBtnMap: array[mbLeft..mbX2] of Integer = (VK_LBUTTON, VK_RBUTTON, VK_MBUTTON, VK_XBUTTON4, VK_XBUTTON5);
 
 implementation
-
-uses
-  VSERender2D;
 
 const
   MaxEventAge=5;
