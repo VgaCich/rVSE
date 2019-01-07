@@ -1,5 +1,4 @@
-del MemPak.bin
-del MemPak.res
+del MemPak.pas
 del *.~*
 del *.dcu
 del DCU\*.dcu
