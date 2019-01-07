@@ -189,9 +189,11 @@ end;
 { TConsole }
 
 constructor TConsole.Create;
+{$IFDEF VSE_LOG}
 var
   Level: TLogLevel;
   Levels: string;
+{$ENDIF}
 begin
   inherited;
   FLog := TStringList.Create;

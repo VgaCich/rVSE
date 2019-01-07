@@ -93,6 +93,8 @@ type
     property Score: Integer read FScore write FScore;
   end;
 
+const SIDGame = 'Game';
+
 implementation
 
 uses
@@ -183,17 +185,7 @@ var
 begin
   inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
-  if BgTex <> 0 then
-  begin
-    Render2D.Enter;
-    gleColor(clWhite);
-    TexMan.Bind(BgTex);
-    gleColor(clWhite);
-    with Render2D.VSBounds do
-      Render2D.DrawRect(Left, Top, Right - Left, Bottom - Top, 0, 0, 1, 1);
-    TexMan.Unbind;
-    Render2D.Leave;
-  end;
+  DrawBackground;
   glePerspectiveMatrix(60, Core.ResolutionX, Core.ResolutionY);
   glMatrixMode(GL_PROJECTION);
   glTranslate(0, 0, -22);
@@ -212,10 +204,12 @@ begin
   for i := 0 to High(FBricks) do
   FBricks[i].Draw;
   Render2D.Enter;
-  gleColor(clText);
   with Render2D.VSBounds do
   begin
     i := Round(Bottom - Render2D.TextHeight(FFont) - 5);
+    gleColor($80000000);
+    Render2D.DrawRect(Left, i, Right - Left, Bottom - i);
+    gleColor(clLime);
     Render2D.TextOut(FFont, Left + 5, i, 'Level: ' + IntToStr(Level));
     S := 'Score: ' + IntToStr(Score);
     Render2D.TextOut(FFont, (Left + Right - Render2D.TextWidth(FFont, S)) / 2, i, S);
@@ -250,7 +244,7 @@ begin
     StartLevel;
   end
   else if FBall.Lives <= 0 then
-    Core.SwitchState('GameEnd');
+    Core.SwitchState(SIDGameEnd);
 end;
 
 function TStateGame.Activate: Cardinal;
@@ -290,7 +284,7 @@ begin
   if Event = keUp then
   begin
     case Key of
-      VK_ESCAPE: Core.SwitchState('Menu');
+      VK_ESCAPE: Core.SwitchState(SIDMenu);
     end;
   end;
 end;
@@ -299,12 +293,12 @@ function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result := inherited SysNotify(Notify);
   if Notify = snMinimize then
-    Core.SwitchState('Menu');
+    Core.SwitchState(SIDMenu);
 end;
 
 function TStateGame.GetName: string;
 begin
-  Result := 'Game';
+  Result := SIDGame;
 end;
 
 procedure TStateGame.ClearBricks;
@@ -449,7 +443,7 @@ begin
       PlaySound(PChar(SND_ALIAS_SYSTEMHAND), 0, SND_ALIAS_ID or SND_ASYNC);
       Dec(FLives);
       if Lives > 0 then
-        FParent.Score := FParent.Score - 250;
+        FParent.Score := FParent.Score - 100;
       Reset;
     end;
     for i := 0 to High(FParent.FBricks) do
@@ -555,7 +549,7 @@ begin
   glMatrixMode(GL_TEXTURE);
   glPushMatrix;
   glLoadIdentity;
-  if BGTex <> 0 then
+  if BackgroundLoaded then
     FModel.Materials[FModel.Objects[ObjBack].MaterialID].Diffuse := $80FFFFFF;
   FShift := FShift + 0.015 / Core.FPS;
   if FShift > 1 then

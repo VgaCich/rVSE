@@ -67,7 +67,7 @@ type
   end;
   TGUIForm = class //GUI Form
   private
-    FActive, FLastActive, FLast, FTabStop: Integer; //internally used
+    FActive, FLast, FTabStop: Integer; //internally used
     FCustomFont: Cardinal; //internally used
     FMovable, FClose: Boolean; //internally used
     FDragPoint: TPoint; //internally used
@@ -342,7 +342,6 @@ begin
   FCustomFont := InvalidFont;
   FCaptHeight := Render2D.TextHeight(Font) + 6; //TODO: Recalc on font change
   FActive := -1;
-  FLastActive := -1;
   FLast := -1;
   FTabStop := -1;
   FMovable := false;
@@ -404,21 +403,20 @@ end;
 procedure TGUIForm.Update;
 var
   Cursor: TPoint;
+  FormRec: PFormRec;
 begin
   if FClose then
   begin
     Self.Free;
     Exit;
   end;
-  Cursor := Core.MouseCursor;
-  MapCursor(Cursor);
-  if IsMoving then
+  if Assigned(FParentSet) then
   begin
-    FX := FX + Cursor.X - FDragPoint.X;
-    FY := FY + Cursor.Y - FDragPoint.Y;
+    with Core.MouseCursor do
+      FormRec := FParentSet.FormAt(X, Y);
+    if Assigned(FormRec) and ((FormRec.Form <> Self) or ((FormRec.Form = Self) and FormRec.Locked)) then
+      FActive := -1;
   end;
-  FLastActive := FActive;
-  FActive := BtnAt(Cursor);
 end;
 
 procedure TGUIForm.Close;
@@ -432,7 +430,13 @@ var
 begin
   Cursor := Point(X, Y);
   MapCursor(Cursor);
+  FActive := BtnAt(Cursor);
   case Event of
+    meMove: if IsMoving then
+      begin
+        FX := FX + Cursor.X - FDragPoint.X;
+        FY := FY + Cursor.Y - FDragPoint.Y;
+      end;
     meDown:
       begin
         if Button = mbLeft then

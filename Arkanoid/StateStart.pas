@@ -43,6 +43,9 @@ type
     procedure ClearCache;
   end;
 
+const
+  SIDStart = 'Start';
+
 var
   UseCache: Boolean;
   CacheDir: string;
@@ -141,17 +144,12 @@ begin
   inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
   Render2D.Enter;
-  gleColor(clWhite);
-  if BgTex<>0 then
-  begin
-    TexMan.Bind(BgTex);
-    gleColor(clWhite);
-    with Render2D.VSBounds do
-      Render2D.DrawRect(Left, Top, Right - Left, Bottom - Top, 0, 0, 1, 1);
-    TexMan.Unbind;
-  end;
-  gleColor(VSEGUI.clText);
-  Render2D.TextOut(FFont, 400-Render2D.TextWidth(FFont, SLoading)/2, 500, SLoading);
+  DrawBackground;
+  gleColor($80000000);
+  Render2D.DrawRect(250, 240, 300, 240);
+  gleColor(clLime);
+  with Render2D, Render2D.VSBounds do
+    TextOut(FFont, Right-TextWidth(FFont, SLoading), Bottom-TextHeight(FFont), SLoading);
   Render2D.TextOut(FFont, 400-Render2D.TextWidth(FFont, GameTitle)/2, 250, GameTitle);
   glPushMatrix;
   glTranslate(200, 230, 0);
@@ -238,7 +236,7 @@ end;
 
 function TStateStart.GetName: string;
 begin
-  Result:='Start';
+  Result:=SIDStart;
 end;
 
 procedure TStateStart.DrawSegs(X, Y: Single; Segs: Integer);
@@ -338,7 +336,7 @@ end;
 procedure TStateStart.OnLoaded(Sender: TObject);
 begin
   if LoadResult
-    then Core.SwitchState('Menu')
+    then Core.SwitchState(SIDMenu)
     else begin
       {$IFDEF VSE_LOG}Log(llError, 'Loading textures failed');{$ENDIF}
       Core.StopEngine(StopUserError);

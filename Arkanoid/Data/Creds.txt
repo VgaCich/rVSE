@@ -1,7 +1,7 @@
 	Arkanoid
 	~~~~~~~~
 
-	A simple arkanoid in 64k.
+	A simple arkanoid in 64k. Version 1.1.
 	Use mouse to control paddle. Click to launch ball.
 
 	Concept & Design:
@@ -16,8 +16,8 @@
 	~~~
 	Vga
 
-	Powered by rVS Engine (c) VgaSoft, 2005-2016
+	Powered by rVS Engine (c) VgaSoft, 2005-2018
 	Texture generation by SynTex (c) VgaSoft, 2007-2009
 	Parts based on eXgine Lite by XProger
 
-	(c) VgaSoft, 2016
+	(c) VgaSoft, 2016-2018

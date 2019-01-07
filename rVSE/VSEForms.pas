@@ -32,6 +32,7 @@ type
     destructor Destroy; override;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
   end;
+  {$IFNDEF FORMS_NO_BINDMAN}
   TBindManCfgForm=class(TAlignedForm) // Keys configuration form
   private
     FLabels, FButtons: array of Integer;
@@ -48,6 +49,7 @@ type
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure Refresh;
   end;
+  {$ENDIF}
   TTextView = class(TAlignedForm)
   protected
     FCurPage, FLines, FPages, FLPage: Integer;
@@ -66,7 +68,7 @@ procedure ShowMessage(const Caption, Prompt: string; const Buttons: array of str
 implementation
 
 uses
-  VSERender2D, VSEBindMan;
+  VSERender2D{$IFNDEF FORMS_NO_BINDMAN}, VSEBindMan{$ENDIF};
 
 { TMessageBox }
 
@@ -283,6 +285,7 @@ end;
 
 { TBindManCfgForm }
 
+{$IFNDEF FORMS_NO_BINDMAN}
 const
   PageLabel = '%d/%d';
 
@@ -456,6 +459,7 @@ begin
   FActive := -1;
   Refresh;
 end;
+{$ENDIF}
 
 { TTextView }
 
@@ -473,7 +477,7 @@ begin
   Line := 0;
   while Line < FText.Count do
   begin
-    Src := ProcessKeyTags(FText[Line]);
+    Src := {$IFNDEF FORMS_NO_BINDMAN}ProcessKeyTags(FText[Line]){$ELSE}FText[Line]{$ENDIF};
     Dst := '';
     while (Src <> '') and (Render2D.TextWidth(Font, Src) > Width - 20) do
     begin

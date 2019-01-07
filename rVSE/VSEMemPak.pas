@@ -7,6 +7,11 @@ uses
 
 implementation
 
+{$IFDEF VSE_USE_MEMPAK_PAS}
+uses
+  MemPak;
+{$ENDIF}
+
 type
   TMemPak = class(TModule)
   private
@@ -22,11 +27,6 @@ type
   public
     constructor Create(Data: Pointer; Size: Longint);
   end;
-
-{$IFDEF VSE_USE_MEMPAK_PAS}
-uses
-  MemPak;
-{$ENDIF}
 
 {$I VSEMemPakTypes.inc}
 

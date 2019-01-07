@@ -4,8 +4,6 @@ uses
   {$IFDEF VER150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
   AvL, avlUtils, VSECore, VSEMemPak, StateStart, StateMenu, StateGame, StateGameEnd;
 
-{$R MemPak.res}
-
 const
   SUseCache='Enable cache?'#13#10+
             'It will speed up game loading but needs some HDD space';

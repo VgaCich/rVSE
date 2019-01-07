@@ -5,12 +5,17 @@ interface
 uses
   Windows, Messages, AvL, avlUtils, OpenGL, oglExtensions, VSEOpenGLExt, VSECore;
 
+const
+  SIDGameEnd = 'GameEnd';
+  SScores = 'Scores';
+  ScoresCount = 5;
+
 type
   TStateGameEnd = class(TGameState)
   private
     FFont, FLargeFont: Cardinal;
     FHighScore: Boolean;
-    FScores: array[0..4] of Integer;
+    FScores: array[0..ScoresCount - 1] of Integer;
     procedure DrawLine(Font, Y: Integer; const Line: string);
   protected
     function  GetName: string; override;
@@ -30,9 +35,6 @@ uses
   VSERender2D, VSEGUI, StateMenu, StateGame
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
-const
-  SScores = 'Scores';
-
 {TStateGameEnd}
 
 constructor TStateGameEnd.Create;
@@ -46,12 +48,14 @@ procedure TStateGameEnd.Draw;
 var
   i: Integer;
 begin
-  Core.GetState(Core.FindState('Game')).Draw;
+  Core.GetState(Core.FindState(SIDGame)).Draw;
   Render2D.Enter;
   gleColor(clRed);
   DrawLine(FLargeFont, 150, 'Game Over');
   if FHighScore then
     DrawLine(FFont, 250, 'You have got high score!');
+  gleColor($80000000);
+  Render2D.DrawRect(310, 300, 180, 210);
   gleColor(clText);
   DrawLine(FFont, 300, 'High scores:');
   for i := 0 to High(FScores) do
@@ -65,7 +69,7 @@ var
 begin
   Result := inherited Activate;
   FHighScore := false;
-  Score := TStateGame(Core.GetState(Core.FindState('Game'))).Score;
+  Score := TStateGame(Core.GetState(Core.FindState(SIDGame))).Score;
   for i := 0 to High(FScores) do
     FScores[i] := Settings.Int[SScores, IntToStr(i)];
   for i := 0 to High(FScores) do
@@ -84,28 +88,28 @@ end;
 
 procedure TStateGameEnd.Deactivate;
 begin
-  TStateGame(Core.GetState(Core.FindState('Game'))).ClearBricks;
+  TStateGame(Core.GetState(Core.FindState(SIDGame))).ClearBricks;
 end;
 
 procedure TStateGameEnd.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
 begin
-  if (Event = meDown) or (Event = meUp) then Core.SwitchState('Menu');
+  if (Event = meDown) or (Event = meUp) then Core.SwitchState(SIDMenu);
 end;
 
 procedure TStateGameEnd.KeyEvent(Key: Integer; Event: TKeyEvent);
 begin
-  if (Event = keDown) or (Event = keUp) then Core.SwitchState('Menu');
+  if (Event = keDown) or (Event = keUp) then Core.SwitchState(SIDMenu);
 end;
 
 function TStateGameEnd.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result:=inherited SysNotify(Notify);
-  if Notify=snMinimize then Core.SwitchState('Menu');
+  if Notify=snMinimize then Core.SwitchState(SIDMenu);
 end;
 
 function TStateGameEnd.GetName: string;
 begin
-  Result:='GameEnd';
+  Result:=SIDGameEnd;
 end;
 
 procedure TStateGameEnd.DrawLine(Font, Y: Integer; const Line: string);

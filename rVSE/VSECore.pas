@@ -6,7 +6,7 @@ interface
 
 uses
   Windows, Messages, MMSystem, AvL, avlMath, avlUtils, OpenGL, oglExtensions,
-  VSEOpenGLExt, VSEImageCodec {$IFDEF VSE_LOG}, VSELog, VSESysInfo{$ENDIF};
+  VSEOpenGLExt, VSEImageCodec {$IFDEF VSE_LOG}, VSELog{$IFNDEF VSE_NOSYSINFO}, VSESysInfo{$ENDIF}{$ENDIF};
 
 type
   TStopState=( //Engine stop codes
@@ -411,10 +411,10 @@ begin
     {$IFDEF VSE_LOG}LogException('in module '+Modules[i].Name+'.Create');{$ENDIF}
     Core.StopEngine(StopInitError);
   end;
-  {$IFDEF VSE_LOG}
+  {$IF Defined(VSE_LOG) and not Defined(VSE_NOSYSINFO)}
   if LogSysInfo then
     SendNotify(snLogSysInfo);
-  {$ENDIF}
+  {$IFEND}
   SetResolution(InitSettings.ResolutionX, InitSettings.ResolutionY, InitSettings.RefreshRate, InitSettings.Fullscreen, false);
   VSync:=InitSettings.VSync;
   {$IFDEF VSE_LOG}Log(llInfo, 'States initialization');{$ENDIF}

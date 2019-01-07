@@ -17,17 +17,23 @@ type
     FMusicBufferDesc: TDSBufferDesc;
     FEnableBGM: Boolean;
     procedure SetEnableBGM(Value: Boolean);
-    {$IFDEF VSE_CONSOLE}function BGMHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
+    function GetVolume: Integer;
+    procedure SetVolume(const Value: Integer);
+    {$IFDEF VSE_CONSOLE}
+    function BGMHandler(Sender: TObject; Args: array of const): Boolean;
+    function BGMVolHandler(Sender: TObject; Args: array of const): Boolean;
+    {$ENDIF}
   public
     constructor Create; override; //internally used
     destructor Destroy; override; //internally used
-    {$IFDEF VSE_LOG}procedure LogCaps;{$ENDIF}
+    {$IF Defined(VSE_LOG) and not Defined(VSE_NOSYSINFO)}procedure LogCaps;{$IFEND}
     procedure Update; override;//internally used
     function SysNotify(Notify: TSysNotify): Boolean; override; //internally used
     procedure PlayMusic(const FileName: string); //Play music from file
     procedure StopMusic; //Stop music
     class function Name: string; override;
-    property EnableBGM: Boolean read FEnableBGM write SetEnableBGM;
+    property EnableBGM: Boolean read FEnableBGM write SetEnableBGM; //Enable/disable music playing
+    property BGMVolume: Integer read GetVolume write SetVolume; //Music volume dB*100 from -100dB (-10000) to 0
   end;
 
 var
@@ -57,7 +63,10 @@ constructor TSound.Create;
 begin
   inherited Create;
   Sound:=Self;
-  {$IFDEF VSE_CONSOLE}Console.OnCommand['bgm ?val=eoff:on']:=BGMHandler;{$ENDIF}
+  {$IFDEF VSE_CONSOLE}
+  Console.OnCommand['bgm ?val=eoff:on']:=BGMHandler;
+  Console.OnCommand['bgmvol ?val=f']:=BGMVolHandler;
+  {$ENDIF}
   if DirectSoundCreate(nil, FDirectSound, nil)<>S_OK then
   begin
     {$IFDEF VSE_LOG}Log(llError, 'Sound: Cannot initialize DirectSound');{$ENDIF}
@@ -82,7 +91,7 @@ begin
   with FMusicBufferDesc do
   begin
     dwSize:=SizeOf(FMusicBufferDesc);
-    dwFlags:=DSBCAPS_STATIC or DSBCAPS_GLOBALFOCUS or DSBCAPS_GETCURRENTPOSITION2;
+    dwFlags:=DSBCAPS_STATIC or DSBCAPS_CTRLVOLUME or DSBCAPS_GLOBALFOCUS or DSBCAPS_GETCURRENTPOSITION2;
     dwBufferBytes:=uFMOD_BUFFER_SIZE;
     lpwfxFormat:=@FMusicPCM;
   end;
@@ -111,7 +120,7 @@ begin
   Result:='Sound';
 end;
 
-{$IFDEF VSE_LOG}
+{$IF Defined(VSE_LOG) and not Defined(VSE_NOSYSINFO)}
 procedure TSound.LogCaps;
 const
   Flags: array[0..10] of record Name: string; Value: DWORD; end = (
@@ -157,7 +166,7 @@ begin
     LogRaw(llInfo, '');
   end;
 end;
-{$ENDIF}
+{$IFEND}
 
 procedure TSound.Update;
 begin
@@ -167,10 +176,10 @@ end;
 function TSound.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result:=inherited SysNotify(Notify);
-  {$IFDEF VSE_LOG}
+  {$IF Defined(VSE_LOG) and not Defined(VSE_NOSYSINFO)}
   if Notify=snLogSysInfo then
     LogCaps;
-  {$ENDIF}
+  {$IFEND}
   //TODO: pause on snPause
 end;
 
@@ -204,10 +213,22 @@ begin
   if Value=FEnableBGM
     then Exit;
   FEnableBGM:=Value;
-  if not FEnableBGM
-    then StopMusic
-    else if Assigned(FMusicBuffer) and Assigned(FMusicFile)
-      then uFMOD_DSPlaySong(FMusicFile.Memory, FMusicFile.Size, XM_MEMORY, FMusicBuffer);
+  if not FEnableBGM then
+    uFMOD_DSPlaySong(nil, 0, 0, nil)
+  else if Assigned(FMusicBuffer) and Assigned(FMusicFile) then
+    uFMOD_DSPlaySong(FMusicFile.Memory, FMusicFile.Size, XM_MEMORY, FMusicBuffer);
+end;
+
+function TSound.GetVolume: Integer;
+begin
+  if Assigned(FMusicBuffer) then
+    FMusicBuffer.GetVolume(Result);
+end;
+
+procedure TSound.SetVolume(const Value: Integer);
+begin
+  if Assigned(FMusicBuffer) then
+    FMusicBuffer.SetVolume(Value);
 end;
 
 {$IFDEF VSE_CONSOLE}
@@ -216,9 +237,19 @@ const
 
 function TSound.BGMHandler(Sender: TObject; Args: array of const): Boolean;
 begin
-  if Length(Args)>1
-    then EnableBGM:=Boolean(Args[1].VInteger)
-    else Console.WriteLn('BGM: '+BoolState[EnableBGM]);
+  if Length(Args)>1 then
+    EnableBGM:=Boolean(Args[1].VInteger)
+  else
+    Console.WriteLn('BGM: '+BoolState[EnableBGM]);
+  Result:=true;
+end;
+
+function TSound.BGMVolHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  if Length(Args)>1 then
+    BGMVolume:=Round(100*Args[1].VExtended^)
+  else
+    Console.WriteLn('BGM volume: '+FloatToStr2(BGMVolume/100, 1, 2)+'dB');
   Result:=true;
 end;
 {$ENDIF}

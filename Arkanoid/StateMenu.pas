@@ -4,73 +4,53 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions,
-  VSECore, VSEGUI, StateStart, StateGame;
+  VSECore, VSEGUI, VSEFormManager, VSEForms, StateStart, StateGame, StateGameEnd;
 
 type
   TStateMenu=class;
-  TMainMenu=class(TGUIForm)
+  TMainMenu=class(TAlignedForm)
   protected
-    FParent: TStateMenu;
     FResumeButton: Integer;
     procedure GameClick(Btn: PBtn);
+    procedure ScoresClick(Btn: PBtn);
     procedure OptionsClick(Btn: PBtn);
     procedure CredsClick(Btn: PBtn);
     procedure ExitClick(Btn: PBtn);
   public
-    constructor Create(Parent: TStateMenu);
+    constructor Create;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
     procedure ResumeEnable(Enable: Boolean);
   end;
-  TDiffMenu = class(TGUIForm)
+  TDiffMenu=class(TAlignedForm)
   protected
-    FParent: TStateMenu;
     procedure BtnClick(Btn: PBtn);
   public
-    constructor Create(Parent: TStateMenu);
+    constructor Create;
     procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
   end;
-  TOptions=class(TGUIForm)
+  TScores = class(TAlignedForm)
   protected
-    FParent: TStateMenu;
-    FLResolution, FLRefreshRate, FLColorDepth, FLMouseSens, FLCacheSize,
-      FCFullscreen, FCVSync, FCEnableBGM, FBToggleCache, FBClearCache,
-      FCurrentResolution, FCurrentRefreshRate, FColorDepth, FMouseSens: Integer;
-    FResolutions: TResolutions;
+    FScores: array[0..ScoresCount-1] of Integer;
+    procedure CloseClick(Btn: PBtn);
     procedure DrawForm(State: TBtnState); override;
-    procedure ResClick(Btn: PBtn);
-    procedure RefrClick(Btn: PBtn);
-    procedure DepthClick(Btn: PBtn);
+  public
+    constructor Create;
+    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+  end;
+  TOptions=class(TOptionsForm)
+  protected
+    FLCacheSize, FLMouseSens, FCEnableBGM, FBToggleCache, FBClearCache, FMouseSens: Integer;
+    procedure DrawForm(State: TBtnState); override;
     procedure SensClick(Btn: PBtn);
     procedure ToggleCache(Btn: PBtn);
     procedure ClearCache(Btn: PBtn);
-    procedure OKClick(Btn: PBtn);
-    procedure CancelClick(Btn: PBtn);
+    procedure OKClick(Btn: PBtn); override;
   public
-    constructor Create(Parent: TStateMenu);
-    destructor Destroy; override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    procedure ReadOptions;
-  end;
-  TTextView=class(TGUIForm)
-  protected
-    FParent: TStateMenu;
-    FText: TStringList;
-    procedure DrawForm(State: TBtnState); override;
-    procedure Close(Btn: PBtn);
-  public
-    constructor Create(Parent: TStateMenu; const Caption, TextFile: string);
-    destructor Destroy; override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    constructor Create;
   end;
   TStateMenu=class(TGameState)
   private
-    FMainMenu: TMainMenu;
-    FDiffMenu: TDiffMenu;
-    FOptions: TOptions;
-    FTextView: TTextView;
-    FCurFrm: TGUIForm;
-    FStart: TStateStart;
-    FGame: TStateGame;
+    FFormsSet: TGUIFormsSet;
     {$IFDEF VSE_CONSOLE}
     function MenuBgHandler(Sender: TObject; Args: array of const): Boolean;
     {$ENDIF}
@@ -80,59 +60,90 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure Draw; override;
-    procedure Update; override;
     function  Activate: Cardinal; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    procedure CharEvent(C: Char); override;
+    procedure Deactivate; override;
     function  SysNotify(Notify: TSysNotify): Boolean; override;
   end;
 
 const
+  SIDMenu = 'Menu';
   UIFont = 'Tahoma';
   UIFontSize = 12;
   GameTitle = 'Arkanoid 64k';
-  GameVer = '1.0';
+  GameVer = '1.1';
 
-var
-  BgTex: Cardinal;
+procedure DrawBackground;
+function BackgroundLoaded: Boolean;
 
 implementation
 
 uses VSESound, VSETexMan, VSERender2D, VSEImageCodec
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
+var
+  BgTex: Cardinal;
+
+procedure DrawBackground;
+begin
+  if BgTex <> 0 then
+  begin
+    TexMan.Bind(BgTex);
+    Render2D.Enter;
+    gleColor(clWhite);
+    with Render2D, Render2D.VSBounds do
+      DrawRect(Left, Top, Right - Left, Bottom - Top, 0, 0, 1, 1);
+    Render2D.Leave;
+    TexMan.Unbind;
+  end;
+end;
+
+function BackgroundLoaded: Boolean;
+begin
+  Result := BgTex <> 0;
+end;
+
+const
+  IDDiffMenu = 'DiffMenu';
+  IDMainMenu = 'MainMenu';
+  IDOptions = 'Options';
+  IDScores = 'Scores';
+  IDTextView = 'TextView';
+
 {TMainMenu}
 
 var
-  MainMenuItems: array[0..4] of TMenuItem = (
+  MainMenuItems: array[0..5] of TMenuItem = (
     (Caption: 'New game'; Tag: 1),
     (Caption: 'Resume'; Tag: 0),
+    (Caption: 'Scores'; Tag: 0),
     (Caption: 'Options'; Tag: 0),
     (Caption: 'Credits'; Tag: 0),
     (Caption: 'Exit'; Tag: 0));
 
-constructor TMainMenu.Create(Parent: TStateMenu);
+constructor TMainMenu.Create;
 begin
-  inherited Create(300, 150, 200, 300);
-  FParent:=Parent;
+  inherited Create(0, 0, 200, 350);
+  Alignment:=[faCenter, faMiddle];
   FCaption:=GameTitle;
   MainMenuItems[0].OnClick:=GameClick;
   MainMenuItems[1].OnClick:=GameClick;
-  MainMenuItems[2].OnClick:=OptionsClick;
-  MainMenuItems[3].OnClick:=CredsClick;
-  MainMenuItems[4].OnClick:=ExitClick;
+  MainMenuItems[2].OnClick:=ScoresClick;
+  MainMenuItems[3].OnClick:=OptionsClick;
+  MainMenuItems[4].OnClick:=CredsClick;
+  MainMenuItems[5].OnClick:=ExitClick;
   FResumeButton:=CreateMenu(Self, 30, 50, 140, 30, 20, MainMenuItems)[1];
   Button[FResumeButton].Enabled:=false;
 end;
 
 procedure TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvent);
 begin
-  if (Key=VK_ESCAPE) and (Event=keUp)
-    then if Self.Button[FResumeButton].Enabled
-      then Core.SwitchState('Game')
-      else Core.StopEngine
-    else inherited KeyEvent(Key, Event);
+  if (Key=VK_ESCAPE) and (Event=keUp) then
+    if Self.Button[FResumeButton].Enabled then
+      Core.SwitchState(SIDGame)
+    else
+      Core.StopEngine
+  else
+    inherited KeyEvent(Key, Event);
 end;
 
 procedure TMainMenu.ResumeEnable(Enable: Boolean);
@@ -144,22 +155,29 @@ procedure TMainMenu.GameClick(Btn: PBtn);
 begin
   if Btn.Tag=1 then
   begin
-    FParent.FCurFrm:=FParent.FDiffMenu;
+    FParentSet.AddForm(IDDiffMenu, TDiffMenu.Create, Name);
+    FormManager.Show(IDDiffMenu);
   end
-    else Core.SwitchState('Game');
+  else
+    Core.SwitchState(SIDGame);
 end;
+
+procedure TMainMenu.ScoresClick(Btn: PBtn);
+begin
+  FParentSet.AddForm(IDScores, TScores.Create, Name);
+  FormManager.Show(IDScores);
+end; 
 
 procedure TMainMenu.OptionsClick(Btn: PBtn);
 begin
-  FParent.FOptions.ReadOptions;
-  FParent.FCurFrm:=FParent.FOptions;
+  FParentSet.AddForm(IDOptions, TOptions.Create, Name);
+  FormManager.Show(IDOptions);
 end;
 
 procedure TMainMenu.CredsClick(Btn: PBtn);
 begin
-  if not Assigned(FParent.FTextView) then
-    FParent.FTextView:=TTextView.Create(FParent, Btn.Caption, 'Creds.txt');
-  FParent.FCurFrm:=FParent.FTextView;
+  FParentSet.AddForm(IDTextView, TTextView.Create(640, 480, Btn.Caption, 'Close', Core.GetFileText('Creds.txt')), Name);
+  FormManager.Show(IDTextView);
 end;
 
 procedure TMainMenu.ExitClick(Btn: PBtn);
@@ -170,17 +188,18 @@ end;
 {TDiffMenu}
 
 var
-  DiffMenuItems: array[0..2] of TMenuItem = (
+  DiffMenuItems: array[0..3] of TMenuItem = (
     (Caption: 'Easy'; Tag: 5),
     (Caption: 'Normal'; Tag: 3),
-    (Caption: 'Hard'; Tag: 1));
+    (Caption: 'Hard'; Tag: 1),
+    (Caption: 'Back'; Tag: 0));
 
-constructor TDiffMenu.Create(Parent: TStateMenu);
+constructor TDiffMenu.Create;
 var
   i: Integer;
 begin
-  inherited Create(300, 200, 200, 200);
-  FParent:=Parent;
+  inherited Create(0, 0, 200, 250);
+  Alignment:=[faCenter, faMiddle];
   FCaption:='Difficulty';
   for i:=Low(DiffMenuItems) to High(DiffMenuItems) do
     DiffMenuItems[i].OnClick:=BtnClick;
@@ -189,16 +208,70 @@ end;
 
 procedure TDiffMenu.KeyEvent(Key: Integer; Event: TKeyEvent);
 begin
-  if (Key=VK_ESCAPE) and (Event=keUp)
-    then FParent.FCurFrm:=FParent.FMainMenu
-    else inherited KeyEvent(Key, Event);
+  if (Key=VK_ESCAPE) and (Event=keUp) then
+    Close
+  else
+    inherited KeyEvent(Key, Event);
 end;
 
 procedure TDiffMenu.BtnClick(Btn: PBtn);
 begin
-  FParent.FGame.NewGame(Btn.Tag);
-  Core.SwitchState('Game');
-  FParent.FCurFrm:=FParent.FMainMenu;
+  if Btn.Tag > 0 then
+  begin
+    (Core.GetState(Core.FindState(SIDGame)) as TStateGame).NewGame(Btn.Tag);
+    Core.SwitchState(SIDGame);
+  end;
+  Close;
+end;
+
+{ TScores }
+
+constructor TScores.Create;
+var
+  Btn: TBtn;
+  i: Integer;
+begin
+  inherited Create(0, 0, 200, 250);
+  Alignment:=[faCenter, faMiddle];
+  FCaption:='Scores';
+  with Btn do
+  begin
+    Enabled:=true;
+    X:=30;
+    Y:=200;
+    Width:=140;
+    Height:=30;
+    Type_:=btPush;
+    Caption:='Close';
+    OnClick:=CloseClick;
+  end;
+  AddButton(Btn);
+  for i := 0 to High(FScores) do
+    FScores[i] := Settings.Int[SScores, IntToStr(i)];
+end;
+
+procedure TScores.KeyEvent(Key: Integer; Event: TKeyEvent);
+begin
+  if (Key=VK_ESCAPE) and (Event=keUp) then
+    Close
+  else
+    inherited KeyEvent(Key, Event);
+end;
+
+procedure TScores.DrawForm(State: TBtnState);
+var
+  i, LHeight: Integer;
+begin
+  inherited;
+  LHeight := Render2D.TextHeight(Font) + 10;
+  gleColor(clText);
+  for i:= 0 to High(FScores) do
+    Render2D.TextOut(Font, 30, 40 + i * LHeight, IntToStr(i + 1) + ': ' + IntToStr(FScores[i]));
+end;
+
+procedure TScores.CloseClick(Btn: PBtn);
+begin
+  Close;
 end;
 
 {TOptions}
@@ -207,19 +280,13 @@ const
   CacheState: array[Boolean] of string = ('Enable cache', 'Disable cache');
   SCacheSize='Cache: ';
 
-constructor TOptions.Create(Parent: TStateMenu);
+constructor TOptions.Create;
 var
   Btn: TBtn;
   Lbl: TLbl;
 begin
-  inherited Create(200, 130, 400, 350);
-  FParent:=Parent;
-  FCaption:='Options';
-  FResolutions:=gleGetResolutions;
-  FLResolution:=CreateSelect(Self, 10, 60, 190, 20, ResClick, '-', '+');
-  FLRefreshRate:=CreateSelect(Self, 10, 110, 190, 20, RefrClick, '-', '+');
-  FLColorDepth:=CreateSelect(Self, 10, 160, 190, 20, DepthClick, '-', '+');
-  FLMouseSens:=CreateSelect(Self, 10, 210, 190, 20, SensClick, '-', '+');
+  inherited Create(400, 300);
+  FLMouseSens := CreateSelect(Self, 220, 160, 160, 20, SensClick, '-', '+');
   with Btn do
   begin
     Enabled:=true;
@@ -235,138 +302,39 @@ begin
     Caption:='Clear cache';
     OnClick:=ClearCache;
     FBClearCache:=AddButton(Btn);
-    X:=10;
-    Y:=250;
-    Width:=200;
+    X:=220;
+    Y:=200;
+    Width:=160;
     Height:=20;
     Type_:=btCheck;
     OnClick:=nil;
-    Caption:='Fullscreen';
-    FCFullscreen:=AddButton(Btn);
-    Y:=280;
-    Caption:='V. Sync';
-    FCVSync:=AddButton(Btn);
-    X:=220;
-    Y:=250;
-    Width:=160;
     Caption:='Music';
     FCEnableBGM:=AddButton(Btn);
-    X:=140;
-    Y:=310;
-    Width:=120;
-    Height:=30;
-    Type_:=btPush;
-    Caption:='OK';
-    OnClick:=OKClick;
-    AddButton(Btn);
-    X:=270;
-    Caption:='Cancel';
-    OnClick:=CancelClick;
-    AddButton(Btn);
   end;
   with Lbl do
   begin
-    Align:=laCenter;
     Color:=0;
-    X:=10;
-    Y:=38;
-    Width:=190;
-    Caption:='Resolution';
-    AddLabel(Lbl);
-    Y:=88;
-    Caption:='Refresh rate';
-    AddLabel(Lbl);
-    Y:=138;
-    Caption:='Color depth';
-    AddLabel(Lbl);
-    Y:=188;
-    Caption:='Mouse sensivity';
-    AddLabel(Lbl);
     X:=220;
     Y:=38;
     Width:=160;
-    Align:=laLeft;
+    Align:=laCenter;
     Caption:='';
     FLCacheSize:=AddLabel(Lbl);
+    Y := 138;
+    Caption:='Mouse sensivity';
+    AddLabel(Lbl);
   end;
-end;
-
-destructor TOptions.Destroy;
-begin
-  Finalize(FResolutions);
-  inherited Destroy;
-end;
-
-procedure TOptions.KeyEvent(Key: Integer; Event: TKeyEvent);
-begin
-  if (Key=VK_ESCAPE) and (Event=keUp)
-    then FParent.FCurFrm:=FParent.FMainMenu
-    else inherited KeyEvent(Key, Event);
-end;
-
-procedure TOptions.ReadOptions;
-var
-  i: Integer;
-begin
-  Button[FCFullscreen].Checked:=Core.Fullscreen;
-  Button[FCVSync].Checked:=Core.VSync;
   Button[FCEnableBGM].Checked:=Sound.EnableBGM;
-  FColorDepth:=Core.ColorDepth;
-  FMouseSens:=FParent.FGame.MouseSens;
-  FCurrentResolution:=-1;
-  for i:=0 to High(FResolutions) do
-    if (FResolutions[i].Width=Core.ResolutionX) and (FResolutions[i].Height=Core.ResolutionY) then FCurrentResolution:=i;
-  if FCurrentResolution=-1 then
-  begin
-    FCurrentResolution:=Length(FResolutions);
-    SetLength(FResolutions, FCurrentResolution+1);
-    with FResolutions[FCurrentResolution] do
-    begin
-      Width:=Core.ResolutionX;
-      Height:=Core.ResolutionY;
-      SetLength(RefreshRates, 1);
-      RefreshRates[0]:=Core.RefreshRate;
-    end;
-  end;
-  FCurrentRefreshRate:=-1;
-  for i:=0 to High(FResolutions[FCurrentResolution].RefreshRates) do
-    if FResolutions[FCurrentResolution].RefreshRates[i]=Core.RefreshRate then FCurrentRefreshRate:=i;
-  if FCurrentRefreshRate=-1 then
-  begin
-    FCurrentRefreshRate:=Length(FResolutions[FCurrentResolution].RefreshRates);
-    SetLength(FResolutions[FCurrentResolution].RefreshRates, FCurrentRefreshRate+1);
-    FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate]:=Core.RefreshRate;
-  end;
-  Lbl[FLCacheSize].Caption:=SCacheSize+SizeToStr(DirSize(CacheDir));
+  Self.Lbl[FLCacheSize].Caption:=SCacheSize+SizeToStr(DirSize(CacheDir));
   Button[FBToggleCache].Caption:=CacheState[UseCache];
   Button[FBClearCache].Enabled:=UseCache;
+  FMouseSens:=(Core.GetState(Core.FindState(SIDGame)) as TStateGame).MouseSens;
 end;
 
 procedure TOptions.DrawForm(State: TBtnState);
 begin
-  Lbl[FLResolution].Caption:=Format('%dx%d', [FResolutions[FCurrentResolution].Width, FResolutions[FCurrentResolution].Height]);
-  Lbl[FLRefreshRate].Caption:=IntToStr(FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate]);
-  Lbl[FLColorDepth].Caption:=IntToStr(FColorDepth);
-  Lbl[FLMouseSens].Caption:=IntToStr(FMouseSens);
+  Lbl[FLMouseSens].Caption := IntToStr(FMouseSens);
   inherited;
-end;
-
-procedure TOptions.ResClick(Btn: PBtn);
-begin
-  FCurrentResolution:=Max(0, Min(FCurrentResolution+Btn.Tag, High(FResolutions)));
-  FCurrentRefreshRate:=0;
-end;
-
-procedure TOptions.RefrClick(Btn: PBtn);
-begin
-  FCurrentRefreshRate:=Max(0, Min(FCurrentRefreshRate+Btn.Tag, High(FResolutions[FCurrentResolution].RefreshRates)));
-end;
-
-procedure TOptions.DepthClick(Btn: PBtn);
-const
-  Depth: array[-1..1] of Integer = (16, 0, 32);
-begin
-  FColorDepth:=Depth[Btn.Tag];
 end;
 
 procedure TOptions.SensClick(Btn: PBtn);
@@ -376,15 +344,7 @@ end;
 
 procedure TOptions.ToggleCache(Btn: PBtn);
 begin
-  if UseCache then
-  begin
-    UseCache:=false;
-    DeleteDir(CacheDir);
-  end
-  else begin
-    UseCache:=true;
-    CreateDir(CacheDir);
-  end;
+  (Core.GetState(Core.FindState(SIDStart)) as TStateStart).SetCache(not UseCache);
   Lbl[FLCacheSize].Caption:=SCacheSize+SizeToStr(DirSize(CacheDir));
   Button[FBToggleCache].Caption:=CacheState[UseCache];
   Button[FBClearCache].Enabled:=UseCache;
@@ -392,87 +352,15 @@ end;
 
 procedure TOptions.ClearCache(Btn: PBtn);
 begin
-  FParent.FStart.ClearCache;
+  (Core.GetState(Core.FindState(SIDStart)) as TStateStart).ClearCache;
   Lbl[FLCacheSize].Caption:=SCacheSize+SizeToStr(DirSize(CacheDir));
 end;
 
 procedure TOptions.OKClick(Btn: PBtn);
 begin
-  Core.SetResolution(FResolutions[FCurrentResolution].Width,
-                     FResolutions[FCurrentResolution].Height,
-                     FResolutions[FCurrentResolution].RefreshRates[FCurrentRefreshRate],
-                     Button[FCFullscreen].Checked, true);
-  Core.VSync:=Button[FCVSync].Checked;
-  Core.ColorDepth:=FColorDepth;
   Sound.EnableBGM:=Button[FCEnableBGM].Checked;
-  FParent.FGame.MouseSens:=FMouseSens;
-  FParent.FCurFrm:=FParent.FMainMenu;
-end;
-
-procedure TOptions.CancelClick(Btn: PBtn);
-begin
-  FParent.FCurFrm:=FParent.FMainMenu;
-end;
-
-{TTextView}
-
-constructor TTextView.Create(Parent: TStateMenu; const Caption, TextFile: string);
-var
-  Btn: TBtn;
-begin
-  inherited Create(80, 60, 640, 480);
-  FParent:=Parent;
-  FCaption:=Caption;
-  FText:=Core.GetFileText(TextFile);
-  with Btn do
-  begin
-    Type_:=btPush;
-    X:=535;
-    Y:=445;
-    Width:=100;
-    Height:=30;
-    Enabled:=true;
-    Caption:='Close';
-    OnClick:=Close;
-    AddButton(Btn);
-  end;
-end;
-
-destructor TTextView.Destroy;
-begin
-  FAN(FText);
-  inherited Destroy;
-end;
-
-procedure TTextView.KeyEvent(Key: Integer; Event: TKeyEvent);
-begin
-  if (Event=keDown) and (Key=VK_ESCAPE) then Close(nil);
-  inherited KeyEvent(Key, Event);
-end;
-
-procedure TTextView.DrawForm(State: TBtnState);
-var
-  i, Left: Integer;
-  S: string;
-begin
+  (Core.GetState(Core.FindState(SIDGame)) as TStateGame).MouseSens:=FMouseSens;
   inherited;
-  gleColor(clText);
-  for i:=0 to Min(FText.Count-1, 24) do
-  begin
-    S:=FText[i];
-    Left:=10;
-    if (S<>'') and (S[1]=#9) then
-    begin
-      S:=Copy(S, 2, MaxInt);
-      Inc(Left, 310-Render2D.TextWidth(Font, S) div 2);
-    end;
-    Render2D.TextOut(Font, Left, 35+16*i, S);
-  end;
-end;
-
-procedure TTextView.Close(Btn: PBtn);
-begin
-  FParent.FCurFrm:=FParent.FMainMenu;
 end;
 
 {TStateMenu}
@@ -484,19 +372,13 @@ begin
   Console.OnCommand['menubg file=s']:=MenuBgHandler;
   {$ENDIF}
   SetGUIFont(UIFont, UIFontSize, true);
-  FMainMenu:=TMainMenu.Create(Self);
-  FDiffMenu:=TDiffMenu.Create(Self);
-  FOptions:=TOptions.Create(Self);
-  FCurFrm:=FMainMenu;
-  FStart:=TStateStart(Core.GetState(Core.FindState('Start')));
-  FGame:=TStateGame(Core.GetState(Core.FindState('Game')));
+  FFormsSet:=TGUIFormsSet.Create;
+  FFormsSet.AddForm(IDMainMenu, TMainMenu.Create);
 end;
 
 destructor TStateMenu.Destroy;
 begin
-  FAN(FMainMenu);
-  FAN(FOptions);
-  FAN(FTextView);
+  FAN(FFormsSet);
   inherited Destroy;
 end;
 
@@ -504,55 +386,29 @@ procedure TStateMenu.Draw;
 begin
   inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
-  if FGame.CanResumeGame then FGame.Draw
-    else if BgTex<>0 then
-    begin
-      TexMan.Bind(BgTex);
-      Render2D.Enter;
-      gleColor(clWhite);
-      with Render2D.VSBounds do
-        Render2D.DrawRect(Left, Top, Right - Left, Bottom - Top, 0, 0, 1, 1);
-      Render2D.Leave;
-      TexMan.Unbind;
-    end;
-  FCurFrm.Draw;
-end;
-
-procedure TStateMenu.Update;
-begin
-  inherited;
-  if not FCurFrm.Movable then FCurFrm.Movable:=true;
-  FCurFrm.Update;
+  with Core.GetState(Core.FindState(SIDGame)) as TStateGame do
+    if CanResumeGame then
+      Draw
+  else
+    DrawBackground;
 end;
 
 function TStateMenu.Activate: Cardinal;
 begin
   Result:=inherited Activate;
   glClearColor(0, 0, 0, 1);
-  FMainMenu.ResumeEnable(FGame.CanResumeGame);
+  FormManager.FormsSet:=FFormsSet;
+  (FormManager[IDMainMenu] as TMainMenu).ResumeEnable((Core.GetState(Core.FindState(SIDGame)) as TStateGame).CanResumeGame);
 end;
 
-procedure TStateMenu.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+procedure TStateMenu.Deactivate;
 begin
-  inherited;
-  FCurFrm.MouseEvent(Button, Event, X, Y);
-end;
-
-procedure TStateMenu.KeyEvent(Key: Integer; Event: TKeyEvent);
-begin
-  inherited;
-  FCurFrm.KeyEvent(Key, Event);
-end;
-
-procedure TStateMenu.CharEvent(C: Char);
-begin
-  inherited;
-  FCurFrm.CharEvent(C);
+  FormManager.FormsSet:=nil;
 end;
 
 function TStateMenu.GetName: string;
 begin
-  Result:='Menu';
+  Result:=SIDMenu;
 end;
 
 function TStateMenu.SysNotify(Notify: TSysNotify): Boolean;

@@ -233,6 +233,8 @@ begin
     glActiveTextureARB(GL_TEXTURE0_ARB+Channel);
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
+  if GL_ARB_multitexture then
+    glActiveTextureARB(GL_TEXTURE0_ARB);
 end;
 
 function TTexMan.InitRTT(Width, Height: Integer): Cardinal;
