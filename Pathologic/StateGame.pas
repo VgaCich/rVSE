@@ -50,15 +50,10 @@ implementation
 
 uses VSERender2D, VSETexMan, VSEBindMan, VSEFormManager
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
-  StateMenu, GameForms, GameObjects;
+  StateMenu, GameForms, GameObjects, GameData;
 
 const
-  Bindings: array[0..3] of TBindingRec = (
-    (Name: 'CamFwd'; Description: 'Камера вперед'; Key: Ord('W')),
-    (Name: 'CamBwd'; Description: 'Камера назад'; Key: Ord('S')),
-    (Name: 'CamLeft'; Description: 'Камера влево'; Key: Ord('A')),
-    (Name: 'CamRight'; Description: 'Камера вправо'; Key: Ord('D'))
-  );
+  MoveBorder = 10;
 
 constructor TStateGame.Create;
 begin
@@ -131,9 +126,15 @@ procedure TStateGame.Update;
 const
   Move: array[Boolean, Boolean] of Single = ((0, -1), (1, 0));
 begin
-  inherited; //TODO: Move by screen edges?
-  FCamera.Move(Vector2D(Move[BindMan.BindActive['CamLeft'], BindMan.BindActive['CamRight']],
-    Move[BindMan.BindActive['CamFwd'], BindMan.BindActive['CamBwd']]), MapBounds.Min, MapBounds.Max);
+  inherited;
+  FCamera.Move(Vector2D(
+    Move[
+      BindMan.BindActive[BindCamLeft] or (Core.MouseCursor.X < MoveBorder),
+      BindMan.BindActive[BindCamRight] or (Core.MouseCursor.X > Core.ResolutionX - MoveBorder)],
+    Move[
+      BindMan.BindActive[BindCamFwd] or (Core.MouseCursor.Y < MoveBorder),
+      BindMan.BindActive[BindCamBwd] or (Core.MouseCursor.Y > Core.ResolutionY - MoveBorder)]),
+    MapBounds.Min, MapBounds.Max);
   if Assigned(FGame) then
   begin
     EventBus.SendEvent(FOnMouseEvent, FGame, [Integer(meMove), @FMouse3D]);

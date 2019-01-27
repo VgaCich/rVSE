@@ -3,7 +3,7 @@ unit GameData;
 interface
 
 uses
-  avlVectors;
+  avlVectors, VSEBindMan;
 
 type
   TQuarterIndex = 0..15;
@@ -20,8 +20,12 @@ type
     Pos: TVector3D;
     Resources: array[0..3] of TResourceType;
   end;
+  TGraphicsQuality = (gqMin, gqMed, gqFull);
 
 const
+  UIFont = 'Courier New';
+  GameTitle = 'Мор. Утопия';
+  SGraphicsQuality = 'Quality';
   SPlague = 'Plague';
   SBachelor = 'Bachelor';
   SHaruspex = 'Haruspex';
@@ -131,6 +135,10 @@ const
     (Name: SAlexanderSaburov; Profile: @CharAlexanderSaburov),
     (Name: SStanislavRubin; Profile: @CharStanislavRubin),
     (Name: SAspity; Profile: @CharAspity));
+  MapBounds: record
+    Min: TVector2D;
+    Max: TVector2D;
+  end = (Min: (X: -60.0; Y: -35.0); Max: (X: 60.0; Y: 45.0));
   Quarter0Border: array[0..39] of TVector3D = (
     (X: 8.146; Y: 0.0; Z: 41.916),
     (X: -25.463; Y: 0.0; Z: 39.360),
@@ -904,6 +912,39 @@ const
     (Quarter: 14; Pos: (X: 21.635; Y: 0.0; Z: -20.424); Resources: (rtKey, rtSecret, rtCoin, rtkey)),
     (Quarter: 15; Pos: (X: -4.331; Y: 0.0; Z: -8.814); Resources: (rtKey, rtCoin, rtKey, rtSecret))
   );
+  GraphicsQualityName: array[TGraphicsQuality] of string = ('Минимальное', 'Среднее', 'Максимальное');
+  TexFolders: array[TGraphicsQuality] of array[0..4] of record Folder, Postfix: string end = (
+    (
+      (Folder: 'Cards'; Postfix: '.min'),
+      (Folder: 'Chars'; Postfix: '.min'),
+      (Folder: 'Chips'; Postfix: '.min'),
+      (Folder: 'Docs'; Postfix: '.min'),
+      (Folder: 'Map'; Postfix: '.min')
+    ),
+    (
+      (Folder: 'Cards'; Postfix: '.med'),
+      (Folder: 'Chars'; Postfix: '.full'),
+      (Folder: 'Chips'; Postfix: '.full'),
+      (Folder: 'Docs'; Postfix: '.full'),
+      (Folder: 'Map'; Postfix: '.med')
+    ),
+    (
+      (Folder: 'Cards'; Postfix: '.full'),
+      (Folder: 'Chars'; Postfix: '.full'),
+      (Folder: 'Chips'; Postfix: '.full'),
+      (Folder: 'Docs'; Postfix: '.full'),
+      (Folder: 'Map'; Postfix: '.full')
+    ));
+  BindCamFwd = 'CamFwd';
+  BindCamBwd = 'CamBwd';
+  BindCamLeft = 'CamLeft';
+  BindCamRight = 'CamRight';
+  Bindings: array[0..3] of TBindingRec = (
+    (Name: BindCamFwd; Description: 'Камера вперед'; Key: Ord('W')),
+    (Name: BindCamBwd; Description: 'Камера назад'; Key: Ord('S')),
+    (Name: BindCamLeft; Description: 'Камера влево'; Key: Ord('A')),
+    (Name: BindCamRight; Description: 'Камера вправо'; Key: Ord('D'))
+  );       
 
 function PlayerIndex(const Name: string): Integer;
 

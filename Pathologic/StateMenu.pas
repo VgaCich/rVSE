@@ -4,10 +4,9 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions, VSECore,
-  VSEGUI, VSEFormManager, VSEBindMan, VSEForms, StateStart, StateGame;
+  VSEGUI, VSEFormManager, VSEBindMan, VSEForms, StateStart, StateGame, GameData;
 
 type
-  TGraphicsQuality = (gqMin, gqMed, gqFull);
   TStateMenu = class;
   TMainMenu = class(TAlignedForm)
   protected
@@ -50,9 +49,6 @@ type
 
 const
   SIDMenu = 'Menu';
-  UIFont = 'Courier New';
-  GameTitle = 'Мор. Утопия';
-  SGraphicsQuality = 'Quality';
 
 procedure DrawBackground;
 function GetTexFileName(const Name: string): string;
@@ -69,29 +65,6 @@ const
   IDOptions = 'Options';
   IDTextView = 'TextView';
   TextFiles: array[0..1] of string = ('Help.txt', 'Creds.txt');
-  GraphicsQualityName: array[TGraphicsQuality] of string = ('Минимальное', 'Среднее', 'Максимальное');
-  TexFolders: array[TGraphicsQuality] of array[0..4] of record Folder, Postfix: string end = (
-    (
-      (Folder: 'Cards'; Postfix: '.min'),
-      (Folder: 'Chars'; Postfix: '.min'),
-      (Folder: 'Chips'; Postfix: '.min'),
-      (Folder: 'Docs'; Postfix: '.min'),
-      (Folder: 'Map'; Postfix: '.min')
-    ),
-    (
-      (Folder: 'Cards'; Postfix: '.med'),
-      (Folder: 'Chars'; Postfix: '.full'),
-      (Folder: 'Chips'; Postfix: '.full'),
-      (Folder: 'Docs'; Postfix: '.full'),
-      (Folder: 'Map'; Postfix: '.med')
-    ),
-    (
-      (Folder: 'Cards'; Postfix: '.full'),
-      (Folder: 'Chars'; Postfix: '.full'),
-      (Folder: 'Chips'; Postfix: '.full'),
-      (Folder: 'Docs'; Postfix: '.full'),
-      (Folder: 'Map'; Postfix: '.full')
-    ));
 
 var
   BgTex: Cardinal;

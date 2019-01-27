@@ -48,8 +48,8 @@ type
 
 
 const
-  {$IFDEF VSE_DEBUG
-  }IDLogPoints = 'LogPoints';
+  {$IFDEF VSE_DEBUG}
+  IDLogPoints = 'LogPoints';
   IDPlayerSelect = 'PlayerSelect';
   {$ENDIF}
 

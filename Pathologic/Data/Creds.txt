@@ -20,6 +20,6 @@
 	Ice-Pick Lodge
 	
 
-	Powered by rVS Engine (c) VgaSoft, 2005-2018
+	Powered by rVS Engine (c) VgaSoft, 2005-2019
 
-	(c) VgaSoft, 2018
+	(c) VgaSoft, 2018-2019

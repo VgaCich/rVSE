@@ -2,7 +2,7 @@ program Pathologic;
 
 uses
   {$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows, AvL, avlUtils, avlEventBus,
-  VSECore, VSETexMan, VSEMemPak, StateStart, StateMenu, StateGame;
+  VSECore, VSETexMan, VSEMemPak, StateStart, StateMenu, StateGame, GameData;
 
 {$R *.res}
 {$R MemPak.res}

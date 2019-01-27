@@ -44,7 +44,7 @@ implementation
 uses
   VSETexMan, VSERender2D, VSEGUI
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
-  StateMenu;
+  StateMenu, GameData;
 
 const
   SLoading = 'Загрузка...';

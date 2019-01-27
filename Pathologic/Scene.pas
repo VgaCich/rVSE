@@ -44,14 +44,10 @@ const
   SceneShowTitleMessage = 'Scene.ShowTitleMessage'; //<In> Message, Level, [Player]
   SceneSetQuarterHlColor = 'Scene.SetQuarterHlColor'; //<In> Color
   SceneOnQuarterHighlight = 'Scene.OnQuarterHighlight'; //<Out> Quarter
-  MapBounds: record
-    Min: TVector2D;
-    Max: TVector2D;
-  end = (Min: (X: -60.0; Y: -35.0); Max: (X: 60.0; Y: 45.0));
 
 implementation
 
-uses VSERender2D, VSETexMan, VSEFormManager, StateMenu, StateGame, Game
+uses VSERender2D, VSETexMan, VSEFormManager, StateMenu, StateGame, Game, GameData
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
