@@ -31,6 +31,7 @@ type
   TScores = class(TAlignedForm)
   protected
     FScores: array[0..ScoresCount-1] of Integer;
+    procedure ClearClick(Btn: PBtn);
     procedure CloseClick(Btn: PBtn);
     procedure DrawForm(State: TBtnState); override;
   public
@@ -231,7 +232,7 @@ var
   Btn: TBtn;
   i: Integer;
 begin
-  inherited Create(0, 0, 200, 250);
+  inherited Create(0, 0, 200, 300);
   Alignment:=[faCenter, faMiddle];
   FCaption:='Scores';
   with Btn do
@@ -242,10 +243,14 @@ begin
     Width:=140;
     Height:=30;
     Type_:=btPush;
+    Caption := 'Clear';
+    OnClick := ClearClick;
+    AddButton(Btn);
+    Y := 250;
     Caption:='Close';
     OnClick:=CloseClick;
+    AddButton(Btn);
   end;
-  AddButton(Btn);
   for i := 0 to High(FScores) do
     FScores[i] := Settings.Int[SScores, IntToStr(i)];
 end;
@@ -267,6 +272,12 @@ begin
   gleColor(clText);
   for i:= 0 to High(FScores) do
     Render2D.TextOut(Font, 30, 40 + i * LHeight, IntToStr(i + 1) + ': ' + IntToStr(FScores[i]));
+end;
+
+procedure TScores.ClearClick(Btn: PBtn);
+begin
+  Settings.EraseSection(SScores);
+  Close;
 end;
 
 procedure TScores.CloseClick(Btn: PBtn);

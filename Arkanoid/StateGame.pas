@@ -52,16 +52,18 @@ type
   TBall = class(TGameObject)
   private
     FLaunched: Boolean;
-    FOldX, FOldY: Single;
+    FOldX, FOldY, FSpeed: Single;
     FPaddle: TPaddle;
     FLives: Integer;
   public
     constructor Create(Parent: TStateGame);
+    {$IFDEF VSE_CONSOLE}destructor Destroy; override;{$ENDIF}
     procedure Update; override;
     procedure Launch;
     procedure Reset;
     property Launched: Boolean read FLaunched;
-    property Lives: Integer read FLives;
+    property Lives: Integer read FLives write FLives;
+    property Speed: Single read FSpeed write FSpeed;
   end;
   TStateGame=class(TGameState)
   private
@@ -71,6 +73,7 @@ type
     FPaddle: TPaddle;
     FWall: TWall;
     FBricks: array of TBrick;
+    FMusicFile: string;
     function GetCanResumeGame: Boolean;
     procedure StartLevel;
   protected
@@ -114,6 +117,7 @@ const
   PaddleHeight = 0.3;
   BrickWidth = 4.0;
   BrickHeight = 1.5;
+  MusicFiles: array[0..1] of string = ('music.xm', 'music2.xm');
 
 function Sign(X: Single): Integer;
 begin
@@ -239,8 +243,9 @@ begin
   begin
     Inc(FScore, 100 * FLevel);
     Inc(FLevel);
+    FBall.Speed := FBall.Speed * 1.05;
     if Level mod 5 = 0 then
-      Inc(FBall.FLives);
+      FBall.Lives := FBall.Lives + 1;
     StartLevel;
   end
   else if FBall.Lives <= 0 then
@@ -255,7 +260,7 @@ begin
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_DEPTH_TEST);
   Core.MouseCapture := true;
-  Sound.PlayMusic('Music.xm');
+  Sound.PlayMusic(FMusicFile);
 end;
 
 procedure TStateGame.Deactivate;
@@ -317,16 +322,13 @@ begin
   if not Assigned(FPaddle) then
     FPaddle := TPaddle.Create(Self);
   if not Assigned(FBall) then
-  begin
     FBall := TBall.Create(Self);
-    {$IFDEF VSE_CONSOLE}
-    Console.OnCommand['lives ?num=i'] := Console.GetConVarHandler(FBall.FLives, cvInt);
-    {$ENDIF}
-  end;
+  FMusicFile := MusicFiles[Random(Length(MusicFiles))];
   FLevel := 1;
   FScore := 0;
   FPaddle.Y := PaddleLevel - FPaddle.Height / 2;
-  FBall.FLives := Lives;
+  FBall.Lives := Lives;
+  FBall.Speed := 10 * BallSpeed / Max(Lives + 7, 9);
   StartLevel;
 end;
 
@@ -386,7 +388,21 @@ begin
   FModel := TPriModel.Create(Core.GetFile('Ball.vpm'), true);
   FWidth := BallSize;
   FHeight := BallSize;
+  FSpeed := BallSpeed;
+  {$IFDEF VSE_CONSOLE}
+  Console.OnCommand['lives ?num=i'] := Console.GetConVarHandler(FLives, cvInt);
+  Console.OnCommand['speed ?spd=f'] := Console.GetConVarHandler(FSpeed, cvFloat);
+  {$ENDIF}
 end;
+
+{$IFDEF VSE_CONSOLE}
+destructor TBall.Destroy;
+begin
+  Console.OnCommand['lives'] := nil;
+  Console.OnCommand['speed'] := nil;
+  inherited;
+end;
+{$ENDIF}
 
 procedure TBall.Launch;
 begin
@@ -407,7 +423,7 @@ end;
 
 procedure TBall.Update;
 var
-  DeltaX, DeltaY: Single;
+  DeltaX, DeltaY, K: Single;
   Rect: TRect;
   i, iX, iY, iOX, iOY: Integer;
 begin
@@ -416,6 +432,7 @@ begin
   DeltaY := Y - FOldY;
   if FLaunched then
   begin
+    FModel.Transform.Rotate(FSpeed / 5, 0.0, 0.0, 1.0);
     X := X + DeltaX;
     if (X > BoardWidth) or (X < -BoardWidth) then
     begin
@@ -443,7 +460,7 @@ begin
       PlaySound(PChar(SND_ALIAS_SYSTEMHAND), 0, SND_ALIAS_ID or SND_ASYNC);
       Dec(FLives);
       if Lives > 0 then
-        FParent.Score := FParent.Score - 100;
+        FParent.Score := FParent.Score - 250;
       Reset;
     end;
     for i := 0 to High(FParent.FBricks) do
@@ -465,8 +482,9 @@ begin
       end;
     end;
   end;
-  FOldX := X - DeltaX;
-  FOldY := Y - DeltaY;
+  K := FSpeed / Sqrt(DeltaX * DeltaX + DeltaY * DeltaY);
+  FOldX := X - K * DeltaX;
+  FOldY := Y - K * DeltaY;
 end;
 
 { TBrick }

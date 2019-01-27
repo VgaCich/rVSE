@@ -712,7 +712,7 @@ end;
 function TConsole.ConVarFloatHandler(Sender: TObject; Args: array of const): Boolean;
 begin
   if Length(Args) = 1 then
-    Console.WriteLn(FloatToStr(PSingle(Self)^))
+    Console.WriteLn(FloatToStr2(PSingle(Self)^, 1, 4))
   else if Args[1].VType = vtExtended then
     PSingle(Self)^ := Args[1].VExtended^
   else

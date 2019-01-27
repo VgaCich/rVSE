@@ -14,7 +14,7 @@ type
   TStateGameEnd = class(TGameState)
   private
     FFont, FLargeFont: Cardinal;
-    FHighScore: Boolean;
+    FHighScore: Integer;
     FScores: array[0..ScoresCount - 1] of Integer;
     procedure DrawLine(Font, Y: Integer; const Line: string);
   protected
@@ -52,14 +52,20 @@ begin
   Render2D.Enter;
   gleColor(clRed);
   DrawLine(FLargeFont, 150, 'Game Over');
-  if FHighScore then
+  if FHighScore >= 0 then
     DrawLine(FFont, 250, 'You have got high score!');
   gleColor($80000000);
   Render2D.DrawRect(310, 300, 180, 210);
   gleColor(clText);
-  DrawLine(FFont, 300, 'High scores:');
+  DrawLine(FFont, 300, 'Scores:');
   for i := 0 to High(FScores) do
+  begin
+    if i = FHighScore then
+      gleColor(clRed)
+    else
+      gleColor(clText);
     DrawLine(FFont, 350 + 30 * i, IntToStr(FScores[i]));
+  end;
   Render2D.Leave;
 end;
 
@@ -68,20 +74,20 @@ var
   Score, i, j: Integer;
 begin
   Result := inherited Activate;
-  FHighScore := false;
+  FHighScore := -1;
   Score := TStateGame(Core.GetState(Core.FindState(SIDGame))).Score;
   for i := 0 to High(FScores) do
     FScores[i] := Settings.Int[SScores, IntToStr(i)];
   for i := 0 to High(FScores) do
     if Score > FScores[i] then
     begin
-      FHighScore := true;
+      FHighScore := i;
       for j := High(FScores) downto i + 1 do
         FScores[j] := FScores[j - 1];
       FScores[i] := Score;
       Break;
     end;
-  if FHighScore then
+  if FHighScore >= 0 then
     for i := 0 to High(FScores) do
       Settings.Int[SScores, IntToStr(i)] := FScores[i];
 end;
