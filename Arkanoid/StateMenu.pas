@@ -71,7 +71,7 @@ const
   UIFont = 'Tahoma';
   UIFontSize = 12;
   GameTitle = 'Arkanoid 64k';
-  GameVer = '1.1';
+  GameVer = '1.2';
 
 procedure DrawBackground;
 function BackgroundLoaded: Boolean;
