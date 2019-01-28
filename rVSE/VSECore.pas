@@ -501,7 +501,7 @@ begin
         Cursor.X:=Cursor.X-FResolutionX div 2;
         Cursor.Y:=Cursor.Y-FResolutionY div 2;
         ResetMouse;
-        {$IFDEF VSE_CONSOLE}if not Console.Active or SendNotify(snConsoleActive) then{$ENDIF}
+        {$IFDEF VSE_CONSOLE}if not Console.Intf.Active or SendNotify(snConsoleActive) then{$ENDIF}
         try
           FCurState.MouseEvent(0, meMove, Cursor.X, Cursor.Y);
         except
@@ -509,7 +509,7 @@ begin
           {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
         end;
       end;
-      {$IFDEF VSE_CONSOLE}if not Console.Active or SendNotify(snConsoleActive) then{$ENDIF}
+      {$IFDEF VSE_CONSOLE}if not Console.Intf.Active or SendNotify(snConsoleActive) then{$ENDIF}
       for i:=1 to T div FUpdInt do
       begin
         UpdTime:=Time;
@@ -545,7 +545,7 @@ begin
       {$IFDEF VSE_LOG}LogException(Format('in module %s.Draw', [FModules[i].Name]));{$ENDIF}
       {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
     end;
-    {$IFDEF VSE_CONSOLE}Console.Draw;{$ENDIF}
+    {$IFDEF VSE_CONSOLE}Console.Intf.Draw;{$ENDIF}
     SwapBuffers(FDC);
     Inc(FFramesCount);
   except
@@ -587,7 +587,11 @@ begin
       then SetCapture(FHandle)
       else if Event=meUp
         then ReleaseCapture;
-    if (FMouseCapture and (Event=meMove)) or FPaused {$IFDEF VSE_CONSOLE}or (Console.Active and not SendNotify(snConsoleActive)){$ENDIF} then Exit;
+    {$IFDEF VSE_CONSOLE}
+    Console.Intf.MouseEvent(Button, Event, X, Y);
+    if (Console.Intf.Active and not SendNotify(snConsoleActive)) then Exit;
+    {$ENDIF}
+    if (FMouseCapture and (Event=meMove)) or FPaused then Exit;
     for i:=0 to High(FModules) do
     try
       FModules[i].MouseEvent(Button, Event, X, Y);
@@ -629,8 +633,8 @@ begin
     end;
     {$ENDIF}
     {$IFDEF VSE_CONSOLE}
-    Console.KeyEvent(Key, Event);
-    if Console.Active then Exit;
+    Console.Intf.KeyEvent(Key, Event);
+    if Console.Intf.Active then Exit;
     {$ENDIF}
     for i:=0 to High(FModules) do
     try
@@ -659,8 +663,8 @@ begin
   try
     if FPaused then Exit;
     {$IFDEF VSE_CONSOLE}
-    Console.CharEvent(C);
-    if Console.Active then Exit;
+    Console.Intf.CharEvent(C);
+    if Console.Intf.Active then Exit;
     {$ENDIF}
     for i:=0 to High(FModules) do
     try
@@ -687,6 +691,9 @@ var
   i: Integer;
 begin
   Result:=false;
+  {$IFDEF VSE_CONSOLE}
+  Console.Intf.SysNotify(Notify);
+  {$ENDIF}
   for i:=0 to High(FModules) do
   try
     FModules[i].SysNotify(Notify);

@@ -12,6 +12,7 @@ type
   TOnConsoleCommand = function(Sender: TObject; Args: array of const): Boolean of object; // Console command handler
   TOnConsoleExecute = function(Sender: TObject; const CommandLine: string): Boolean of object; // Console commands hook
   TConsoleVarType = (cvInt, cvBool, cvEnum, cvFloat, cvString); //Variable type
+  TConsole = class;
   TConsoleCommandArgument = class // internally used
   private
     FName: string;
@@ -47,31 +48,33 @@ type
     property Prev: TConsoleCommand read FPrev;
     property Next: TConsoleCommand read FNext;
   end;
+  TConsoleInterface = class(TCoreModule) // Base class for console user interface; see VSEConsoleInterface for implementation example
+  protected
+    FActive: Boolean;
+    procedure SetActive(Value: Boolean); virtual;
+    procedure OnWriteLn(const Line: string); virtual;
+  public
+    constructor Create(Console: TConsole); virtual;
+    property Active: Boolean read FActive write SetActive; // Console interface is open
+  end;
+  CConsoleInterface = class of TConsoleInterface;
   TConsole = class
   private
-    FActive: Boolean;
-    FFont: Integer;
-    FScreenHeight: Single;
-    FLog, FLogCache, FCmdHistory: TStringList;
+    FLog: TStringList;
+    FInterface: TConsoleInterface;
     {$IFDEF VSE_LOG}
     FLogLevel: TLogLevel;
     FLogBuffer: TStringList;
     FLogBufferLock: TCriticalSection;
     FLogBufferEvent: TEvent;
     {$ENDIF}
-    FLogPosition, FCursor, FCmdHistoryIndex: Integer;
-    FCommandLine, FGoTo: string;
+    FGoTo: string;
     FOnExecute: TOnConsoleExecute;
-    FLineLength: Integer;
     FCommands: TConsoleCommand;
-    procedure AddToCache(const Line: string);
-    function LogEndPosition: Integer;
+    procedure CreateInterface;
     {$IFDEF VSE_LOG}procedure UpdateLog;{$ENDIF}
-    procedure SetActive(Value: Boolean);
     function GetCommand(const CmdDesc: string): TOnConsoleCommand;
     procedure SetCommand(const CmdDesc: string; Value: TOnConsoleCommand);
-    function HelpHandler(Sender: TObject; Args: array of const): Boolean;
-    function CmdListHandler(Sender: TObject; Args: array of const): Boolean;
     function EchoHandler(Sender: TObject; Args: array of const): Boolean;
     function ExecHandler(Sender: TObject; Args: array of const): Boolean;
     function ExistHandler(Sender: TObject; Args: array of const): Boolean;
@@ -83,25 +86,25 @@ type
     function ConVarStrHandler(Sender: TObject; Args: array of const): Boolean;
     {$IFDEF VSE_LOG}function LogLevelHandler(Sender: TObject; Args: array of const): Boolean;{$ENDIF}
     class function GetCommandName(CommandLine: string): string;
-    procedure UpdateFont(ScreenHeight: Single);
   public
     constructor Create; // internally used
     destructor Destroy; override; // internally used
-    procedure Draw; // internally used
     procedure Update; // internally used
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); // internally used
-    procedure CharEvent(C: Char); // internally used
     procedure WriteLn(const Line: string = ''); // Write line to console
     function Execute(CommandLine: string): Boolean; // Execute command; returns true if successful
     function GetCommands(Prefix: string): TStringList; // Get list of commands, starts with Prefix
+    function GetCommandDescription(const Command: string): string; // Get description of a command
     function GetConVarHandler(const Variable; VarType: TConsoleVarType): TOnConsoleCommand; //Get command handler for console variable
-    property Active: Boolean read FActive write SetActive; // Console is open
+    property Intf: TConsoleInterface read FInterface; // Console user interface
+    property Log: TStringList read FLog; //Console log; do not modify
     property OnCommand[const CmdDesc: string]: TOnConsoleCommand read GetCommand write SetCommand; default; // Command handlers; assign nil to delete command; see FmtDocs for commands description language
     property OnExecute: TOnConsoleExecute read FOnExecute write FOnExecute; // Console commands hook
   end;
 
+procedure SetConsoleInterface(Intf: CConsoleInterface); // Set user interface for console
+
 var
-  Console: TConsole; // Console interface
+  Console: TConsole; // Console programming interface
 
 const
   PostfixWarning = #10;
@@ -109,23 +112,19 @@ const
 
 implementation
 
-uses
-  VSERender2D;
-
 const
   SConsoleVariableTypeMismatch = 'Console: console variable type mismatch';
-  clFPS = $FFFFFF00;
-  clNormalLine = $FF00FF00;
-  clWarningLine = $FF00FFFF;
-  clErrorLine = $FF0066FF;
-  clScroll = $80808080;
-  clCmdLineBorder = $CC80CC80;
-  clBorderLine = $FF00FF00;
-  clBgLines = $80333333;
-  clBackground = $CC4D4D4D;
-  DisplayLines = 19;
-  VK_TILDE = 192;
   vtInvalid = 255;
+
+var
+  ConsoleInterface: CConsoleInterface = nil;
+
+procedure SetConsoleInterface(Intf: CConsoleInterface);
+begin
+  ConsoleInterface := Intf;
+  if Assigned(Console) then
+    Console.CreateInterface;
+end;
 
 type
   TCCAInteger = class(TConsoleCommandArgument)
@@ -180,10 +179,22 @@ begin
 end;
 {$ENDIF}
 
-function LastChar(const S: string): Char;
+{ TConsoleInterface }
+
+constructor TConsoleInterface.Create(Console: TConsole);
 begin
-  Result := #0;
-  if S <> '' then Result := S[Length(S)];
+  inherited Create;
+  FActive := false;
+end;
+
+procedure TConsoleInterface.SetActive(Value: Boolean);
+begin
+  
+end;
+
+procedure TConsoleInterface.OnWriteLn(const Line: string);
+begin
+
 end;
 
 { TConsole }
@@ -197,16 +208,13 @@ var
 begin
   inherited;
   FLog := TStringList.Create;
-  FLogCache := TStringList.Create;
-  FCmdHistory := TStringList.Create;
-  FCommands := TConsoleCommand.Create(nil, 'help', HelpHandler);
-  OnCommand['cmdlist ?prefix=s'] := CmdListHandler;
+  FCommands := TConsoleCommand.Create(nil, 'exec file=s', ExecHandler);
   OnCommand['echo msg=s*'] := EchoHandler;
-  OnCommand['exec file=s'] := ExecHandler;
   OnCommand['exist file=s'] := ExistHandler;
   OnCommand['goto lbl=s'] := GotoHandler;
   OnCommand['if chk=s cmd=s*'] := IfHandler;
   OnCommand['ifnot chk=s cmd=s*'] := IfHandler;
+  CreateInterface;
   {$IFDEF VSE_LOG}
   FLogLevel := VSELog.LogLevel;
   Levels := '';
@@ -214,7 +222,7 @@ begin
     Levels := Levels + ':' + LogLevelNames[Level];
   Delete(Levels, 1, 1);
   OnCommand['conloglevel ?level=e' + Levels] := LogLevelHandler;
-  Log(llInfo, 'Console: Create');
+  VSELog.Log(llInfo, 'Console: Create');
   FLogBuffer := TStringList.Create;
   FLogBufferLock := TCriticalSection.Create;
   FLogBufferEvent := TEvent.Create(nil, false, false, '');
@@ -225,7 +233,7 @@ end;
 destructor TConsole.Destroy;
 begin
   {$IFDEF VSE_LOG}
-  Log(llInfo, 'Console: Destroy');
+  VSELog.Log(llInfo, 'Console: Destroy');
   UpdateLog;
   {$IFDEF VSE_DEBUG}FLog.SaveToFile(ChangeFileExt(FullExeName, '.console.log'));{$ENDIF}
   FAN(FLogBufferLock);
@@ -234,201 +242,21 @@ begin
   {$ENDIF}
   while Assigned(FCommands.Next) do FCommands.Next.Free;
   FAN(FCommands);
-  FAN(FCmdHistory);
-  FAN(FLogCache);
   FAN(FLog);
   inherited;
-end;
-
-procedure TConsole.Draw;
-
-  function RemovePostfix(const S: string): string;
-  begin
-    if LastChar(S) in [PostfixWarning, PostfixError]
-      then Result := Copy(S, 1, Length(S) - 1)
-      else Result := S;
-  end;
-
-var
-  i, CommandLineStart: Integer;
-  ScreenWidth, ScreenHeight, CharWidth, CaretPos, CaretHeight, Temp: Single;
-begin
-  if not FActive then Exit;
-  Render2D.Enter;
-  with Render2D.VSBounds do
-  begin
-    ScreenWidth := Right - Left;
-    ScreenHeight := Bottom - Top;
-    glPushMatrix;
-    glTranslate(Left, Top, 0);
-  end;
-  UpdateFont(ScreenHeight);
-  CharWidth := Render2D.CharWidth(FFont, '_');
-  if FLineLength <> Floor(ScreenWidth / CharWidth) then
-  begin
-    FLineLength := Floor(ScreenWidth / CharWidth);
-    FLogCache.Clear;
-    for i := 0 to FLog.Count - 1 do
-      AddToCache(FLog[i]);
-    FLogPosition := LogEndPosition;
-  end;
-  glLineWidth(ScreenHeight / 600);
-  Temp := 0.503 * ScreenHeight;
-  gleColor(clBackground);
-  Render2D.DrawRect(0, 0, ScreenWidth, Temp);
-  gleColor(clBorderLine);
-  Render2D.DrawLine(0, Temp, ScreenWidth, Temp);
-  gleColor(clBgLines);
-  Temp := 0.005 * ScreenHeight;
-  for i := 0 to 100 do
-    Render2D.DrawLine(0, i * Temp, ScreenWidth, i * Temp);
-  gleColor(clCmdLineBorder);
-  Temp := 0.475 * ScreenHeight;
-  Render2D.DrawLine(0, Temp, ScreenWidth, Temp);
-  gleColor(clScroll);
-  CaretHeight := Max(Temp * DisplayLines / FLogCache.Count, 0.01 * ScreenHeight);
-  CaretPos := Min(Temp * FLogPosition / FLogCache.Count, Temp - CaretHeight);
-  Temp := ScreenWidth - 0.025 * ScreenHeight;
-  Render2D.DrawLine(Temp, 0, Temp, 0.475 * ScreenHeight);
-  Render2D.DrawRect(Temp, CaretPos, 0.025 * ScreenHeight, CaretHeight);
-  Temp := 0.025 * ScreenHeight;
-  for i := 0 to Min(DisplayLines - 1, FLogCache.Count - FLogPosition - 1) do
-  begin
-    if LastChar(FLogCache[FLogPosition + i]) = PostfixError then gleColor(clErrorLine)
-    else if LastChar(FLogCache[FLogPosition + i]) = PostfixWarning then gleColor(clWarningLine)
-    else gleColor(clNormalLine);
-    Render2D.TextOut(FFont, 0, Temp * i, RemovePostfix(FLogCache[FLogPosition + i]));
-  end;
-  gleColor(clNormalLine);
-  Temp := 0.475 * ScreenHeight;
-  CommandLineStart := Max(FCursor - FLineLength + 1, 0);
-  Render2D.TextOut(FFont, 0, Temp, '>' + Copy(FCommandLine, CommandLineStart + 1, FLineLength - 1));
-  if (Core.Time div 500) mod 2 = 0 then
-    Render2D.TextOut(FFont, CharWidth * (FCursor - CommandLineStart), Temp, '_');
-  gleColor(clBackground);
-  Temp := ScreenWidth - 0.025 * ScreenHeight - 8 * CharWidth;
-  Render2D.DrawRect(Temp, 0, 8 * CharWidth - 1, 0.025 * ScreenHeight);
-  gleColor(clFPS);
-  Render2D.TextOut(FFont, Temp, 0, 'FPS: ' + IntToStr(Core.FPS));
-  glPopMatrix;
-  Render2D.Leave;
 end;
 
 procedure TConsole.Update;
 begin
   {$IFDEF VSE_LOG}UpdateLog;{$ENDIF}
-end;
-
-procedure TConsole.KeyEvent(Key: Integer; Event: TKeyEvent);
-var
-  List: TStringList;
-  i: Integer;
-  S: string;
-
-  procedure SetCommandLine(const Cmd: string);
-  begin
-    FCommandLine := Cmd;
-    FCursor := Length(Cmd) + 1;
-  end;
-
-begin
-  if not FActive then
-  begin
-    if (Event = keUp) and (Key = VK_TILDE) then Active := true;
-    Exit;
-  end;
-  if (Event = keDown) then
-  begin
-    case Key of
-      VK_PRIOR: FLogPosition := Max(FLogPosition - DisplayLines + 1, 0);
-      VK_NEXT: FLogPosition := Min(FLogPosition + DisplayLines - 1, LogEndPosition);
-      VK_LEFT: FCursor := Max(FCursor - 1, 1);
-      VK_RIGHT: FCursor := Min(FCursor + 1, Length(FCommandLine) + 1);
-      VK_UP: if Core.KeyPressed[VK_CONTROL]
-        then FLogPosition := Max(FLogPosition - 1, 0)
-        else begin
-          FCmdHistoryIndex := Max(FCmdHistoryIndex - 1, 0);
-          SetCommandLine(FCmdHistory[FCmdHistoryIndex]);
-        end;
-      VK_DOWN: if Core.KeyPressed[VK_CONTROL]
-        then FLogPosition := Min(FLogPosition + 1, LogEndPosition)
-        else begin
-          FCmdHistoryIndex := Min(FCmdHistoryIndex + 1, FCmdHistory.Count - 1);
-          SetCommandLine(FCmdHistory[FCmdHistoryIndex]);
-        end;
-      VK_DELETE: Delete(FCommandLine, FCursor, 1);
-      VK_BACK: if FCursor > 1 then
-        begin
-          Delete(FCommandLine, FCursor - 1, 1);
-          FCursor := Max(FCursor - 1, 1);
-        end;
-    end;
-  end
-  else begin
-    case Key of
-      VK_TAB: if FCommandLine <> '' then
-        begin
-          List := GetCommands(Trim(FCommandLine));
-          try
-            if List.Count = 1
-              then SetCommandLine(List[0] + ' ')
-            else if List.Count > 1 then
-              for i := 0 to List.Count - 1 do
-                WriteLn('    ' + List[i]);
-          finally
-            FAN(List);
-          end;
-        end;
-      VK_HOME: if Core.KeyPressed[VK_CONTROL]
-        then FLogPosition := 0
-        else FCursor := 1;
-      VK_END: if Core.KeyPressed[VK_CONTROL]
-        then FLogPosition := LogEndPosition
-        else FCursor := Length(FCommandLine) + 1;
-      VK_INSERT:
-        begin
-          S := GetClipboardText;
-          Insert(S, FCommandLine, FCursor);
-          Inc(FCursor, Length(S)); 
-        end;
-      VK_ESCAPE: if FLogPosition <> LogEndPosition
-        then FLogPosition := LogEndPosition
-        else SetCommandLine('');
-      VK_RETURN:
-        begin
-          WriteLn('>' + FCommandLine);
-          if FCommandLine <> '' then
-          begin
-            FCmdHistory.Add(FCommandLine);
-            if FCmdHistory.Count > 32 then FCmdHistory.Delete(0);
-            FCmdHistoryIndex := FCmdHistory.Count;
-            Execute(FCommandLine);
-            SetCommandLine('');
-          end;
-        end;
-      VK_TILDE: if not Core.KeyPressed[VK_SHIFT] then Active := false;
-    end;
-  end;
-end;
-
-procedure TConsole.CharEvent(C: Char);
-begin
-  if FActive and (C in [#31..#95, #97..#126, #128..#255]) then
-  begin
-    Insert(C, FCommandLine, FCursor);
-    Inc(FCursor);
-  end;
+  FInterface.Update;
 end;
 
 procedure TConsole.WriteLn(const Line: string = '');
-var
-  AtEnd: Boolean;
 begin
   {$IFDEF VSE_LOG}UpdateLog;{$ENDIF}
   FLog.Add(Line);
-  AtEnd := FLogPosition = LogEndPosition;
-  AddToCache(Line);
-  if AtEnd then FLogPosition := LogEndPosition;
+  FInterface.OnWriteLn(Line);
 end;
 
 function TConsole.Execute(CommandLine: string): Boolean;
@@ -470,37 +298,24 @@ begin
   Result.Sort;
 end;
 
-procedure TConsole.AddToCache(const Line: string);
+function TConsole.GetCommandDescription(const Command: string): string;
 var
-  Pos: Integer;
-  Postfix: string;
-
-  function AddPostfix(const S: string): string;
-  begin
-    if (Postfix = ' ') or (LastChar(S) = Postfix)
-      then Result := S
-      else Result := S + Postfix;
-  end;
-
+  Cmd: TConsoleCommand;
 begin
-  if FLineLength = 0 then Exit;
-  if Line <> '' then
-  begin
-    Pos := 1;
-    Postfix := ' ';
-    if LastChar(Line) in [PostfixWarning, PostfixError] then Postfix := LastChar(Line);
-    while Pos <= Length(Line) do
-    begin
-      FLogCache.Add(AddPostfix(Copy(Line, Pos, FLineLength)));
-      Inc(Pos, FLineLength);
-    end;
-  end
-    else  FLogCache.Add('');
+  Cmd := FCommands.FindCommand(Command);
+  if Assigned(Cmd) then
+    Result := Cmd.Description
+  else
+    Result := '';
 end;
 
-function TConsole.LogEndPosition: Integer;
+procedure TConsole.CreateInterface;
 begin
-  Result := Max(FLogCache.Count - DisplayLines, 0);
+  FAN(FInterface);
+  if Assigned(ConsoleInterface) then
+    FInterface := ConsoleInterface.Create(Self)
+  else
+    FInterface := TConsoleInterface.Create(Self);
 end;
 
 {$IFDEF VSE_LOG}
@@ -543,23 +358,6 @@ begin
   TMethod(Result).Data := @Variable;
 end;
 
-procedure TConsole.SetActive(Value: Boolean);
-begin
-  FActive := Value;
-  if FActive then
-  begin
-    if FCursor = 0 then
-    begin
-      UpdateFont(Render2D.VSBounds.Bottom - Render2D.VSBounds.Top);
-      WriteLn('Print "help" for help' + PostfixWarning);
-    end;
-    FLogPosition := LogEndPosition;
-    FCommandLine:='';
-    FCursor:=1;
-    FCmdHistoryIndex := FCmdHistory.Count;
-  end;
-end;
-
 procedure TConsole.SetCommand(const CmdDesc: string; Value: TOnConsoleCommand);
 var
   Command: TConsoleCommand;
@@ -569,38 +367,6 @@ begin
   begin
     Command.Free;
     if Assigned(Value) then TConsoleCommand.Create(FCommands, CmdDesc, Value);
-  end;
-end;
-
-function TConsole.HelpHandler(Sender: TObject; Args: array of const): Boolean;
-begin
-  WriteLn;
-  WriteLn('Use command "cmdlist [prefix]" to get commands list');
-  WriteLn('Use PageUp, PageDown, Ctrl+Up, Ctrl+Down, Ctrl+Home, Ctrl+End, Escape to navigate console log');
-  WriteLn('Use Up/Down to navigate commands history');
-  WriteLn('Press Tab to autocomplete command');
-  WriteLn('Press Insert to paste from clipboard');
-  WriteLn('Press Escape to clear command line');
-  Result := true;
-end;
-
-function TConsole.CmdListHandler(Sender: TObject; Args: array of const): Boolean;
-var
-  Prefix: string;
-  Commands: TStringList;
-  i: Integer;
-begin
-  Result := false;
-  if Length(Args) > 1
-    then Prefix := string(Args[1].VAnsiString)
-    else Prefix := '';
-  Commands := GetCommands(Prefix);
-  try
-    for i := 0 to Commands.Count - 1 do
-      WriteLn(FCommands.FindCommand(Commands[i]).Description);
-    Result := Commands.Count > 0;
-  finally
-    FAN(Commands);
   end;
 end;
 
@@ -745,15 +511,6 @@ end;
 class function TConsole.GetCommandName(CommandLine: string): string;
 begin
   Result := LowerCase(Trim(Tok(' ', CommandLine)));
-end;
-
-procedure TConsole.UpdateFont(ScreenHeight: Single);
-begin
-  if FScreenHeight <> ScreenHeight then
-  begin
-    FFont := Render2D.CreateFont('Courier New', Round(10 * ScreenHeight / 600), true);
-    FScreenHeight := ScreenHeight;
-  end;
 end;
 
 { TConsoleCommandArgument }

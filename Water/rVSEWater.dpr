@@ -3,7 +3,8 @@ program VSEWater;
 uses
   {$IFDEF VER150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,
   AvL, avlUtils, avlMath, avlVectors, OpenGL, oglExtensions, VSEOpenGLExt,
-  VSECore, VSEMemPak, VSEConsole, VSETexMan, VSERender2D, VSEShaders, VSELog, Scene;
+  VSECore, VSEMemPak, VSEConsole, VSEConsoleInterface, VSETexMan, VSERender2D,
+  VSEShaders, VSELog, Scene;
 
 type
   TStateMain=class(TGameState)

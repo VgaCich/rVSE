@@ -232,7 +232,7 @@ begin
           then Result:=true;
       end
         else
-        {$IFDEF VSE_CONSOLE}if not Console.Active or (Key in [VK_LBUTTON, VK_RBUTTON, VK_MBUTTON, VK_XBUTTON4, VK_XBUTTON5]) then{$ENDIF}
+        {$IFDEF VSE_CONSOLE}if not Console.Intf.Active or (Key in [VK_LBUTTON, VK_RBUTTON, VK_MBUTTON, VK_XBUTTON4, VK_XBUTTON5]) then{$ENDIF}
           Result:=Core.KeyPressed[Key];
     end;
 end;
