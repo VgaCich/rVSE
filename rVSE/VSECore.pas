@@ -23,7 +23,6 @@ type
   TSysNotify=(  //System notifies:
     snMinimize, //Application minimized, return false to pause or true to continue working
     snMaximize, //Application maximized
-    snConsoleActive, //Console is active, return false to pause or true to continue working
     snUpdateOverload, //Update Overload Detection triggered, return true to disable default handler (resets update timer)
     snPause, //Engine paused
     snResume, //Engine resumed
@@ -38,9 +37,10 @@ type
   public
     procedure Draw; virtual; //Draw event
     procedure Update; virtual; //Update event
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); virtual; //Mouse event; Button - mouse button number or wheel click if Event=meWheel; X, Y - cursor coordinates or cursor coordinates delta if Core.MouseCapture=true
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); virtual; //Keyboard event; Key - VK key code
-    procedure CharEvent(C: Char); virtual; //Char event (char of pressed key in current layout)
+    //Return 'true' from input event handler to prevent further dispatching
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; virtual; //Mouse event; Button - mouse button number or wheel click if Event=meWheel; X, Y - cursor coordinates or cursor coordinates delta if Core.MouseCapture=true
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; virtual; //Keyboard event; Key - VK key code
+    function CharEvent(C: Char): Boolean; virtual; //Char event (char of pressed key in current layout)
     function  SysNotify(Notify: TSysNotify): Boolean; virtual; //System notify event, return value only from TGameState
   end;
   TGameState = class(TCoreModule) //Base state class
@@ -73,7 +73,7 @@ type
     FState, FSwitchTo: Cardinal;
     FCurState: TGameState;
     FPrevStateName: string;
-    FFullscreen, FNeedSwitch, FMinimized, FPaused, FMouseCapture: Boolean;
+    FFullscreen, FNeedSwitch, FMinimized, FPaused, FMouseCapture, FInhibitUpdate: Boolean;
     FKeyState: TKeyboardState;
     FSavedMousePos: TPoint;
     procedure SetFullscreen(Value: Boolean);
@@ -141,6 +141,7 @@ type
     property State: Cardinal read FState write SetState; //Current state index
     property CurState: TGameState read FCurState; //Current state object
     property PrevStateName: string read FPrevStateName; //Name of previous state
+    property InhibitUpdate: Boolean read FInhibitUpdate write FInhibitUpdate; //Inhibit next State.Update
     property FPS: Cardinal read FFPS; //Current FPS
     property UpdateInterval: Cardinal read FUpdInt write FUpdInt; //Current state updates interval
     property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold; //Update Overload Detection threshold, overloaded update cycles before triggering
@@ -208,7 +209,7 @@ const
   StopCodeNames: array[TStopState] of string =
     ('Normal', 'Default', 'Need Restart', 'Init Error', 'Internal Error', 'User Exception', 'Display Mode Error', 'User Error');
   SysNotifyNames: array[TSysNotify] of string =
-    ('snMinimized', 'snMaximized', 'snConsoleActive', 'snUpdateOverload', 'snPause', 'snResume', 'snResolutionChanged', 'snStateChanged', 'snLogSysInfo');
+    ('snMinimized', 'snMaximized', 'snUpdateOverload', 'snPause', 'snResume', 'snResolutionChanged', 'snStateChanged', 'snLogSysInfo');
   MouseEventNames: array[TMouseEvent] of string =
     ('meDown', 'meUp', 'meMove', 'meWheel');
   KeyEventNames: array[TKeyEvent] of string =
@@ -284,19 +285,19 @@ begin
 
 end;
 
-procedure TCoreModule.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+function TCoreModule.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
 begin
-
+  Result := false;
 end;
 
-procedure TCoreModule.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TCoreModule.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
-
+  Result := false;
 end;
 
-procedure TCoreModule.CharEvent(C: Char);
+function TCoreModule.CharEvent(C: Char): Boolean;
 begin
-
+  Result := false;
 end;
 
 function TCoreModule.SysNotify(Notify: TSysNotify): Boolean;
@@ -501,7 +502,7 @@ begin
         Cursor.X:=Cursor.X-FResolutionX div 2;
         Cursor.Y:=Cursor.Y-FResolutionY div 2;
         ResetMouse;
-        {$IFDEF VSE_CONSOLE}if not Console.Intf.Active or SendNotify(snConsoleActive) then{$ENDIF}
+        if not FInhibitUpdate then
         try
           FCurState.MouseEvent(0, meMove, Cursor.X, Cursor.Y);
         except
@@ -509,28 +510,29 @@ begin
           {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
         end;
       end;
-      {$IFDEF VSE_CONSOLE}if not Console.Intf.Active or SendNotify(snConsoleActive) then{$ENDIF}
-      for i:=1 to T div FUpdInt do
-      begin
-        UpdTime:=Time;
-        try
-          FCurState.Update;
-        except
-          {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Update');{$ENDIF}
-          {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
-        end;
-        if Time-UpdTime>FUpdInt then
+      if not FInhibitUpdate then
+        for i:=1 to T div FUpdInt do
         begin
-          Inc(FUpdOverloadCount);
-          if FUpdOverloadCount>FUpdOverloadThreshold then
-            if not SendNotify(snUpdateOverload) then
-            begin
-              {$IFDEF VSE_LOG}Log(llWarning, 'Update overload in state "'+FCurState.Name+'"');{$ENDIF}
-              ResetUpdateTimer;
-            end;
-        end
-          else if FUpdOverloadCount>0 then Dec(FUpdOverloadCount);
-      end;
+          UpdTime:=Time;
+          try
+            FCurState.Update;
+          except
+            {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Update');{$ENDIF}
+            {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+          end;
+          if Time-UpdTime>FUpdInt then
+          begin
+            Inc(FUpdOverloadCount);
+            if FUpdOverloadCount>FUpdOverloadThreshold then
+              if not SendNotify(snUpdateOverload) then
+              begin
+                {$IFDEF VSE_LOG}Log(llWarning, 'Update overload in state "'+FCurState.Name+'"');{$ENDIF}
+                ResetUpdateTimer;
+              end;
+          end
+            else if FUpdOverloadCount>0 then Dec(FUpdOverloadCount);
+        end;
+      FInhibitUpdate:=false;
       try
         FCurState.Draw;
       except
@@ -538,14 +540,13 @@ begin
         {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
       end;
     end;
-    for i:=0 to High(FModules) do
+    for i:=High(FModules) downto 0 do
     try
       FModules[i].Draw;
     except
       {$IFDEF VSE_LOG}LogException(Format('in module %s.Draw', [FModules[i].Name]));{$ENDIF}
       {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
     end;
-    {$IFDEF VSE_CONSOLE}Console.Intf.Draw;{$ENDIF}
     SwapBuffers(FDC);
     Inc(FFramesCount);
   except
@@ -587,14 +588,10 @@ begin
       then SetCapture(FHandle)
       else if Event=meUp
         then ReleaseCapture;
-    {$IFDEF VSE_CONSOLE}
-    Console.Intf.MouseEvent(Button, Event, X, Y);
-    if (Console.Intf.Active and not SendNotify(snConsoleActive)) then Exit;
-    {$ENDIF}
     if (FMouseCapture and (Event=meMove)) or FPaused then Exit;
     for i:=0 to High(FModules) do
     try
-      FModules[i].MouseEvent(Button, Event, X, Y);
+      if FModules[i].MouseEvent(Button, Event, X, Y) then Exit;
     except
       {$IFDEF VSE_LOG}LogException(Format('in module %s.MouseEvent(%d, %s, %d, %d)', [FModules[i].Name, Button, MouseEventNames[Event], X, Y]));{$ENDIF}
       {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
@@ -632,13 +629,9 @@ begin
       Exit;
     end;
     {$ENDIF}
-    {$IFDEF VSE_CONSOLE}
-    Console.Intf.KeyEvent(Key, Event);
-    if Console.Intf.Active then Exit;
-    {$ENDIF}
     for i:=0 to High(FModules) do
     try
-      FModules[i].KeyEvent(Key, Event);
+      if FModules[i].KeyEvent(Key, Event) then Exit;
     except
       {$IFDEF VSE_LOG}LogException(Format('in module %s.KeyEvent(%d, %s)', [FModules[i].Name, Key, KeyEventNames[Event]]));{$ENDIF}
       {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
@@ -662,13 +655,9 @@ var
 begin
   try
     if FPaused then Exit;
-    {$IFDEF VSE_CONSOLE}
-    Console.Intf.CharEvent(C);
-    if Console.Intf.Active then Exit;
-    {$ENDIF}
     for i:=0 to High(FModules) do
     try
-      FModules[i].CharEvent(C);
+      if FModules[i].CharEvent(C) then Exit;
     except
       {$IFDEF VSE_LOG}LogException('in module '+FModules[i].Name+'.CharEvent(#'+IntToStr(Ord(C))+')');{$ENDIF}
       {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
@@ -691,9 +680,6 @@ var
   i: Integer;
 begin
   Result:=false;
-  {$IFDEF VSE_CONSOLE}
-  Console.Intf.SysNotify(Notify);
-  {$ENDIF}
   for i:=0 to High(FModules) do
   try
     FModules[i].SysNotify(Notify);

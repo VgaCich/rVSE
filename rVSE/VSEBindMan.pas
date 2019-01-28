@@ -40,13 +40,13 @@ type
     function BindCmdHandler(Sender: TObject; Args: array of const): Boolean;
     {$ENDIF}
   public
-    constructor Create; override; //internally used
-    destructor Destroy; override; //internally used
-    class function Name: string; override; //internally used
-    procedure Update; override; //internally used
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;//internally used
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override; //internally used
-    function  SysNotify(Notify: TSysNotify): Boolean; override; //internally used
+    constructor Create; override;
+    destructor Destroy; override;
+    class function Name: string; override;
+    procedure Update; override;
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function  SysNotify(Notify: TSysNotify): Boolean; override; 
     procedure AddBinding(const Name_, Description_: string; Key_: Byte); //Add binding Name with default key Key
     procedure AddBindings(const Bindings: array of TBindingRec); //Add several bindings
     function  GetBindKeyName(const BindName: string): string; //Get name of binded to BindName key
@@ -231,9 +231,8 @@ begin
                                       ((Key=VK_MWHEELDOWN) and not FScrollStateUp))
           then Result:=true;
       end
-        else
-        {$IFDEF VSE_CONSOLE}if not Console.Intf.Active or (Key in [VK_LBUTTON, VK_RBUTTON, VK_MBUTTON, VK_XBUTTON4, VK_XBUTTON5]) then{$ENDIF}
-          Result:=Core.KeyPressed[Key];
+      else
+        Result:=Core.KeyPressed[Key];
     end;
 end;
 
@@ -333,44 +332,15 @@ begin
     ResetEvents;
 end;
 
-procedure TBindMan.KeyEvent(Key: Integer; Event: TKeyEvent);
-const
-  EvMap: array[keDown..keUp] of TBindEvent = (beDown, beUp);
-var
-  i: Integer;
-  Ev: PEventQueue;
-begin
-  for i:=0 to High(FBindings) do
-    if FBindings[i].Key=Key then
-      with FBindings[i] do
-      begin
-        if Assigned(Events) then
-        begin
-          Ev:=Events;
-          while Assigned(Ev^.Next) do Ev:=Ev^.Next;
-          Ev^.Next:=NewEvent(EvMap[Event]);
-        end
-          else Events:=NewEvent(EvMap[Event]);
-        Break;
-      end;
-  {$IFDEF VSE_CONSOLE}
-  if Event=keUp then
-    for i:=0 to High(FCmdBindings) do
-      if FCmdBindings[i].Key=Key then
-      begin
-        Console.Execute(FCmdBindings[i].Cmd);
-        Break;
-      end;
-  {$ENDIF}
-end;
-
-procedure TBindMan.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+function TBindMan.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
 const
   EvMap: array[meDown..meUp] of TKeyEvent = (keDown, keUp);
 var
   Key: Integer;
 begin
-  if Event in [meDown, meUp] then KeyEvent(MBtnMap[Button], EvMap[Event]);
+  Result:=false; //no blocking of mouse events to prevent interference with GUI
+  if Event in [meDown, meUp] then
+    KeyEvent(MBtnMap[Button], EvMap[Event]);
   if Event=meWheel then
   begin
     if Button>=0
@@ -388,6 +358,40 @@ begin
       Dec(Button);
     end;
   end;
+end;
+
+function TBindMan.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+const
+  EvMap: array[keDown..keUp] of TBindEvent = (beDown, beUp);
+var
+  i: Integer;
+  Ev: PEventQueue;
+begin
+  Result:=false;
+  for i:=0 to High(FBindings) do
+    if FBindings[i].Key=Key then
+      with FBindings[i] do
+      begin
+        if Assigned(Events) then
+        begin
+          Ev:=Events;
+          while Assigned(Ev^.Next) do Ev:=Ev^.Next;
+          Ev^.Next:=NewEvent(EvMap[Event]);
+        end
+          else Events:=NewEvent(EvMap[Event]);
+        Result:=true;
+        Break;
+      end;
+  {$IFDEF VSE_CONSOLE}
+  if Event=keUp then
+    for i:=0 to High(FCmdBindings) do
+      if FCmdBindings[i].Key=Key then
+      begin
+        Console.Execute(FCmdBindings[i].Cmd);
+        Result:=true;
+        Break;
+      end;
+  {$ENDIF}
 end;
 
 function TBindMan.NewEvent(Event_: TBindEvent): PEventQueue;

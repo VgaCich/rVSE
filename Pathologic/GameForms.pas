@@ -23,7 +23,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure CharEvent(C: Char); override;
+    function CharEvent(C: Char): Boolean; override;
     procedure DrawPoints;
   end;
   TPlayerSelectForm = class(TAlignedForm)
@@ -33,7 +33,7 @@ type
   public
     constructor Create(Game: TGame);
     procedure Update; override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
   end;
   {$ENDIF}
   TOnCharSelect = procedure(Sender: TObject; Char: TCharacter) of object;
@@ -104,15 +104,19 @@ begin
   inherited;
 end;
 
-procedure TLogPointsForm.CharEvent(C: Char);
+function TLogPointsForm.CharEvent(C: Char): Boolean;
 begin
   with Button[FNameEdit]^ do
     if Tag = $ED then
+    begin
       case C of
         Chr(VK_BACK): Delete(Caption, Length(Caption), 1);
         Chr(VK_RETURN), Chr(VK_ESCAPE): Tag := 0;
         else Caption := Caption + C;
       end;
+      Result := true;
+    end
+    else Result := inherited CharEvent(C);
 end;
 
 procedure TLogPointsForm.DrawPoints;
@@ -247,16 +251,21 @@ begin
   inherited;
 end;
 
-procedure TPlayerSelectForm.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TPlayerSelectForm.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
-  inherited;
+  Result := false;
   if Event = keDown then
+  begin
+    Result := true;
     case Key of
       Ord('B'): FGame.ActivePlayer := FGame.Player[SBachelor];
       Ord('C'): FGame.ActivePlayer := FGame.Player[SChangeling];
       Ord('H'): FGame.ActivePlayer := FGame.Player[SHaruspex];
       Ord('P'): FGame.ActivePlayer := FGame.Player[SPlague];
+      else Result := false;
     end;
+  end;
+  Result := Result or inherited KeyEvent(Key, Event);
 end;
 
 procedure TPlayerSelectForm.PlayerClick(Btn: PBtn);

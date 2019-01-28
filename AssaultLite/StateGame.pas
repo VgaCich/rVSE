@@ -28,9 +28,9 @@ type
     procedure Update; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    function  SysNotify(Notify: TSysNotify): Boolean; override;
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function SysNotify(Notify: TSysNotify): Boolean; override;
     procedure NewGame;
     property CanResumeGame: Boolean read GetCanResumeGame;
     property Terrain: TTerrain read FTerrain;
@@ -41,8 +41,10 @@ const
 
 implementation
 
-uses VSERender2D, VSESound, VSEBindMan, VSETexMan, StateMenu
-  {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+uses
+  VSERender2D, VSESound, VSEBindMan, VSETexMan, StateMenu
+  {$IFDEF VSE_CONSOLE}, VSEConsole, VSEConsoleInterface{$ENDIF}
+  {$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 const
   Bindings: array[0..5] of TBindingRec = (
@@ -61,6 +63,7 @@ begin
   {$IFDEF VSE_CONSOLE}
   Console['debuginfo ?val=eoff:on']:=Console.GetConVarHandler(FShowDebugInfo, cvBool);
   Console['loadshader file=s']:=LoadShaderHandler;
+  ConsoleInterface.Blocking:=false;
   {$ENDIF}
   BindMan.AddBindings(Bindings);
   FCamera:=TCamera.Create;
@@ -164,6 +167,7 @@ var
 begin
   inherited;
   VectorClear(Spd);
+  {$IFDEF VSE_CONSOLE}if not ConsoleInterface.Active then begin{$ENDIF}
   if BindMan.BindActive['Fwd'] then Spd.Y:=Spd.Y+1;
   if BindMan.BindActive['Bwd'] then Spd.Y:=Spd.Y-1;
   if BindMan.BindActive['SLeft'] then Spd.X:=Spd.X+1;
@@ -171,6 +175,7 @@ begin
   VectorNormalize(Spd);
   if BindMan.BindActive['SpdDn'] then VectorScale(Spd, 0.2);
   if not BindMan.BindActive['SpdUp'] then VectorScale(Spd, 0.2);
+  {$IFDEF VSE_CONSOLE}end;{$ENDIF}
   FCamera.Move(Spd, Vector2D(CamBorder), Vector2D(FTerrain.Width-CamBorder, FTerrain.Height-CamBorder), true);
   FCamera.Height:=FTerrain.Altitude(FCamera.Eye.X, FCamera.Eye.Z)+4;
   FSky.Update;
@@ -212,16 +217,16 @@ begin
   Sound.StopMusic;
 end;
 
-procedure TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+function TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
 begin
-  inherited;
+  Result := inherited MouseEvent(Button, Event, X, Y);
   if Event<>meMove then Exit;
   FCamera.Angle:=Vector2D(FCamera.Angle.X+X/10, Max(-89.9, Min(FCamera.Angle.Y-Y/10, 89.9)));
 end;
 
-procedure TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
-  inherited;
+  Result := inherited KeyEvent(Key, Event);
   if Event=keUp then
   begin
     case Key of
@@ -233,10 +238,7 @@ end;
 function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result:=inherited SysNotify(Notify);
-  case Notify of
-    snMinimize: Core.SwitchState(SIDMenu);
-    snConsoleActive: Result:=true;
-  end;
+  if Notify=snMinimize then Core.SwitchState(SIDMenu);
 end;
 
 procedure TStateGame.NewGame;

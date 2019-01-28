@@ -8,27 +8,34 @@ uses
   Windows, AvL, avlMath, avlUtils, OpenGL, VSEOpenGLExt, VSECore, VSEConsole;
 
 type
-  TIntConsoleInterface = class(TConsoleInterface)
+  TConsoleInterface = class(TModule)
   private
+    FActive, FBlocking: Boolean;
     FScreenHeight: Single;
     FLogCache, FCmdHistory: TStringList;
-    FFont, FLogPosition, FCursor, FCmdHistoryIndex, FLineLength: Integer;
+    FFont, FCachedLines, FLogPosition, FCursor, FCmdHistoryIndex, FLineLength: Integer;
     FCommandLine: string;
+    procedure SetActive(Value: Boolean);
     procedure AddToCache(const Line: string);
     function LogEndPosition: Integer;
     procedure UpdateFont(ScreenHeight: Single);
     function HelpHandler(Sender: TObject; Args: array of const): Boolean;
     function CmdListHandler(Sender: TObject; Args: array of const): Boolean;
-  protected
-    procedure SetActive(Value: Boolean); override;
-    procedure OnWriteLn(const Line: string); override;
   public
-    constructor Create(Console: TConsole); override;
-    destructor Destroy; Override;
+    constructor Create; override;
+    destructor Destroy; override;
+    class function Name: string; override;
     procedure Draw; override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    procedure CharEvent(C: Char); override;
+    procedure Update; override;
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function CharEvent(C: Char): Boolean; override;
+    property Active: Boolean read FActive write SetActive; //Console interface is opened
+    property Blocking: Boolean read FBlocking write FBlocking; //Block state updates & events when active
   end;
+
+var
+  ConsoleInterface: TConsoleInterface; //ConsoleInterface interface
 
 implementation
 
@@ -54,25 +61,33 @@ begin
   if S <> '' then Result := S[Length(S)];
 end;
 
-{ TIntConsoleInterface }
+{ TConsoleInterface }
 
-constructor TIntConsoleInterface.Create(Console: TConsole);
+constructor TConsoleInterface.Create;
 begin
   inherited;
+  FBlocking := true;
   FLogCache := TStringList.Create;
   FCmdHistory := TStringList.Create;
   Console.OnCommand['help'] := HelpHandler;
   Console.OnCommand['cmdlist ?prefix=s'] := CmdListHandler;
+  ConsoleInterface := Self;
 end;
 
-destructor TIntConsoleInterface.Destroy;
+destructor TConsoleInterface.Destroy;
 begin
+  ConsoleInterface := nil;
   FAN(FCmdHistory);
   FAN(FLogCache);
   inherited;
 end;
 
-procedure TIntConsoleInterface.Draw;
+class function TConsoleInterface.Name: string;
+begin
+  Result:='ConsoleInterface';
+end;
+
+procedure TConsoleInterface.Draw;
 
   function RemovePostfix(const S: string): string;
   begin
@@ -100,6 +115,7 @@ begin
   begin
     FLineLength := Floor(ScreenWidth / CharWidth);
     FLogCache.Clear;
+    FCachedLines := 0;
     for i := 0 to Console.Log.Count - 1 do
       AddToCache(Console.Log[i]);
     FLogPosition := LogEndPosition;
@@ -146,7 +162,25 @@ begin
   Render2D.Leave;
 end;
 
-procedure TIntConsoleInterface.KeyEvent(Key: Integer; Event: TKeyEvent);
+procedure TConsoleInterface.Update;
+var
+  AtEnd: Boolean;
+begin
+  AtEnd := FLogPosition = LogEndPosition;
+  while (FLineLength > 0) and (Console.Log.Count > FCachedLines) do
+    AddToCache(Console.Log[FCachedLines]);
+  if AtEnd then
+    FLogPosition := LogEndPosition;
+  if FActive and FBlocking then
+    Core.InhibitUpdate := true;
+end;
+
+function TConsoleInterface.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
+begin
+  Result := FActive and FBlocking;
+end;
+
+function TConsoleInterface.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 var
   List: TStringList;
   i: Integer;
@@ -162,8 +196,10 @@ begin
   if not FActive then
   begin
     if (Event = keUp) and (Key = VK_TILDE) then Active := true;
+    Result := FActive;
     Exit;
   end;
+  Result := true;
   if (Event = keDown) then
   begin
     case Key of
@@ -238,8 +274,9 @@ begin
   end;
 end;
 
-procedure TIntConsoleInterface.CharEvent(C: Char);
+function TConsoleInterface.CharEvent(C: Char): Boolean;
 begin
+  Result := FActive;
   if FActive and (C in [#31..#95, #97..#126, #128..#255]) then
   begin
     Insert(C, FCommandLine, FCursor);
@@ -247,7 +284,7 @@ begin
   end;
 end;
 
-procedure TIntConsoleInterface.SetActive(Value: Boolean);
+procedure TConsoleInterface.SetActive(Value: Boolean);
 begin
   FActive := Value;
   if FActive then
@@ -264,19 +301,10 @@ begin
   end;
 end;
 
-procedure TIntConsoleInterface.OnWriteLn(const Line: string);
-var
-  AtEnd: Boolean;
-begin
-  AtEnd := FLogPosition = LogEndPosition;
-  AddToCache(Line);
-  if AtEnd then FLogPosition := LogEndPosition;
-end;
-
-procedure TIntConsoleInterface.AddToCache(const Line: string);
+procedure TConsoleInterface.AddToCache(const Line: string);
 var
   Pos: Integer;
-  Postfix: string;
+  Postfix: Char;
 
   function AddPostfix(const S: string): string;
   begin
@@ -290,8 +318,8 @@ begin
   if Line <> '' then
   begin
     Pos := 1;
-    Postfix := ' ';
-    if LastChar(Line) in [PostfixWarning, PostfixError] then Postfix := LastChar(Line);
+    Postfix := LastChar(Line);
+    if not (Postfix in [PostfixWarning, PostfixError]) then Postfix := ' ';
     while Pos <= Length(Line) do
     begin
       FLogCache.Add(AddPostfix(Copy(Line, Pos, FLineLength)));
@@ -299,14 +327,15 @@ begin
     end;
   end
     else  FLogCache.Add('');
+  Inc(FCachedLines);
 end;
 
-function TIntConsoleInterface.LogEndPosition: Integer;
+function TConsoleInterface.LogEndPosition: Integer;
 begin
   Result := Max(FLogCache.Count - DisplayLines, 0);
 end;
 
-procedure TIntConsoleInterface.UpdateFont(ScreenHeight: Single);
+procedure TConsoleInterface.UpdateFont(ScreenHeight: Single);
 begin
   if FScreenHeight <> ScreenHeight then
   begin
@@ -315,7 +344,7 @@ begin
   end;
 end;
 
-function TIntConsoleInterface.HelpHandler(Sender: TObject; Args: array of const): Boolean;
+function TConsoleInterface.HelpHandler(Sender: TObject; Args: array of const): Boolean;
 begin
   with Console do
   begin
@@ -330,7 +359,7 @@ begin
   Result := true;
 end;
 
-function TIntConsoleInterface.CmdListHandler(Sender: TObject; Args: array of const): Boolean;
+function TConsoleInterface.CmdListHandler(Sender: TObject; Args: array of const): Boolean;
 var
   Prefix: string;
   Commands: TStringList;
@@ -351,6 +380,6 @@ begin
 end;
 
 initialization
-  SetConsoleInterface(TIntConsoleInterface);
+  RegisterModule(TConsoleInterface);
 
 end.

@@ -32,6 +32,74 @@ type
 
 procedure GlobalMemoryStatusEx(var lpBuffer:TMemoryStatusEx); stdcall; external kernel32;
 
+{$IFDEF VSE_DEBUG}
+procedure LogUnits;
+var
+  MapFile: string;
+  Map: TStringList;
+  BaseAddr: Cardinal;
+  InitContext: PInitContext;
+  i: Integer;
+
+  function FindSymbol(const Name: string): Cardinal;
+  var
+    i: Integer;
+    S: string;
+  begin
+    Result := 0;
+    for i := 0 to Map.Count - 1 do
+      if Pos(Name, Map[i]) > 0 then
+      begin
+        S := Trim(Map[i]);
+        Delete(S, FirstDelimiter(' ', S), MaxInt);
+        Delete(S, 1, FirstDelimiter(':', S));
+        Result := StrToCar('$' + S);
+        Break;
+      end;
+  end;
+
+  function FindAddress(Addr: Cardinal): string;
+  var
+    i: Integer;
+    S: string;
+  begin
+    Result := '< not found >';
+    S := Format(':%08X', [Addr]);
+    for i := 0 to Map.Count - 1 do
+      if Pos(S, Map[i]) > 0 then
+      begin
+        Result := Trim(Map[i]);
+        Delete(Result, 1, LastDelimiter(' ', Result));
+        Break;
+      end;
+  end;
+
+begin
+  MapFile := ChangeFileExt(FullExeName, '.map');
+  if not FileExists(MapFile) then Exit;
+  Map := TStringList.Create;
+  try
+    Map.LoadFromFile(MapFile);
+    BaseAddr := Cardinal(@LogUnits) - FindSymbol('LogUnits');
+    InitContext := Pointer(Cardinal(@SysInfoLogged) - FindSymbol('SysInfoLogged') + FindSymbol('InitContext'));
+    LogRaw(llDebug, '');
+    LogRaw(llDebug, 'Units info:');
+    if (BaseAddr = Cardinal(@LogUnits)) or (InitContext = @SysInfoLogged) then
+    begin
+      LogRaw(llDebug, 'Error: can''t find InitContext address');
+      Exit;
+    end;
+    LogRaw(llDebug, Format('InitContext: 0x%08x', [InitContext]));
+    for i := 0 to InitContext.InitTable.UnitCount - 1 do
+      with InitContext.InitTable.UnitInfo[i] do
+        if Cardinal(Init) > 0 then
+          LogRaw(llDebug, Format('Unit #%d: 0x%08x %s', [i, Cardinal(Init), FindAddress(Cardinal(Init) - BaseAddr)]));
+  finally
+    FAN(Map);
+  end;
+end;
+{$ENDIF}
+
 function LogSysInfo: Boolean;
 var
   Tmp: Integer;
@@ -39,6 +107,7 @@ begin
   Result:=not SysInfoLogged;
   if not Result then Exit;
   GetWinVer;
+  {$IFDEF VSE_DEBUG}LogUnits;{$ENDIF}
   LogRaw(llInfo, '');
   LogRaw(llInfo, 'System:');
   LogRaw(llInfo, Format('%s (%d.%d.%d %s)', [Win32Type, Win32MajorVersion, Win32MinorVersion, Win32BuildNumber, Win32CSDVersion]));

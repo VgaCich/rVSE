@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, avlVectors, OpenGL, VSEOpenGLExt,
-  oglExtensions, VSECore, VSEImageCodec;
+  oglExtensions, VSECore, VSEImageCodec, StateMenu;
 
 type
   TLoadThread = class(TThread)
@@ -44,7 +44,7 @@ implementation
 uses
   VSETexMan, VSERender2D, VSEGUI
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
-  StateMenu, GameData;
+  GameData;
 
 const
   SLoading = 'Загрузка...';
@@ -163,7 +163,7 @@ end;
 function TStateStart.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result := inherited SysNotify(Notify);
-  if (Notify = snMinimize) or (Notify = snConsoleActive) then
+  if Notify = snMinimize then
     Result := true;
 end;
 

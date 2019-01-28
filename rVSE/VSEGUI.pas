@@ -103,9 +103,9 @@ type
     procedure Draw; //Draw form
     procedure Update; dynamic; //Update form
     procedure Close; //Free form safely
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); dynamic; //Process mouse event
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); dynamic; //Process key event
-    procedure CharEvent(C: Char); dynamic; //Process char event
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; dynamic; //Process mouse event
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; dynamic; //Process key event
+    function CharEvent(C: Char): Boolean; dynamic; //Process char event
     property Button[Index: Integer]: PBtn read GetButton; //Buttons array
     property Lbl[Index: Integer]: PLbl read GetLabel; //Labels array
     property Caption: string read FCaption write FCaption; //Form caption
@@ -424,12 +424,13 @@ begin
   FClose := true;
 end;
 
-procedure TGUIForm.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+function TGUIForm.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
 var
   Cursor: TPoint;
 begin
   Cursor := Point(X, Y);
   MapCursor(Cursor);
+  Result := PointInRect(Cursor, Rect(0, 0, FWidth, FHeight));
   FActive := BtnAt(Cursor);
   case Event of
     meMove: if IsMoving then
@@ -462,8 +463,9 @@ begin
   end;
 end;
 
-procedure TGUIForm.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TGUIForm.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
+  Result := false;
   if (Event = keDown) then
   begin
     case Key of
@@ -482,17 +484,19 @@ begin
       FTabStop := High(FButtons);
     if FTabStop > High(FButtons) then
       FTabStop := 0;
+    Result := true;
   end
   else if (Key = VK_SPACE) and FButtons[FTabStop].Enabled and Assigned(FButtons[FTabStop].OnClick) then
   begin
     FButtons[FTabStop].OnClick(@FButtons[FTabStop]);
+    Result := true;
     Exit;
   end;
 end;
 
-procedure TGUIForm.CharEvent(C: Char);
+function TGUIForm.CharEvent(C: Char): Boolean;
 begin
-
+  Result := false;
 end;
 
 procedure TGUIForm.SetColor(State: TBtnState; const ColorSet: TColorSet; Enabled: Boolean = true);

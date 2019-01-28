@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions,
-  VSECore, VSEGUI, VSEFormManager, VSEForms, StateStart, StateGame, StateGameEnd;
+  VSECore, VSEGUI, VSEFormManager, VSEForms, StateGameEnd;
 
 type
   TStateMenu=class;
@@ -18,7 +18,7 @@ type
     procedure ExitClick(Btn: PBtn);
   public
     constructor Create;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
     procedure ResumeEnable(Enable: Boolean);
   end;
   TDiffMenu=class(TAlignedForm)
@@ -26,7 +26,7 @@ type
     procedure BtnClick(Btn: PBtn);
   public
     constructor Create;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
   end;
   TScores = class(TAlignedForm)
   protected
@@ -36,7 +36,7 @@ type
     procedure DrawForm(State: TBtnState); override;
   public
     constructor Create;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
   end;
   TOptions=class(TOptionsForm)
   protected
@@ -63,7 +63,6 @@ type
     procedure Draw; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
-    function  SysNotify(Notify: TSysNotify): Boolean; override;
   end;
 
 const
@@ -78,8 +77,10 @@ function BackgroundLoaded: Boolean;
 
 implementation
 
-uses VSESound, VSETexMan, VSERender2D, VSEImageCodec
-  {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+uses
+  VSESound, VSETexMan, VSERender2D, VSEImageCodec
+  {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
+  StateStart, StateGame;
 
 var
   BgTex: Cardinal;
@@ -136,15 +137,19 @@ begin
   Button[FResumeButton].Enabled:=false;
 end;
 
-procedure TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
+  Result := false;
   if (Key=VK_ESCAPE) and (Event=keUp) then
+  begin
     if Self.Button[FResumeButton].Enabled then
-      Core.SwitchState(SIDGame)
+       Core.SwitchState(SIDGame)
     else
-      Core.StopEngine
+      Core.StopEngine;
+    Result := true;
+  end
   else
-    inherited KeyEvent(Key, Event);
+    Result := inherited KeyEvent(Key, Event);
 end;
 
 procedure TMainMenu.ResumeEnable(Enable: Boolean);
@@ -207,12 +212,16 @@ begin
   CreateMenu(Self, 30, 50, 140, 30, 20, DiffMenuItems);
 end;
 
-procedure TDiffMenu.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TDiffMenu.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
+  Result := false;
   if (Key=VK_ESCAPE) and (Event=keUp) then
-    Close
+  begin
+    Close;
+    Result := true;
+  end
   else
-    inherited KeyEvent(Key, Event);
+    Result := inherited KeyEvent(Key, Event);
 end;
 
 procedure TDiffMenu.BtnClick(Btn: PBtn);
@@ -255,12 +264,16 @@ begin
     FScores[i] := Settings.Int[SScores, IntToStr(i)];
 end;
 
-procedure TScores.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TScores.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
+  Result := false;
   if (Key=VK_ESCAPE) and (Event=keUp) then
-    Close
+  begin
+    Close;
+    Result := true;
+  end
   else
-    inherited KeyEvent(Key, Event);
+    Result := inherited KeyEvent(Key, Event);
 end;
 
 procedure TScores.DrawForm(State: TBtnState);
@@ -420,12 +433,6 @@ end;
 function TStateMenu.GetName: string;
 begin
   Result:=SIDMenu;
-end;
-
-function TStateMenu.SysNotify(Notify: TSysNotify): Boolean;
-begin
-  Result:=inherited SysNotify(Notify);
-  if Notify=snConsoleActive then Result:=true;
 end;
 
 {$IFDEF VSE_CONSOLE}

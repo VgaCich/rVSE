@@ -35,9 +35,9 @@ type
     procedure Update; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    function  SysNotify(Notify: TSysNotify): Boolean; override;
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function SysNotify(Notify: TSysNotify): Boolean; override;
     procedure NewGame;
     property CanResumeGame: Boolean read GetCanResumeGame;
     property Mouse3D: TVector3D read FMouse3D;
@@ -48,12 +48,12 @@ const
 
 implementation
 
-uses VSERender2D, VSETexMan, VSEBindMan, VSEFormManager
+uses VSERender2D, VSETexMan, VSEFormManager, VSEBindMan, VSECollisionCheck
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
   StateMenu, GameForms, GameObjects, GameData;
 
 const
-  MoveBorder = 10;
+  MoveBorder = 25;
 
 constructor TStateGame.Create;
 begin
@@ -127,14 +127,15 @@ const
   Move: array[Boolean, Boolean] of Single = ((0, -1), (1, 0));
 begin
   inherited;
-  FCamera.Move(Vector2D(
-    Move[
-      BindMan.BindActive[BindCamLeft] or (Core.MouseCursor.X < MoveBorder),
-      BindMan.BindActive[BindCamRight] or (Core.MouseCursor.X > Core.ResolutionX - MoveBorder)],
-    Move[
-      BindMan.BindActive[BindCamFwd] or (Core.MouseCursor.Y < MoveBorder),
-      BindMan.BindActive[BindCamBwd] or (Core.MouseCursor.Y > Core.ResolutionY - MoveBorder)]),
-    MapBounds.Min, MapBounds.Max);
+  with Core do
+    FCamera.Move(Vector2D(
+      Move[
+        BindMan.BindActive[BindCamLeft] or PointInRect(MouseCursor, Rect(0, 0, MoveBorder, ResolutionY)),
+        BindMan.BindActive[BindCamRight] or PointInRect(MouseCursor, Rect(ResolutionX - MoveBorder, 0, ResolutionX, ResolutionY))],
+      Move[
+        BindMan.BindActive[BindCamFwd] or PointInRect(MouseCursor, Rect(0, 0, ResolutionX, MoveBorder)),
+        BindMan.BindActive[BindCamBwd] or PointInRect(MouseCursor, Rect(0, ResolutionY - MoveBorder, ResolutionX, ResolutionY))]),
+      MapBounds.Min, MapBounds.Max);
   if Assigned(FGame) then
   begin
     EventBus.SendEvent(FOnMouseEvent, FGame, [Integer(meMove), @FMouse3D]);
@@ -162,10 +163,9 @@ begin
   //TODO: FGame.Pause;
 end;
 
-procedure TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+function TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
 begin
-  inherited;
-  if not Core.MouseCapture and FormManager.MouseBusy(X, Y) then Exit;
+  Result := inherited MouseEvent(Button, Event, X, Y);
   case Event of
     meDown: if Button in [mbRight, mbMiddle] then
         Core.MouseCapture := true
@@ -186,9 +186,9 @@ begin
   end;
 end;
 
-procedure TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
-  inherited;
+  Result := inherited KeyEvent(Key, Event);
   if Event = keUp then
   begin
     case Key of
@@ -200,10 +200,8 @@ end;
 function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result := inherited SysNotify(Notify);
-  case Notify of
-    snMinimize: Core.SwitchState(SIDMenu);
-    snConsoleActive: Result := true;
-  end;
+  if Notify = snMinimize then
+    Core.SwitchState(SIDMenu);
 end;
 
 procedure TStateGame.NewGame;

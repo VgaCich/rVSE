@@ -13,6 +13,7 @@ type
     procedure Click(Btn: PBtn);
   public
     constructor Create(const Caption, Prompt: string; const Buttons: array of string; Handler: TOnMessageBox = nil); //Creates MessageBox; Caption: Form caption, Prompt: message text, Buttons: buttons' captions, Handler: button click handler
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
   end;
   TOptionsForm = class(TAlignedForm)
   protected
@@ -20,6 +21,7 @@ type
       FCurrentResolution, FCurrentRefreshRate, FColorDepth, FBOK, FBCancel: Integer;
     FResolutions: TResolutions;
     FNeedRestart: Boolean;
+    FRestartMessage, FRestartYes, FRestartNo: string;
     procedure DrawForm(State: TBtnState); override;
     procedure ResClick(Btn: PBtn);
     procedure RefrClick(Btn: PBtn);
@@ -30,7 +32,7 @@ type
   public
     constructor Create(Width, Height: Integer);
     destructor Destroy; override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
   end;
   {$IFNDEF FORMS_NO_BINDMAN}
   TBindManCfgForm=class(TAlignedForm) // Keys configuration form
@@ -45,8 +47,8 @@ type
   public
     constructor Create(Width, Height: Integer; const DefaultCapt, CloseCapt: string);
     destructor Destroy; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
     procedure Refresh;
   end;
   {$ENDIF}
@@ -60,7 +62,7 @@ type
   public
     constructor Create(Width, Height: Integer; const Caption, CloseCaption: string; Text: TStringList);
     destructor Destroy; override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
   end;
 
 procedure ShowMessage(const Caption, Prompt: string; const Buttons: array of string; Handler: TOnMessageBox = nil; const Parent: string = ''); //Shows Message Box; Parent: parent form, Caption: Form caption, Prompt: message text, Buttons: buttons' captions, Handler: button click handler
@@ -122,6 +124,21 @@ begin
   Close;
 end;
 
+function TMessageBox.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+const
+  Buttons: array[Boolean] of Integer = (0, -1);
+begin
+  if (Key in [VK_ESCAPE, VK_RETURN]) and (Event = keUp) then
+  begin
+    if Assigned(FHandler) then
+      FHandler(Self, Buttons[Key = VK_ESCAPE]);
+    Close;
+    Result := true;
+  end
+  else
+    Result := inherited KeyEvent(Key, Event);
+end;
+
 {TOptionsForm}
 
 constructor TOptionsForm.Create(Width, Height: Integer);
@@ -133,6 +150,9 @@ begin
   inherited Create(0, 0, Width, Height);
   Alignment := [faCenter, faMiddle];
   FCaption := 'Options';
+  FRestartMessage := 'Selected settings requires restarting of the game. Restart now?';
+  FRestartYes := 'Yes';
+  FRestartNo := 'No';
   FResolutions := gleGetResolutions;
   FLResolution := CreateSelect(Self, 10, 60, 190, 20, ResClick, '-', '+');
   FLRefreshRate := CreateSelect(Self, 10, 110, 190, 20, RefrClick, '-', '+');
@@ -219,12 +239,18 @@ begin
   inherited Destroy;
 end;
 
-procedure TOptionsForm.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TOptionsForm.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
-  if (Key = VK_ESCAPE) and (Event = keUp) then
-    CancelClick(nil)
+  if (Key in [VK_ESCAPE, VK_RETURN]) and (Event = keUp) then
+  begin
+    if Key = VK_RETURN then
+      OKClick(nil)
+    else
+      CancelClick(nil);
+    Result := true;
+  end
   else
-    inherited KeyEvent(Key, Event);
+    Result := inherited KeyEvent(Key, Event);
 end;
 
 procedure TOptionsForm.DrawForm(State: TBtnState);
@@ -264,7 +290,7 @@ begin
   Core.VSync := Button[FCVSync].Checked;
   Core.ColorDepth := FColorDepth;
   if FNeedRestart then
-    ShowMessage(Caption, 'Выбранные настройки требуют перезапуска. Перезапустить игру?', ['Да', 'Нет'], RestartClick, Name)
+    ShowMessage(Caption, FRestartMessage, [FRestartYes, FRestartNo], RestartClick, Name)
   else
     Close;
   FNeedRestart := false;
@@ -390,8 +416,27 @@ begin
   Btn^.Caption := '???';
 end;
 
-procedure TBindManCfgForm.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TBindManCfgForm.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
 begin
+  Result := false;
+  if FActive > -1 then
+  begin
+    if not (Event in [meDown, meWheel]) then Exit;
+    if Event = meWheel then
+    begin
+      if Button > 0
+        then SetKey(VK_MWHEELUP)
+        else SetKey(VK_MWHEELDOWN);
+    end
+      else SetKey(MBtnMap[Button]);
+    Result := true;
+  end
+    else Result := inherited MouseEvent(Button, Event, X, Y);
+end;
+
+function TBindManCfgForm.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+begin
+  Result := false;
   if FActive > -1 then
   begin
     if Event <> keUp then Exit;
@@ -403,28 +448,16 @@ begin
       else if Key = VK_BACK
         then SetKey(0)
         else SetKey(Key);
+    Result := true;
   end
   else begin
-    if (Event = keUp) and (Key = VK_ESCAPE)
-      then CloseClick(nil)
-      else inherited KeyEvent(Key, Event);
-  end;
-end;
-
-procedure TBindManCfgForm.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
-begin
-  if FActive > -1 then
-  begin
-    if not (Event in [meDown, meWheel]) then Exit;
-    if Event = meWheel then
+    if (Event = keUp) and (Key = VK_ESCAPE) then
     begin
-      if Button > 0
-        then SetKey(VK_MWHEELUP)
-        else SetKey(VK_MWHEELDOWN);
+      CloseClick(nil);
+      Result := true;
     end
-      else SetKey(MBtnMap[Button]);
-  end
-    else inherited MouseEvent(Button, Event, X, Y);
+      else Result := inherited KeyEvent(Key, Event);
+  end;
 end;
 
 procedure TBindManCfgForm.CloseClick(Btn: PBtn);
@@ -513,10 +546,11 @@ begin
   inherited Destroy;
 end;
 
-procedure TTextView.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TTextView.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 var
   Btn: TBtn;
 begin
+  Result := true;
   if Event = keDown then
     case Key of
       VK_LEFT:
@@ -529,10 +563,13 @@ begin
           Btn.Tag := 1;
           ChangePage(@Btn);
         end;
+      else
+        Result := inherited KeyEvent(Key, Event);
     end
   else if Key = VK_ESCAPE then
-    Close(nil);
-  inherited KeyEvent(Key, Event);
+    Close(nil)
+  else
+    Result := inherited KeyEvent(Key, Event);
 end;
 
 procedure TTextView.DrawForm(State: TBtnState);

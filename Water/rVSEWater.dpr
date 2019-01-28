@@ -24,7 +24,7 @@ type
     procedure Draw; override;
     procedure Update; override;
     function  Activate: Cardinal; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
   end;
 
 {$R MemPak.res}
@@ -172,7 +172,7 @@ begin
   Core.MouseCapture:=true;
 end;
 
-procedure TStateMain.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+function TStateMain.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
 const
   MSens=0.5;
 begin

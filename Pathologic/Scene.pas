@@ -111,7 +111,7 @@ begin
     FObjects[i].Draw;
   end;
   with Core.MouseCursor do
-    if (Core.CurState is TStateGame) and not (Core.MouseCapture or FormManager.MouseBusy(X, Y)) then
+    if (Core.CurState is TStateGame) and not (Core.MouseCapture or FormManager.MouseOnForm(X, Y)) then
       FObjectAtMouse := ObjectAt(X, Y)
     else
       FObjectAtMouse := nil;

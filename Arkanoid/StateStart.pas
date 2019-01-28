@@ -53,7 +53,8 @@ var
 implementation
 
 uses VSETexMan, VSEImageCodec, VSERender2D, VSEGUI,
-  {$IFDEF VSE_CONSOLE}VSEConsole,{$ENDIF}{$IFDEF VSE_LOG}VSELog,{$ENDIF}
+  {$IFDEF VSE_CONSOLE}VSEConsole, VSEConsoleInterface,{$ENDIF}
+  {$IFDEF VSE_LOG}VSELog,{$ENDIF}
   StateMenu;
 
 var
@@ -172,6 +173,7 @@ begin
   FLoadThread.OnTerminate:=OnLoaded;
   FLoadThread.Resume;
   ShowCursor(false);
+  {$IFDEF VSE_CONSOLE}ConsoleInterface.Blocking := false;{$ENDIF}
 end;
 
 procedure TStateStart.Deactivate;
@@ -180,12 +182,13 @@ begin
   FLoadThread.WaitFor;
   FAN(FLoadThread);
   ShowCursor(true);
+  {$IFDEF VSE_CONSOLE}ConsoleInterface.Blocking := true;{$ENDIF}
 end;
 
 function TStateStart.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result:=inherited SysNotify(Notify);
-  if (Notify=snMinimize) or (Notify=snConsoleActive) then Result:=true;
+  if Notify=snMinimize then Result:=true;
 end;
 
 function TStateStart.LoadCache: Boolean;

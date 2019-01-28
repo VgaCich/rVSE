@@ -24,9 +24,9 @@ type
     procedure Draw; override;
     function Activate: Cardinal; override;
     procedure Deactivate; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    function  SysNotify(Notify: TSysNotify): Boolean; override;
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function SysNotify(Notify: TSysNotify): Boolean; override;
   end;
 
 implementation
@@ -97,14 +97,14 @@ begin
   TStateGame(Core.GetState(Core.FindState(SIDGame))).ClearBricks;
 end;
 
-procedure TStateGameEnd.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+function TStateGameEnd.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
 begin
   if (Event = meDown) or (Event = meUp) then Core.SwitchState(SIDMenu);
 end;
 
-procedure TStateGameEnd.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TStateGameEnd.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
-  if (Event = keDown) or (Event = keUp) then Core.SwitchState(SIDMenu);
+  Core.SwitchState(SIDMenu);
 end;
 
 function TStateGameEnd.SysNotify(Notify: TSysNotify): Boolean;

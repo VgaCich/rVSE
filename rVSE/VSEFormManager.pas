@@ -36,15 +36,15 @@ type
     class function Name: string; override;
     procedure Draw; override;
     procedure Update; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    procedure CharEvent(C: Char); override;
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function CharEvent(C: Char): Boolean; override;
     function  SysNotify(Notify: TSysNotify): Boolean; override;
     procedure Show(const Name: string); //Show and pop form
     procedure Hide(const Name: string); //Hide form
     procedure Pop(const Name: string); //Pop form to front
     procedure AlignForms; //Align alignable forms
-    function MouseBusy(X, Y: Integer): Boolean; //Returns true if mouse processed by FormManager
+    function MouseOnForm(X, Y: Integer): Boolean; //Returns true if mouse on form or captured
     function Top: TGUIForm; //Topmost form
     property FormsSet: TGUIFormsSet read FFormsSet write SetFormsSet; //Current forms set
     property Forms[const Name: string]: TGUIForm read GetForm; default; //Forms
@@ -148,15 +148,18 @@ begin
   end;
 end;
 
-procedure TFormManager.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+function TFormManager.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
 var
   Form: PFormRec;
 begin
+  Result := false;
+  if Core.MouseCapture then Exit;
   if Assigned(FCapturedMouse) then
   begin
     FCapturedMouse.MouseEvent(Button, Event, X, Y);
     if Event = meUp then
       FCapturedMouse := nil;
+    Result := true;
     Exit;
   end;
   if not Assigned(FFormsSet) then Exit;
@@ -169,24 +172,32 @@ begin
         FCapturedMouse := Form;
         Pop(Name);
       end;
-      Form.MouseEvent(Button, Event, X, Y);
+      Result := Form.MouseEvent(Button, Event, X, Y);
     end;
 end;
 
-procedure TFormManager.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TFormManager.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
+  Result := false;
   if not Assigned(FFormsSet) or not Assigned(FFormsSet.FirstForm) then Exit;
-  with FFormsSet.FirstForm^ do
-    if Visible and not Locked then
-      Form.KeyEvent(Key, Event);
+  if (Event = keDown) and (Key = VK_TAB) and Core.KeyPressed[VK_CONTROL] then
+  begin
+    FFormsSet.Pop(FFormsSet.LastForm);
+    Result := true;
+  end
+  else
+    with FFormsSet.FirstForm^ do
+      if Visible and not Locked then
+        Result := Form.KeyEvent(Key, Event);
 end;
 
-procedure TFormManager.CharEvent(C: Char);
+function TFormManager.CharEvent(C: Char): Boolean;
 begin
+  Result := false;
   if not Assigned(FFormsSet) or not Assigned(FFormsSet.FirstForm) then Exit;
   with FFormsSet.FirstForm^ do
     if Visible and not Locked then
-      Form.CharEvent(C);
+      Result := Form.CharEvent(C);
 end;
 
 function TFormManager.SysNotify(Notify: TSysNotify): Boolean;
@@ -232,7 +243,7 @@ begin
   end;
 end;
 
-function TFormManager.MouseBusy(X, Y: Integer): Boolean;
+function TFormManager.MouseOnForm(X, Y: Integer): Boolean;
 begin
   Result := Assigned(FCapturedMouse) or (Assigned(FFormsSet) and Assigned(FFormsSet.FormAt(X, Y)));
 end;

@@ -12,7 +12,6 @@ type
   TOnConsoleCommand = function(Sender: TObject; Args: array of const): Boolean of object; // Console command handler
   TOnConsoleExecute = function(Sender: TObject; const CommandLine: string): Boolean of object; // Console commands hook
   TConsoleVarType = (cvInt, cvBool, cvEnum, cvFloat, cvString); //Variable type
-  TConsole = class;
   TConsoleCommandArgument = class // internally used
   private
     FName: string;
@@ -48,20 +47,9 @@ type
     property Prev: TConsoleCommand read FPrev;
     property Next: TConsoleCommand read FNext;
   end;
-  TConsoleInterface = class(TCoreModule) // Base class for console user interface; see VSEConsoleInterface for implementation example
-  protected
-    FActive: Boolean;
-    procedure SetActive(Value: Boolean); virtual;
-    procedure OnWriteLn(const Line: string); virtual;
-  public
-    constructor Create(Console: TConsole); virtual;
-    property Active: Boolean read FActive write SetActive; // Console interface is open
-  end;
-  CConsoleInterface = class of TConsoleInterface;
   TConsole = class
   private
     FLog: TStringList;
-    FInterface: TConsoleInterface;
     {$IFDEF VSE_LOG}
     FLogLevel: TLogLevel;
     FLogBuffer: TStringList;
@@ -71,7 +59,6 @@ type
     FGoTo: string;
     FOnExecute: TOnConsoleExecute;
     FCommands: TConsoleCommand;
-    procedure CreateInterface;
     {$IFDEF VSE_LOG}procedure UpdateLog;{$ENDIF}
     function GetCommand(const CmdDesc: string): TOnConsoleCommand;
     procedure SetCommand(const CmdDesc: string; Value: TOnConsoleCommand);
@@ -95,16 +82,13 @@ type
     function GetCommands(Prefix: string): TStringList; // Get list of commands, starts with Prefix
     function GetCommandDescription(const Command: string): string; // Get description of a command
     function GetConVarHandler(const Variable; VarType: TConsoleVarType): TOnConsoleCommand; //Get command handler for console variable
-    property Intf: TConsoleInterface read FInterface; // Console user interface
     property Log: TStringList read FLog; //Console log; do not modify
     property OnCommand[const CmdDesc: string]: TOnConsoleCommand read GetCommand write SetCommand; default; // Command handlers; assign nil to delete command; see FmtDocs for commands description language
     property OnExecute: TOnConsoleExecute read FOnExecute write FOnExecute; // Console commands hook
   end;
 
-procedure SetConsoleInterface(Intf: CConsoleInterface); // Set user interface for console
-
 var
-  Console: TConsole; // Console programming interface
+  Console: TConsole; // Console interface
 
 const
   PostfixWarning = #10;
@@ -115,16 +99,6 @@ implementation
 const
   SConsoleVariableTypeMismatch = 'Console: console variable type mismatch';
   vtInvalid = 255;
-
-var
-  ConsoleInterface: CConsoleInterface = nil;
-
-procedure SetConsoleInterface(Intf: CConsoleInterface);
-begin
-  ConsoleInterface := Intf;
-  if Assigned(Console) then
-    Console.CreateInterface;
-end;
 
 type
   TCCAInteger = class(TConsoleCommandArgument)
@@ -179,24 +153,6 @@ begin
 end;
 {$ENDIF}
 
-{ TConsoleInterface }
-
-constructor TConsoleInterface.Create(Console: TConsole);
-begin
-  inherited Create;
-  FActive := false;
-end;
-
-procedure TConsoleInterface.SetActive(Value: Boolean);
-begin
-  
-end;
-
-procedure TConsoleInterface.OnWriteLn(const Line: string);
-begin
-
-end;
-
 { TConsole }
 
 constructor TConsole.Create;
@@ -214,7 +170,6 @@ begin
   OnCommand['goto lbl=s'] := GotoHandler;
   OnCommand['if chk=s cmd=s*'] := IfHandler;
   OnCommand['ifnot chk=s cmd=s*'] := IfHandler;
-  CreateInterface;
   {$IFDEF VSE_LOG}
   FLogLevel := VSELog.LogLevel;
   Levels := '';
@@ -249,14 +204,12 @@ end;
 procedure TConsole.Update;
 begin
   {$IFDEF VSE_LOG}UpdateLog;{$ENDIF}
-  FInterface.Update;
 end;
 
 procedure TConsole.WriteLn(const Line: string = '');
 begin
   {$IFDEF VSE_LOG}UpdateLog;{$ENDIF}
   FLog.Add(Line);
-  FInterface.OnWriteLn(Line);
 end;
 
 function TConsole.Execute(CommandLine: string): Boolean;
@@ -307,15 +260,6 @@ begin
     Result := Cmd.Description
   else
     Result := '';
-end;
-
-procedure TConsole.CreateInterface;
-begin
-  FAN(FInterface);
-  if Assigned(ConsoleInterface) then
-    FInterface := ConsoleInterface.Create(Self)
-  else
-    FInterface := TConsoleInterface.Create(Self);
 end;
 
 {$IFDEF VSE_LOG}

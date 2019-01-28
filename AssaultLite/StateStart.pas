@@ -182,7 +182,7 @@ end;
 function TStateStart.SysNotify(Notify: TSysNotify): Boolean;
 begin
   Result:=inherited SysNotify(Notify);
-  if (Notify=snMinimize) or (Notify=snConsoleActive) then Result:=true;
+  if Notify=snMinimize then Result:=true;
 end;
 
 function TStateStart.LoadCache: Boolean;

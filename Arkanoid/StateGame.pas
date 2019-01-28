@@ -86,9 +86,9 @@ type
     function  Activate: Cardinal; override;
     procedure ClearBricks;
     procedure Deactivate; override;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer); override;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
-    function  SysNotify(Notify: TSysNotify): Boolean; override;
+    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function SysNotify(Notify: TSysNotify): Boolean; override;
     procedure NewGame(Lives: Integer);
     property CanResumeGame: Boolean read GetCanResumeGame;
     property MouseSens: Integer read FMouseSens write FMouseSens;
@@ -270,9 +270,9 @@ begin
   Sound.StopMusic;
 end;
 
-procedure TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+function TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
 begin
-  inherited;
+  Result := inherited MouseEvent(Button, Event, X, Y);
   if Event = meMove then
   begin
     FPaddle.X := Max(-(BoardWidth - FPaddle.Width / 2), Min(FPaddle.X + Power(1.25, FMouseSens) * X / 200, BoardWidth - FPaddle.Width / 2));
@@ -283,9 +283,9 @@ begin
     FBall.Launch;
 end;
 
-procedure TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
-  inherited;
+  inherited KeyEvent(Key, Event);
   if Event = keUp then
   begin
     case Key of

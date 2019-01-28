@@ -2,7 +2,7 @@ program Pathologic;
 
 uses
   {$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows, AvL, avlUtils, avlEventBus,
-  VSECore, VSETexMan, VSEMemPak, {$IFDEF VSE_CONSOLE}VSEConsoleInterface,{$ENDIF}
+  VSECore, VSEMemPak, VSETexMan, {$IFDEF VSE_CONSOLE}VSEConsoleInterface,{$ENDIF}
   StateStart, StateMenu, StateGame, GameData;
 
 {$R *.res}
@@ -23,6 +23,7 @@ begin
   Randomize;
   EventBus.ClearEvents;
   TexMan.OnLostTex := TOnLostTex(MakeMethod(@LoadTexture));
+  {$IFDEF VSE_CONSOLE}ConsoleInterface.Blocking := false;{$ENDIF}
   Core.AddState(TStateGame.Create);
   Core.AddState(TStateMenu.Create);
   Core.SwitchState(Core.AddState(TStateStart.Create));

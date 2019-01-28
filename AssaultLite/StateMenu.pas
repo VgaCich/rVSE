@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions, VSECore,
-  VSEGUI, VSEFormManager, VSEForms, StateStart, StateLoad, StateGame;
+  VSEGUI, VSEFormManager, VSEForms, StateGame;
 
 type
   TStateMenu=class;
@@ -17,7 +17,7 @@ type
     procedure ExitClick(Btn: PBtn);
   public
     constructor Create;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
     procedure ResumeEnable(Enable: Boolean);
   end;
   TOptions=class(TOptionsForm)
@@ -46,7 +46,6 @@ type
     procedure Draw; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
-    function  SysNotify(Notify: TSysNotify): Boolean; override;
   end;
 
 const
@@ -55,8 +54,10 @@ const
 
 implementation
 
-uses VSESound, VSETexMan, VSERender2D, VSEImageCodec
-  {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+uses
+  VSESound, VSETexMan, VSERender2D, VSEImageCodec
+  {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF},
+  StateStart, StateLoad;
 
 {TMainMenu}
 
@@ -91,15 +92,19 @@ begin
   Button[FResumeButton].Enabled:=false;
 end;
 
-procedure TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
+  Result := false;
   if (Key=VK_ESCAPE) and (Event=keUp) then
+  begin
     if Self.Button[FResumeButton].Enabled then
        Core.SwitchState(SIDGame)
     else
-      Core.StopEngine
+      Core.StopEngine;
+    Result := true;
+  end
   else
-    inherited KeyEvent(Key, Event);
+    Result := inherited KeyEvent(Key, Event);
 end;
 
 procedure TMainMenu.ResumeEnable(Enable: Boolean);
@@ -226,7 +231,7 @@ begin
   {$ENDIF}
   FFormsSet:=TGUIFormsSet.Create;
   FFormsSet.AddForm(IDMainMenu, TMainMenu.Create);
-  FGame:=TStateGame(Core.GetState(Core.FindState('Game')));
+  FGame:=TStateGame(Core.GetState(Core.FindState(SIDGame)));
 end;
 
 destructor TStateMenu.Destroy;
@@ -239,17 +244,18 @@ procedure TStateMenu.Draw;
 begin
   inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
-  if FGame.CanResumeGame then FGame.Draw
-    else if FBgTex<>0 then
-    begin
-      TexMan.Bind(FBgTex);
-      Render2D.Enter;
-      gleColor(clWhite);
-      with Render2D.VSBounds do
-        Render2D.DrawRect(Left, Top, Right - Left, Bottom - Top, 0, 0, 1, 1);
-      Render2D.Leave;
-      TexMan.Unbind;
-    end;
+  if FGame.CanResumeGame then
+    FGame.Draw
+  else if FBgTex<>0 then
+  begin
+    TexMan.Bind(FBgTex);
+    Render2D.Enter;
+    gleColor(clWhite);
+    with Render2D.VSBounds do
+      Render2D.DrawRect(Left, Top, Right - Left, Bottom - Top, 0, 0, 1, 1);
+    Render2D.Leave;
+    TexMan.Unbind;
+  end;
 end;
 
 function TStateMenu.Activate: Cardinal;
@@ -268,12 +274,6 @@ end;
 function TStateMenu.GetName: string;
 begin
   Result:=SIDMenu;
-end;
-
-function TStateMenu.SysNotify(Notify: TSysNotify): Boolean;
-begin
-  Result:=inherited SysNotify(Notify);
-  if Notify=snConsoleActive then Result:=true;
 end;
 
 {$IFDEF VSE_CONSOLE}

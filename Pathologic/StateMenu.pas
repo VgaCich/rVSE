@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, AvL, avlUtils, OpenGL, VSEOpenGLExt, oglExtensions, VSECore,
-  VSEGUI, VSEFormManager, VSEBindMan, VSEForms, StateStart, StateGame, GameData;
+  VSEGUI, VSEFormManager, VSEBindMan, VSEForms, StateGame, GameData;
 
 type
   TStateMenu = class;
@@ -17,7 +17,7 @@ type
     procedure ExitClick(Btn: PBtn);
   public
     constructor Create;
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent); override;
+    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
     procedure ResumeEnable(Enable: Boolean);
   end;
   TOptions = class(TOptionsForm)
@@ -44,7 +44,6 @@ type
     procedure Draw; override;
     function Activate: Cardinal; override;
     procedure Deactivate; override;
-    function SysNotify(Notify: TSysNotify): Boolean; override;
   end;
 
 const
@@ -124,15 +123,19 @@ begin
   Button[FResumeButton].Enabled := false;
 end;
 
-procedure TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvent);
+function TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
 begin
-  if (Key = VK_ESCAPE) and (Event = keUp) then
+  Result := false;
+  if (Key=VK_ESCAPE) and (Event=keUp) then
+  begin
     if Self.Button[FResumeButton].Enabled then
-      Core.SwitchState(SIDGame)
+       Core.SwitchState(SIDGame)
     else
-      Core.StopEngine
+      Core.StopEngine;
+    Result := true;
+  end
   else
-    inherited KeyEvent(Key, Event);
+    Result := inherited KeyEvent(Key, Event);
 end;
 
 procedure TMainMenu.ResumeEnable(Enable: Boolean);
@@ -187,6 +190,9 @@ begin
   end;
   Button[FBOK].Caption := 'ОК';
   Button[FBCancel].Caption := 'Отмена';
+  FRestartMessage := 'Выбранные настройки требуют перезапуска игры. Перезапустить сейчас?';
+  FRestartYes := 'Да';
+  FRestartNo := 'Нет';
   FLQuality := CreateSelect(Self, 10, 210, 190, 20, QualityClick, '-', '+');
   with Btn do
   begin
@@ -293,13 +299,6 @@ end;
 function TStateMenu.GetName: string;
 begin
   Result := SIDMenu;
-end;
-
-function TStateMenu.SysNotify(Notify: TSysNotify): Boolean;
-begin
-  Result := inherited SysNotify(Notify);
-  if Notify = snConsoleActive then
-    Result := true;
 end;
 
 {$IFDEF VSE_CONSOLE}
