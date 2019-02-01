@@ -227,7 +227,7 @@ constructor TStateMenu.Create;
 begin
   inherited Create;
   {$IFDEF VSE_CONSOLE}
-  Console.OnCommand['menubg file=s']:=MenuBgHandler;
+  Console['menubg file=s']:=MenuBgHandler;
   {$ENDIF}
   FFormsSet:=TGUIFormsSet.Create;
   FFormsSet.AddForm(IDMainMenu, TMainMenu.Create);

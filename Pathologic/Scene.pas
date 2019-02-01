@@ -72,7 +72,7 @@ begin
   EventBus.AddListener(EventBus.RegisterEvent(SceneSetQuarterHlColor), SetQuarterHlColor);
   FOnQuarterHighlight := EventBus.RegisterEvent(SceneOnQuarterHighlight);
   {$IF Defined(VSE_DEBUG) and Defined(VSE_CONSOLE)}
-  Console.OnCommand['clearscene'] := ClearSceneHandler;
+  Console['clearscene'] := ClearSceneHandler;
   {$IFEND}
 end;
 

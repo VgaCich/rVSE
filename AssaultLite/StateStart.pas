@@ -129,8 +129,8 @@ begin
   TexCache:=CacheDir+'Tex\';
   if UseCache then ForceDirectories(TexCache);
   {$IFDEF VSE_CONSOLE}
-  Console.OnCommand['cache ?val=eoff:on']:=CacheHandler;
-  Console.OnCommand['cleartexcache']:=ClearCacheHandler;
+  Console['cache ?val=eoff:on']:=CacheHandler;
+  Console['cleartexcache']:=ClearCacheHandler;
   {$ENDIF}
 end;
 

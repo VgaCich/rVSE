@@ -249,7 +249,7 @@ end;
 constructor TStateMenu.Create;
 begin
   inherited Create;
-  {$IFDEF VSE_CONSOLE}Console.OnCommand['menubg file=s'] := MenuBgHandler;{$ENDIF}
+  {$IFDEF VSE_CONSOLE}Console['menubg file=s'] := MenuBgHandler;{$ENDIF}
   FFormsSet := TGUIFormsSet.Create;
   FFormsSet.AddForm(IDMainMenu, TMainMenu.Create);
   FGame := TStateGame(Core.GetState(Core.FindState(SIDGame)));

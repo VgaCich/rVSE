@@ -96,7 +96,7 @@ PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=$(DELPHI)\lib\sysdcu;..\rVSE
 Packages=vcl;rtl;vclactnband;vclx;dbrtl;adortl;vcldb;bdertl;vcldbx;dbexpress;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;dsnap;VclSmp;dbxcds;soaprtl;ibxpress;dclOfficeXP;vclshlctrls;DelphiX_for5
-Conditionals=VSE_DEBUG;VSE_LOG;VSE_CONSOLE;VSE_ESC_EXIT;VSE_USE_SNAPSHOT_KEY;VSE_USE_ALT_ENTER
+Conditionals=VSE_LOG;VSE_CONSOLE;VSE_ESC_EXIT;VSE_USE_SNAPSHOT_KEY;VSE_USE_ALT_ENTER
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
@@ -130,15 +130,14 @@ OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
 Comments=
-[Excluded Packages]
-C:\Program Files\Delphi7SE\Projects\BPL\wclr_d7.bpl=Wireless Communication Library VCL Developer for Delphi 7
 [HistoryLists\hlConditionals]
-Count=5
-Item0=VSE_DEBUG;VSE_LOG;VSE_CONSOLE;VSE_ESC_EXIT;VSE_USE_SNAPSHOT_KEY;VSE_USE_ALT_ENTER
-Item1=VSE_DEBUG;VSE_LOG;VSE_CONSOLE;VSE_ESC_EXIT;VSE_USE_SNAPSHOT_KEY
-Item2=VSE_DEBUG;VSE_LOG;VSE_CONSOLE;VSE_ESC_EXIT
-Item3=VSE_DEBUG;VSE_LOG;VSE_CONSOLE
-Item4=VSE_NOSOUND
+Count=6
+Item0=VSE_LOG;VSE_CONSOLE;VSE_ESC_EXIT;VSE_USE_SNAPSHOT_KEY;VSE_USE_ALT_ENTER
+Item1=VSE_DEBUG;VSE_LOG;VSE_CONSOLE;VSE_ESC_EXIT;VSE_USE_SNAPSHOT_KEY;VSE_USE_ALT_ENTER
+Item2=VSE_DEBUG;VSE_LOG;VSE_CONSOLE;VSE_ESC_EXIT;VSE_USE_SNAPSHOT_KEY
+Item3=VSE_DEBUG;VSE_LOG;VSE_CONSOLE;VSE_ESC_EXIT
+Item4=VSE_DEBUG;VSE_LOG;VSE_CONSOLE
+Item5=VSE_NOSOUND
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;

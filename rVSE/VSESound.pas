@@ -64,8 +64,8 @@ begin
   inherited Create;
   Sound:=Self;
   {$IFDEF VSE_CONSOLE}
-  Console.OnCommand['bgm ?val=eoff:on']:=BGMHandler;
-  Console.OnCommand['bgmvol ?val=f']:=BGMVolHandler;
+  Console['bgm ?val=eoff:on']:=BGMHandler;
+  Console['bgmvol ?val=f']:=BGMVolHandler;
   {$ENDIF}
   if DirectSoundCreate(nil, FDirectSound, nil)<>S_OK then
   begin

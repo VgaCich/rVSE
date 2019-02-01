@@ -102,8 +102,8 @@ begin
   FAlignedSets := TList.Create;
   SetGUIFont;
   {$IFDEF VSE_CONSOLE}
-  Console.OnCommand['uicolor ?clr=e' + ColorNames + ' ?def=i ?hl=i ?act=i ?dis=i'] := UIColorHandler;
-  Console.OnCommand['uifont name=s ?size=i8:24 ?weight=en:b'] := UIFontHandler;
+  Console['uicolor ?clr=e' + ColorNames + ' ?def=i ?hl=i ?act=i ?dis=i'] := UIColorHandler;
+  Console['uifont name=s ?size=i8:24 ?weight=en:b'] := UIFontHandler;
   {$ENDIF}
 end;
 

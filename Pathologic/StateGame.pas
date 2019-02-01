@@ -67,8 +67,8 @@ begin
   FFormsSet.AddForm(IDLogPoints, TLogPointsForm.Create, '');
   FFormsSet.Visible[IDLogPoints] := false;
   {$IFDEF VSE_CONSOLE}
-  Console.OnCommand['debuginfo ?show=eoff:on'] := Console.GetConVarHandler(FShowDebugInfo, cvBool);
-  Console.OnCommand['logpoints ?show=eoff:on'] := Console.GetConVarHandler(FFormsSet.FindForm(IDLogPoints).Visible, cvBool);
+  Console['debuginfo ?show=eoff:on'] := Console.GetConVarHandler(FShowDebugInfo, cvBool);
+  Console['logpoints ?show=eoff:on'] := Console.GetConVarHandler(FFormsSet.FindForm(IDLogPoints).Visible, cvBool);
   {$ENDIF}
   FShowDebugInfo := true;
   FFont := Render2D.CreateFont('Courier New', 10);

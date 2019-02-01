@@ -390,16 +390,16 @@ begin
   FHeight := BallSize;
   FSpeed := BallSpeed;
   {$IFDEF VSE_CONSOLE}
-  Console.OnCommand['lives ?num=i'] := Console.GetConVarHandler(FLives, cvInt);
-  Console.OnCommand['speed ?spd=f'] := Console.GetConVarHandler(FSpeed, cvFloat);
+  Console['lives ?num=i'] := Console.GetConVarHandler(FLives, cvInt);
+  Console['speed ?spd=f'] := Console.GetConVarHandler(FSpeed, cvFloat);
   {$ENDIF}
 end;
 
 {$IFDEF VSE_CONSOLE}
 destructor TBall.Destroy;
 begin
-  Console.OnCommand['lives'] := nil;
-  Console.OnCommand['speed'] := nil;
+  Console['lives'] := nil;
+  Console['speed'] := nil;
   inherited;
 end;
 {$ENDIF}

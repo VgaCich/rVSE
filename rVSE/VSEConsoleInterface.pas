@@ -69,8 +69,8 @@ begin
   FBlocking := true;
   FLogCache := TStringList.Create;
   FCmdHistory := TStringList.Create;
-  Console.OnCommand['help'] := HelpHandler;
-  Console.OnCommand['cmdlist ?prefix=s'] := CmdListHandler;
+  Console['help'] := HelpHandler;
+  Console['cmdlist ?prefix=s'] := CmdListHandler;
   ConsoleInterface := Self;
 end;
 

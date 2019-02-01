@@ -180,8 +180,8 @@ begin
   inherited Create;
   BindMan:=Self;
   {$IFDEF VSE_CONSOLE}
-  Console.OnCommand['bind name=s ?key=s']:=BindHandler;
-  Console.OnCommand['bindcmd key=s ?cmd=s*']:=BindCmdHandler;
+  Console['bind name=s ?key=s']:=BindHandler;
+  Console['bindcmd key=s ?cmd=s*']:=BindCmdHandler;
   {$ENDIF}
   SetLength(FQueuePool, 512*MaxEventAge);
   for i:=0 to High(FQueuePool) do

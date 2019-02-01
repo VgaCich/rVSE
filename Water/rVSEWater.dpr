@@ -15,6 +15,7 @@ type
     FWaterRT: Cardinal;
     FWaterTex: array[0..1] of Cardinal;
     FFont: Cardinal;
+    FDebugInfo: Boolean;
     function LoadShaderHandler(Sender: TObject; Args: array of const): Boolean;
   protected
     function GetName: string; override;
@@ -45,7 +46,8 @@ begin
   LoadTex('water_dot3.jpg', false, false);
   FWaterRT:=TexMan.InitRTT(TEX_SIZE, TEX_SIZE);
   FFont:=Render2D.CreateFont('Courier New', 10, true);
-  Console['loadshader target=emain:water shader=s']:=LoadShaderHandler;
+  Console['loadshader target=emain:water ?shader=s']:=LoadShaderHandler;
+  Console['debuginfo ?val=eoff:on']:=Console.GetConVarHandler(FDebugInfo, cvBool);
 end;
 
 destructor TStateMain.Destroy;
@@ -122,7 +124,7 @@ begin
     FWaterShader['tex0'].Value(1);
     FWaterShader['tex1'].Value(2);
     FWaterShader['phase'].Value(0.00005*(Core.Time mod 20000));
-    FShader['eye'].Value(FPos.X, FPos.Y, FPos.Z);
+    FWaterShader['eye'].Value(FPos.X, FPos.Y, FPos.Z);
     glColor3f(1, 1, 1);
     glBegin(GL_QUADS);
       glNormal3f(0, 1, 0);
@@ -138,13 +140,14 @@ begin
   end;
   Render2D.Enter;
   FPS:='FPS: '+IntToStr(Core.FPS);
-  Render2D.TextOut(FFont, Render2D.VSWidth-Render2D.TextWidth(FFont, FPS), 0, FPS);
-  {Render2D.TextOut(FFont, 0, 0, Format('Pos: %s %s %s', [FloatToStr2(FPos.X, 4, 2), FloatToStr2(FPos.Y, 4, 2), FloatToStr2(FPos.Z, 4, 2)]));
-  Render2D.TextOut(FFont, 0, 20, Format('Angle: %s %s %s', [FloatToStr2(FAngle.X, 4, 2), FloatToStr2(FAngle.Y, 4, 2), FloatToStr2(FAngle.Z, 4, 2)]));}
-  {gleColor(clRed);
-  Render2D.DrawLine(350, 300, 450, 300);
-  Render2D.DrawLine(400, 250, 400, 350);
-  gleColor(clWhite);}
+  with Render2D do
+    TextOut(FFont, Floor(VSBounds.Right)-TextWidth(FFont, FPS), Ceil(VSBounds.Top), FPS);
+  if FDebugInfo then
+    with Render2D do
+    begin
+      TextOut(FFont, Ceil(VSBounds.Left), Ceil(VSBounds.Top), Format('Pos: %s %s %s', [FloatToStr2(FPos.X, 4, 2), FloatToStr2(FPos.Y, 4, 2), FloatToStr2(FPos.Z, 4, 2)]));
+      TextOut(FFont, Ceil(VSBounds.Left), Ceil(VSBounds.Top)+20, Format('Angle: %s %s %s', [FloatToStr2(FAngle.X, 4, 2), FloatToStr2(FAngle.Y, 4, 2), FloatToStr2(FAngle.Z, 4, 2)]));
+    end;
   Render2D.Leave;
 end;
 
@@ -203,24 +206,33 @@ var
 
 begin
   Shader:=nil;
-  Data:=Core.GetFile(string(Args[2].VAnsiString));
-  if Assigned(Data) then
-  try
-    Log(llInfo, 'Loading shader '+string(Args[2].VAnsiString));
-    Shader:=TShader.Create;
-    Shader.Load(Data);
-    Shader.Link;
-    if not Shader.Valid
-      then Log(llError, 'Shader is not valid');
-    LogMultiline(llInfo, 'Shader log:'#13+Shader.InfoLog);
-    Result:=Shader.Valid;
-  finally
-    FAN(Data);
-  end;
-  case Args[1].VInteger of
-    0: SetShader(FShader);
-    1: SetShader(FWaterShader);
-  end;
+Result:=false;
+  if Length(args) > 2 then
+  begin
+    Data:=Core.GetFile(string(Args[2].VAnsiString));
+    if Assigned(Data) then
+    try
+      Log(llInfo, 'Loading shader '+string(Args[2].VAnsiString));
+      Shader:=TShader.Create;
+      Shader.Load(Data);
+      Shader.Link;
+      if not Shader.Valid
+        then Log(llError, 'Shader is not valid');
+      LogMultiline(llInfo, 'Shader log:'#13+Shader.InfoLog);
+      Result:=Shader.Valid;
+    finally
+      FAN(Data);
+    end;
+  end
+  else
+    Result:=true;
+  if Result then
+    case Args[1].VInteger of
+      0: SetShader(FShader);
+      1: SetShader(FWaterShader);
+    end
+  else
+    FAN(Shader);
 end;
 
 procedure InitStates;

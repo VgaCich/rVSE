@@ -69,7 +69,7 @@ begin
   if GL_EXT_framebuffer_object
     then FRTTMethod:=rttFBO
     else FRTTMethod:=rttCopy;
-  {$IFDEF VSE_CONSOLE}Console.OnCommand['texfilter flt=enone:bilin:trilin:aniso ?prefix=s']:=TexFilterHandler;{$ENDIF}
+  {$IFDEF VSE_CONSOLE}Console['texfilter flt=enone:bilin:trilin:aniso ?prefix=s']:=TexFilterHandler;{$ENDIF}
 end;
 
 destructor TTexMan.Destroy;

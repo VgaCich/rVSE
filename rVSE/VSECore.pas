@@ -41,7 +41,7 @@ type
     function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; virtual; //Mouse event; Button - mouse button number or wheel click if Event=meWheel; X, Y - cursor coordinates or cursor coordinates delta if Core.MouseCapture=true
     function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; virtual; //Keyboard event; Key - VK key code
     function CharEvent(C: Char): Boolean; virtual; //Char event (char of pressed key in current layout)
-    function  SysNotify(Notify: TSysNotify): Boolean; virtual; //System notify event, return value only from TGameState
+    function SysNotify(Notify: TSysNotify): Boolean; virtual; //System notify event, return value only from TGameState
   end;
   TGameState = class(TCoreModule) //Base state class
   protected
@@ -396,12 +396,12 @@ begin
   if FRC=0 then raise Exception.Create('Unable to set rendering context');
   {$IFDEF VSE_CONSOLE}
   Console:=TConsole.Create;
-  Console.OnCommand['quit']:=QuitHandler;
-  Console.OnCommand['state ?state=s']:=StateHandler;
-  Console.OnCommand['resolution ?resx=i640:65536 ?resy=i480:65536 ?refr=i0']:=ResolutionHandler;
-  Console.OnCommand['fullscreen ?val=eoff:on']:=FullscreenHandler;
-  Console.OnCommand['vsync ?val=eoff:on']:=VSyncHandler;
-  Console.OnCommand['screenshot ?name=s ?fmt=ebmp:jpg:gif:png:tif']:=ScreenshotHandler;
+  Console['quit']:=QuitHandler;
+  Console['state ?state=s']:=StateHandler;
+  Console['resolution ?resx=i640:65536 ?resy=i480:65536 ?refr=i0']:=ResolutionHandler;
+  Console['fullscreen ?val=eoff:on']:=FullscreenHandler;
+  Console['vsync ?val=eoff:on']:=VSyncHandler;
+  Console['screenshot ?name=s ?fmt=ebmp:jpg:gif:png:tif']:=ScreenshotHandler;
   {$ENDIF}
   SetLength(FModules, Length(Modules));
   for i:=0 to High(Modules) do

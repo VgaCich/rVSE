@@ -117,8 +117,8 @@ procedure TRender2D.Enter;
 begin
   Inc(FEnters);
   if FEnters > 1 then Exit;
+  glPushAttrib(GL_ENABLE_BIT or GL_POINT_BIT or GL_LINE_BIT or GL_LIGHTING_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT or GL_TEXTURE_BIT or GL_SCISSOR_BIT or GL_TRANSFORM_BIT);
   glePushMatrix;
-  glPushAttrib(GL_ENABLE_BIT or GL_POINT_BIT or GL_LINE_BIT or GL_LIGHTING_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT or GL_TEXTURE_BIT or GL_SCISSOR_BIT);
   with VSBounds do
     gleOrthoMatrix2(Left, Top, Right, Bottom);
   glDisable(GL_DEPTH_TEST);
@@ -134,8 +134,8 @@ procedure TRender2D.Leave;
 begin
   FEnters := Max(FEnters - 1, 0);
   if FEnters > 0 then Exit;
-  glPopAttrib;
   glePopMatrix;
+  glPopAttrib;
 end;
 
 function TRender2D.MapCursor(const Cursor: TPoint): TPoint;
@@ -284,15 +284,10 @@ begin
     Exit;
   X := Round(X * FVSScale) / FVSScale;
   Y := Round(Y * FVSScale) / FVSScale;
-  glPushAttrib(GL_ENABLE_BIT or GL_COLOR_BUFFER_BIT or GL_TEXTURE or GL_LIST_BIT);
-  glDisable(GL_DEPTH_TEST);
+  glPushAttrib(GL_COLOR_BUFFER_BIT or GL_TEXTURE_BIT or GL_LIST_BIT);
   glDisable(GL_CULL_FACE);
-  glDisable(GL_LIGHTING);
   glEnable(GL_ALPHA_TEST);
-  glEnable(GL_BLEND);
-  glEnable(GL_COLOR_MATERIAL);
   glAlphaFunc(GL_GEQUAL, 0.1);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
   glListBase(FFonts[Font]^.List);
   TexMan.Bind(FFonts[Font]^.Tex, 0);
