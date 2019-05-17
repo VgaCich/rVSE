@@ -62,6 +62,7 @@ type
     {$IFDEF VSE_LOG}procedure UpdateLog;{$ENDIF}
     function GetCommand(const CmdDesc: string): TOnConsoleCommand;
     procedure SetCommand(const CmdDesc: string; Value: TOnConsoleCommand);
+    function CmdListHandler(Sender: TObject; Args: array of const): Boolean;
     function EchoHandler(Sender: TObject; Args: array of const): Boolean;
     function ExecHandler(Sender: TObject; Args: array of const): Boolean;
     function ExistHandler(Sender: TObject; Args: array of const): Boolean;
@@ -165,6 +166,7 @@ begin
   inherited;
   FLog := TStringList.Create;
   FCommands := TConsoleCommand.Create(nil, 'exec file=s', ExecHandler);
+  OnCommand['cmdlist ?prefix=s'] := CmdListHandler;
   OnCommand['echo msg=s*'] := EchoHandler;
   OnCommand['exist file=s'] := ExistHandler;
   OnCommand['goto lbl=s'] := GotoHandler;
@@ -311,6 +313,26 @@ begin
   begin
     Command.Free;
     if Assigned(Value) then TConsoleCommand.Create(FCommands, CmdDesc, Value);
+  end;
+end;
+
+function TConsole.CmdListHandler(Sender: TObject; Args: array of const): Boolean;
+var
+  Prefix: string;
+  Commands: TStringList;
+  i: Integer;
+begin
+  Result := false;
+  if Length(Args) > 1
+    then Prefix := string(Args[1].VAnsiString)
+    else Prefix := '';
+  Commands := GetCommands(Prefix);
+  try
+    for i := 0 to Commands.Count - 1 do
+      WriteLn(GetCommandDescription(Commands[i]));
+    Result := Commands.Count > 0;
+  finally
+    FAN(Commands);
   end;
 end;
 

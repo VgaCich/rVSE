@@ -8,19 +8,24 @@ uses
   Windows, AvL, avlMath, avlUtils, OpenGL, VSEOpenGLExt, VSECore, VSEConsole;
 
 type
+  TConsoleColors = (clBackground, clNormalLine, clWarningLine, clErrorLine,
+    clBorderLine, clCmdLineBorder, clBgLines, clScroll, clFPS);
+  TConsoleColorSet = array[TConsoleColors] of TColor;
   TConsoleInterface = class(TModule)
   private
-    FActive, FBlocking: Boolean;
+    FActive, FBlocking, FFontBold: Boolean;
     FScreenHeight: Single;
     FLogCache, FCmdHistory: TStringList;
     FFont, FCachedLines, FLogPosition, FCursor, FCmdHistoryIndex, FLineLength: Integer;
-    FCommandLine: string;
+    FColors: TConsoleColorSet;
+    FCommandLine, FFontName: string;
     procedure SetActive(Value: Boolean);
     procedure AddToCache(const Line: string);
     function LogEndPosition: Integer;
-    procedure UpdateFont(ScreenHeight: Single);
+    procedure UpdateFont(ScreenHeight: Single; Force: Boolean = false);
+    function ConColorHandler(Sender: TObject; Args: array of const): Boolean;
+    function ConFontHandler(Sender: TObject; Args: array of const): Boolean;
     function HelpHandler(Sender: TObject; Args: array of const): Boolean;
-    function CmdListHandler(Sender: TObject; Args: array of const): Boolean;
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -30,6 +35,8 @@ type
     function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
     function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
     function CharEvent(C: Char): Boolean; override;
+    procedure SetColors(const Colors: TConsoleColorSet);
+    procedure SetFont(const Name: string; Bold: Boolean = true);
     property Active: Boolean read FActive write SetActive; //Console interface is opened
     property Blocking: Boolean read FBlocking write FBlocking; //Block state updates & events when active
   end;
@@ -43,17 +50,23 @@ uses
   VSERender2D;
 
 const
-  clFPS = $FFFFFF00;
-  clNormalLine = $FF00FF00;
-  clWarningLine = $FF00FFFF;
-  clErrorLine = $FF0066FF;
-  clScroll = $80808080;
-  clCmdLineBorder = $CC80CC80;
-  clBorderLine = $FF00FF00;
-  clBgLines = $80333333;
-  clBackground = $CC4D4D4D;
+  DefFont = 'Courier New';
+  DefColors: TConsoleColorSet = (
+    $CC4D4D4D, $FF00FF00, $FF00FFFF, $FF0066FF,
+    $FF00FF00, $CC80CC80, $80333333, $80808080, $FFFFFF00);
+  ColorNames: array[TConsoleColors] of string = (
+    'bg', 'nln', 'wln', 'eln', 'bd', 'clbd', 'bgln', 'scrl', 'fps');
   DisplayLines = 19;
   VK_TILDE = 192;
+
+function ConColors: string;
+var
+  i: TConsoleColors;
+begin;
+  Result := ColorNames[Low(TConsoleColors)];
+  for i := Succ(Low(TConsoleColors)) to High(TConsoleColors) do
+    Result := Result + ':' + ColorNames[i];
+end;
 
 function LastChar(const S: string): Char;
 begin
@@ -69,8 +82,11 @@ begin
   FBlocking := true;
   FLogCache := TStringList.Create;
   FCmdHistory := TStringList.Create;
+  SetColors(DefColors);
+  SetFont(DefFont, true);
   Console['help'] := HelpHandler;
-  Console['cmdlist ?prefix=s'] := CmdListHandler;
+  Console['confont name=s ?weight=en:b'] := ConFontHandler;
+  Console['concolor ?name=e' + ConColors + ' ?clr=i'] := ConColorHandler;
   ConsoleInterface := Self;
 end;
 
@@ -99,6 +115,7 @@ procedure TConsoleInterface.Draw;
 var
   i, CommandLineStart: Integer;
   ScreenWidth, ScreenHeight, CharWidth, CaretPos, CaretHeight, Temp: Single;
+  Line: string;
 begin
   if not FActive then Exit;
   Render2D.Enter;
@@ -122,18 +139,18 @@ begin
   end;
   glLineWidth(ScreenHeight / 600);
   Temp := 0.503 * ScreenHeight;
-  gleColor(clBackground);
+  gleColor(FColors[clBackground]);
   Render2D.DrawRect(0, 0, ScreenWidth, Temp);
-  gleColor(clBorderLine);
+  gleColor(FColors[clBorderLine]);
   Render2D.DrawLine(0, Temp, ScreenWidth, Temp);
-  gleColor(clBgLines);
+  gleColor(FColors[clBgLines]);
   Temp := 0.005 * ScreenHeight;
   for i := 0 to 100 do
     Render2D.DrawLine(0, i * Temp, ScreenWidth, i * Temp);
-  gleColor(clCmdLineBorder);
+  gleColor(FColors[clCmdLineBorder]);
   Temp := 0.475 * ScreenHeight;
   Render2D.DrawLine(0, Temp, ScreenWidth, Temp);
-  gleColor(clScroll);
+  gleColor(FColors[clScroll]);
   CaretHeight := Max(Temp * DisplayLines / FLogCache.Count, 0.01 * ScreenHeight);
   CaretPos := Min(Temp * FLogPosition / FLogCache.Count, Temp - CaretHeight);
   Temp := ScreenWidth - 0.025 * ScreenHeight;
@@ -142,21 +159,25 @@ begin
   Temp := 0.025 * ScreenHeight;
   for i := 0 to Min(DisplayLines - 1, FLogCache.Count - FLogPosition - 1) do
   begin
-    if LastChar(FLogCache[FLogPosition + i]) = PostfixError then gleColor(clErrorLine)
-    else if LastChar(FLogCache[FLogPosition + i]) = PostfixWarning then gleColor(clWarningLine)
-    else gleColor(clNormalLine);
+    if LastChar(FLogCache[FLogPosition + i]) = PostfixError then
+      gleColor(FColors[clErrorLine])
+    else if LastChar(FLogCache[FLogPosition + i]) = PostfixWarning then
+      gleColor(FColors[clWarningLine])
+    else
+      gleColor(FColors[clNormalLine]);
     Render2D.TextOut(FFont, 0, Temp * i, RemovePostfix(FLogCache[FLogPosition + i]));
   end;
-  gleColor(clNormalLine);
+  gleColor(FColors[clNormalLine]);
   Temp := 0.475 * ScreenHeight;
   CommandLineStart := Max(FCursor - FLineLength + 1, 0);
-  Render2D.TextOut(FFont, 0, Temp, '>' + Copy(FCommandLine, CommandLineStart + 1, FLineLength - 1));
+  Line := '>' + Copy(FCommandLine, CommandLineStart + 1, FLineLength - 1);
+  Render2D.TextOut(FFont, 0, Temp, Line);
   if (Core.Time div 500) mod 2 = 0 then
-    Render2D.TextOut(FFont, CharWidth * (FCursor - CommandLineStart), Temp, '_');
-  gleColor(clBackground);
+    Render2D.TextOut(FFont, Render2D.TextWidth(FFont, Copy(Line, 1, FCursor - CommandLineStart)), Temp, '_');
+  gleColor(FColors[clBackground]);
   Temp := ScreenWidth - 0.025 * ScreenHeight - 8 * CharWidth;
   Render2D.DrawRect(Temp, 0, 8 * CharWidth - 1, 0.025 * ScreenHeight);
-  gleColor(clFPS);
+  gleColor(FColors[clFPS]);
   Render2D.TextOut(FFont, Temp, 0, 'FPS: ' + IntToStr(Core.FPS));
   glPopMatrix;
   Render2D.Leave;
@@ -301,6 +322,21 @@ begin
   end;
 end;
 
+procedure TConsoleInterface.SetColors(const Colors: TConsoleColorSet);
+var
+  i: TConsoleColors;
+begin
+  for i := Low(TConsoleColors) to High(TConsoleColors) do
+    FColors[i] := DefColors[i];
+end;
+
+procedure TConsoleInterface.SetFont(const Name: string; Bold: Boolean);
+begin
+  FFontName := Name;
+  FFontBold := Bold;
+  UpdateFont(FScreenHeight, true);
+end;
+
 procedure TConsoleInterface.AddToCache(const Line: string);
 var
   Pos: Integer;
@@ -335,13 +371,33 @@ begin
   Result := Max(FLogCache.Count - DisplayLines, 0);
 end;
 
-procedure TConsoleInterface.UpdateFont(ScreenHeight: Single);
+procedure TConsoleInterface.UpdateFont(ScreenHeight: Single; Force: Boolean);
 begin
-  if FScreenHeight <> ScreenHeight then
+  if (ScreenHeight > 0) and (Force or (FScreenHeight <> ScreenHeight)) then
   begin
-    FFont := Render2D.CreateFont('Courier New', Round(10 * ScreenHeight / 600), true);
+    FFont := Render2D.CreateFont(FFontName, Round(10 * ScreenHeight / 600), FFontBold);
     FScreenHeight := ScreenHeight;
   end;
+end;
+
+function TConsoleInterface.ConColorHandler(Sender: TObject; Args: array of const): Boolean;
+begin
+  Result := true;
+  if Length(Args) = 1 then
+    Console.WriteLn('Colors: ' + ConColors)
+  else if Length(Args) = 2 then
+    Console.WriteLn('$' + IntToHex(FColors[TConsoleColors(Args[1].VInteger)], 8))
+  else
+    FColors[TConsoleColors(Args[1].VInteger)] := Args[2].VInteger;
+end;
+
+function TConsoleInterface.ConFontHandler(Sender: TObject;  Args: array of const): Boolean;
+begin
+  Result := true;
+  FFontName := string(Args[1].VAnsiString);
+  if Length(Args) = 3 then
+    FFontBold := Boolean(Args[2].VInteger);
+  UpdateFont(FScreenHeight, true);
 end;
 
 function TConsoleInterface.HelpHandler(Sender: TObject; Args: array of const): Boolean;
@@ -357,26 +413,6 @@ begin
     WriteLn('Press Escape to clear command line');
   end;
   Result := true;
-end;
-
-function TConsoleInterface.CmdListHandler(Sender: TObject; Args: array of const): Boolean;
-var
-  Prefix: string;
-  Commands: TStringList;
-  i: Integer;
-begin
-  Result := false;
-  if Length(Args) > 1
-    then Prefix := string(Args[1].VAnsiString)
-    else Prefix := '';
-  Commands := Console.GetCommands(Prefix);
-  try
-    for i := 0 to Commands.Count - 1 do
-      Console.WriteLn(Console.GetCommandDescription(Commands[i]));
-    Result := Commands.Count > 0;
-  finally
-    FAN(Commands);
-  end;
 end;
 
 initialization
