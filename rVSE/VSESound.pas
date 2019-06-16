@@ -70,6 +70,7 @@ begin
   if DirectSoundCreate(nil, FDirectSound, nil)<>S_OK then
   begin
     {$IFDEF VSE_LOG}Log(llError, 'Sound: Cannot initialize DirectSound');{$ENDIF}
+    FDirectSound:=nil;
     Exit;
   end;
   if FDirectSound.SetCooperativeLevel(Core.Handle, DSSCL_PRIORITY)<>S_OK then
@@ -141,9 +142,9 @@ var
   S: string;
 begin
   Caps.dwSize:=SizeOf(Caps);
-  if FDirectSound.GetCaps(Caps)<>S_OK then
+  if not Assigned(FDirectSound) or (FDirectSound.GetCaps(Caps)<>S_OK) then
   begin
-    Log(llError, 'Sound: Cannot retrieve DirectSound capabilities');
+    Log(llError, 'Sound: Can''t retrieve DirectSound capabilities');
     Exit;
   end;
   with Caps do
