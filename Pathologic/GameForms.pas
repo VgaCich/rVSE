@@ -33,7 +33,7 @@ type
   public
     constructor Create(Game: TGame);
     procedure Update; override;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean; override;
   end;
   {$ENDIF}
   TOnCharSelect = procedure(Sender: TObject; Char: TCharacter) of object;
@@ -206,7 +206,7 @@ end;
 procedure TLogPointsForm.GameMouseEvent(Sender: TObject; const Args: array of const);
 begin
   Assert((Length(Args) = 2) and (Args[0].VType = vtInteger) and (Args[1].VType = vtPointer));
-  if FParentSet.Visible[Name] and (TMouseEvent(Args[0].VInteger) = meDown) then
+  if FParentSet.Visible[Name] and (TMouseEvents(Args[0].VInteger) = meDown) then
   begin
     SetLength(FPoints, Length(FPoints) + 1);
     FPoints[High(FPoints)] := TVector3D(Args[1].VPointer^);
@@ -251,7 +251,7 @@ begin
   inherited;
 end;
 
-function TPlayerSelectForm.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TPlayerSelectForm.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 begin
   Result := false;
   if Event = keDown then

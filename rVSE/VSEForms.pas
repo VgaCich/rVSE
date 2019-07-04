@@ -13,7 +13,7 @@ type
     procedure Click(Btn: PBtn);
   public
     constructor Create(const Caption, Prompt: string; const Buttons: array of string; Handler: TOnMessageBox = nil); //Creates MessageBox; Caption: Form caption, Prompt: message text, Buttons: buttons' captions, Handler: button click handler
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean; override;
   end;
   TOptionsForm = class(TAlignedForm)
   protected
@@ -32,7 +32,7 @@ type
   public
     constructor Create(Width, Height: Integer);
     destructor Destroy; override;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean; override;
   end;
   {$IFNDEF FORMS_NO_BINDMAN}
   TBindManCfgForm=class(TAlignedForm) // Keys configuration form
@@ -47,8 +47,8 @@ type
   public
     constructor Create(Width, Height: Integer; const DefaultCapt, CloseCapt: string);
     destructor Destroy; override;
-    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function MouseEvent(Button: Integer; Event: TMouseEvents; Cursor: TPoint): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean; override;
     procedure Refresh;
   end;
   {$ENDIF}
@@ -62,7 +62,7 @@ type
   public
     constructor Create(Width, Height: Integer; const Caption, CloseCaption: string; Text: TStringList);
     destructor Destroy; override;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean; override;
   end;
 
 procedure ShowMessage(const Caption, Prompt: string; const Buttons: array of string; Handler: TOnMessageBox = nil; const Parent: string = ''); //Shows Message Box; Parent: parent form, Caption: Form caption, Prompt: message text, Buttons: buttons' captions, Handler: button click handler
@@ -124,7 +124,7 @@ begin
   Close;
 end;
 
-function TMessageBox.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TMessageBox.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 const
   Buttons: array[Boolean] of Integer = (0, -1);
 begin
@@ -239,7 +239,7 @@ begin
   inherited Destroy;
 end;
 
-function TOptionsForm.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TOptionsForm.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 begin
   if (Key in [VK_ESCAPE, VK_RETURN]) and (Event = keUp) then
   begin
@@ -416,7 +416,7 @@ begin
   Btn^.Caption := '???';
 end;
 
-function TBindManCfgForm.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
+function TBindManCfgForm.MouseEvent(Button: Integer; Event: TMouseEvents; Cursor: TPoint): Boolean;
 begin
   Result := false;
   if FActive > -1 then
@@ -431,10 +431,10 @@ begin
       else SetKey(MBtnMap[Button]);
     Result := true;
   end
-    else Result := inherited MouseEvent(Button, Event, X, Y);
+    else Result := inherited MouseEvent(Button, Event, Cursor);
 end;
 
-function TBindManCfgForm.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TBindManCfgForm.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 begin
   Result := false;
   if FActive > -1 then
@@ -546,7 +546,7 @@ begin
   inherited Destroy;
 end;
 
-function TTextView.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TTextView.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 var
   Btn: TBtn;
 begin

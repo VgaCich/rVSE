@@ -28,7 +28,7 @@ type
     destructor Destroy; override; //internally used
     {$IF Defined(VSE_LOG) and not Defined(VSE_NOSYSINFO)}procedure LogCaps;{$IFEND}
     procedure Update; override;//internally used
-    function SysNotify(Notify: TSysNotify): Boolean; override; //internally used
+    procedure OnEvent(var Event: TCoreEvent); override;
     procedure PlayMusic(const FileName: string); //Play music from file
     procedure StopMusic; //Stop music
     class function Name: string; override;
@@ -174,13 +174,14 @@ begin
 
 end;
 
-function TSound.SysNotify(Notify: TSysNotify): Boolean;
+procedure TSound.OnEvent(var Event: TCoreEvent);
 begin
-  Result:=inherited SysNotify(Notify);
   {$IF Defined(VSE_LOG) and not Defined(VSE_NOSYSINFO)}
-  if Notify=snLogSysInfo then
-    LogCaps;
+  if (Event is TSysNotify) and ((Event as TSysNotify).Notify = snLogSysInfo) then
+    LogCaps
+  else
   {$IFEND}
+  inherited;
   //TODO: pause on snPause
 end;
 

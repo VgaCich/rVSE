@@ -86,9 +86,7 @@ type
     function  Activate: Cardinal; override;
     procedure ClearBricks;
     procedure Deactivate; override;
-    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
-    function SysNotify(Notify: TSysNotify): Boolean; override;
+    procedure OnEvent(var Event: TCoreEvent); override;
     procedure NewGame(Lives: Integer);
     property CanResumeGame: Boolean read GetCanResumeGame;
     property MouseSens: Integer read FMouseSens write FMouseSens;
@@ -270,35 +268,27 @@ begin
   Sound.StopMusic;
 end;
 
-function TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
+procedure TStateGame.OnEvent(var Event: TCoreEvent);
 begin
-  Result := inherited MouseEvent(Button, Event, X, Y);
-  if Event = meMove then
-  begin
-    FPaddle.X := Max(-(BoardWidth - FPaddle.Width / 2), Min(FPaddle.X + Power(1.25, FMouseSens) * X / 200, BoardWidth - FPaddle.Width / 2));
-    if not FBall.Launched then
-      FBall.X := FPaddle.X;
-  end;
-  if not FBall.Launched and (Event = meDown) and (Button = mbLeft) then
-    FBall.Launch;
-end;
-
-function TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
-begin
-  inherited KeyEvent(Key, Event);
-  if Event = keUp then
-  begin
-    case Key of
+  if Event is TMouseEvent then
+    with Event as TMouseEvent do
+    begin
+      if EvType = meMove then
+      begin
+        FPaddle.X := Max(-(BoardWidth - FPaddle.Width / 2), Min(FPaddle.X + Power(1.25, FMouseSens) * Cursor.X / 200, BoardWidth - FPaddle.Width / 2));
+        if not FBall.Launched then
+          FBall.X := FPaddle.X;
+      end;
+      if not FBall.Launched and (EvType = meDown) and (Button = mbLeft) then
+        FBall.Launch;
+    end
+  else if (Event is TKeyEvent) and ((Event as TKeyEvent).EvType = keUp) then
+    case (Event as TKeyEvent).Key of
       VK_ESCAPE: Core.SwitchState(SIDMenu);
-    end;
-  end;
-end;
-
-function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
-begin
-  Result := inherited SysNotify(Notify);
-  if Notify = snMinimize then
-    Core.SwitchState(SIDMenu);
+    end
+  else if (Event is TSysNotify) and ((Event as TSysNotify).Notify = snMinimized) then
+    Core.SwitchState(SIDMenu)
+  else inherited;
 end;
 
 function TStateGame.GetName: string;

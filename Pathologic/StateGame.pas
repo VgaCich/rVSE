@@ -35,9 +35,7 @@ type
     procedure Update; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
-    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
-    function SysNotify(Notify: TSysNotify): Boolean; override;
+    procedure OnEvent(var Event: TCoreEvent); override;
     procedure NewGame;
     property CanResumeGame: Boolean read GetCanResumeGame;
     property Mouse3D: TVector3D read FMouse3D;
@@ -163,45 +161,37 @@ begin
   //TODO: FGame.Pause;
 end;
 
-function TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
+procedure TStateGame.OnEvent(var Event: TCoreEvent);
 begin
-  Result := inherited MouseEvent(Button, Event, X, Y);
-  case Event of
-    meDown: if Button in [mbRight, mbMiddle] then
-        Core.MouseCapture := true
-      else if Assigned(FGame) and (Button = mbLeft) then
-        EventBus.SendEvent(FOnMouseEvent, FGame, [Integer(meDown), @FMouse3D]);
-    meUp: if Button in [mbRight, mbMiddle] then
-        Core.MouseCapture := false
-      else if Assigned(FGame) and (Button = mbLeft) then
-        EventBus.SendEvent(FOnMouseEvent, FGame, [Integer(meUp), @FMouse3D]);
-    meMove: if Core.MouseCapture then //TODO: Panning & Rotating speed to Options
-      with FCamera do
-        if Core.KeyPressed[VK_RBUTTON] then
-          Angle := Vector2D(Max(90.0, Min(Angle.X + X / 10, 270.0)),
-                            Max(-89.9, Min(Angle.Y - Y / 10, -35.0)))
-        else
-          Move(Vector2D(0.1 * X, 0.1 * Y), MapBounds.Min, MapBounds.Max);
-    meWheel: FCamera.Height := Max(10.0, Min(FCamera.Height - Button, 75.0));
-  end;
-end;
-
-function TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
-begin
-  Result := inherited KeyEvent(Key, Event);
-  if Event = keUp then
-  begin
-    case Key of
+  if Event is TMouseEvent then
+    with Event as TMouseEvent do
+    begin
+      case EvType of
+        meDown: if Button in [mbRight, mbMiddle] then
+            Core.MouseCapture := true
+          else if Assigned(FGame) and (Button = mbLeft) then
+            EventBus.SendEvent(FOnMouseEvent, FGame, [Integer(meDown), @FMouse3D]);
+        meUp: if Button in [mbRight, mbMiddle] then
+            Core.MouseCapture := false
+          else if Assigned(FGame) and (Button = mbLeft) then
+            EventBus.SendEvent(FOnMouseEvent, FGame, [Integer(meUp), @FMouse3D]);
+        meMove: if Core.MouseCapture then //TODO: Panning & Rotating speed to Options
+          with FCamera, Cursor do
+            if Core.KeyPressed[VK_RBUTTON] then
+              Angle := Vector2D(Max(90.0, Min(Angle.X + X / 10, 270.0)),
+                                Max(-89.9, Min(Angle.Y - Y / 10, -35.0)))
+            else
+              Move(Vector2D(0.1 * X, 0.1 * Y), MapBounds.Min, MapBounds.Max);
+        meWheel: FCamera.Height := Max(10.0, Min(FCamera.Height - Button, 75.0));
+      end;
+    end
+  else if (Event is TKeyEvent) and ((Event as TKeyEvent).EvType = keUp) then
+    case (Event as TKeyEvent).Key of
       VK_ESCAPE: Core.SwitchState(SIDMenu);
-    end;
-  end;
-end;
-
-function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
-begin
-  Result := inherited SysNotify(Notify);
-  if Notify = snMinimize then
-    Core.SwitchState(SIDMenu);
+    end
+  else if (Event is TSysNotify) and ((Event as TSysNotify).Notify = snMinimized) then
+    Core.SwitchState(SIDMenu)
+  else inherited;
 end;
 
 procedure TStateGame.NewGame;

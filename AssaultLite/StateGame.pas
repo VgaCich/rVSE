@@ -28,9 +28,7 @@ type
     procedure Update; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
-    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
-    function SysNotify(Notify: TSysNotify): Boolean; override;
+    procedure OnEvent(var Event: TCoreEvent); override;
     procedure NewGame;
     property CanResumeGame: Boolean read GetCanResumeGame;
     property Terrain: TTerrain read FTerrain;
@@ -217,28 +215,21 @@ begin
   Sound.StopMusic;
 end;
 
-function TStateGame.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
+procedure TStateGame.OnEvent(var Event: TCoreEvent);
 begin
-  Result := inherited MouseEvent(Button, Event, X, Y);
-  if Event<>meMove then Exit;
-  FCamera.Angle:=Vector2D(FCamera.Angle.X+X/10, Max(-89.9, Min(FCamera.Angle.Y-Y/10, 89.9)));
-end;
-
-function TStateGame.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
-begin
-  Result := inherited KeyEvent(Key, Event);
-  if Event=keUp then
-  begin
-    case Key of
+  if (Event is TMouseEvent) and ((Event as TMouseEvent).EvType = meMove) then
+    with (Event as TMouseEvent).Cursor do
+      FCamera.Angle := Vector2D(FCamera.Angle.X + X / 10, Max(-89.9, Min(FCamera.Angle.Y - Y / 10, 89.9)))
+  else if (Event is TKeyEvent) and ((Event as TKeyEvent).EvType = keUp) then
+    case (Event as TKeyEvent).Key of
       VK_ESCAPE: Core.SwitchState(SIDMenu);
-    end;
-  end;
-end;
-
-function TStateGame.SysNotify(Notify: TSysNotify): Boolean;
-begin
-  Result:=inherited SysNotify(Notify);
-  if Notify=snMinimize then Core.SwitchState(SIDMenu);
+    end
+  else if (Event is TSysNotify) and ((Event as TSysNotify).Notify = snMinimized) then
+  begin
+    inherited;
+    Core.SwitchState(SIDMenu);
+  end
+  else inherited;
 end;
 
 procedure TStateGame.NewGame;

@@ -92,8 +92,8 @@ begin
       end;
       if j<FHeight-1 then
       begin
-        IndexBuffer[2*(j*(FWidth+1)+i)]:=(j+1)*FWidth+i-1;
-        IndexBuffer[2*(j*(FWidth+1)+i)+1]:=(j+1)*FWidth;
+        IndexBuffer[2*(j*(FWidth+1)+FWidth)]:=(j+1)*FWidth+FWidth-1;
+        IndexBuffer[2*(j*(FWidth+1)+FWidth)+1]:=(j+1)*FWidth;
       end;
     end;
     ComputeNormalsTrianglesStrip(VertexBuffer, IndexBuffer);

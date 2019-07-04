@@ -73,7 +73,7 @@ var
 begin
   Assert((Length(Args) = 2) and (Args[0].VType = vtInteger) and (Args[1].VType = vtPointer));
   if FPlayer.Game.ActivePlayer <> FPlayer then Exit;
-  if TMouseEvent(Args[0].VInteger) = meDown then
+  if TMouseEvents(Args[0].VInteger) = meDown then
   begin
     Obj := FPlayer.Game.Scene.ObjectAtMouse;
     if not ((Obj is TQuarter) and CheckQuarter(Obj as TQuarter)) then Exit;
@@ -128,7 +128,7 @@ var
 begin
   Assert((Length(Args) = 2) and (Args[0].VType = vtInteger) and (Args[1].VType = vtPointer));
   if FPlayer.Game.ActivePlayer <> FPlayer then Exit;
-  if TMouseEvent(Args[0].VInteger) = meDown then
+  if TMouseEvents(Args[0].VInteger) = meDown then
   begin
     Obj := FPlayer.Game.Scene.ObjectAtMouse;
     if not ((Obj is TQuarter) and CheckQuarter(Obj as TQuarter)) then Exit;

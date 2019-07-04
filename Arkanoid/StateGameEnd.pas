@@ -24,9 +24,7 @@ type
     procedure Draw; override;
     function Activate: Cardinal; override;
     procedure Deactivate; override;
-    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
-    function SysNotify(Notify: TSysNotify): Boolean; override;
+    procedure OnEvent(var Event: TCoreEvent); override;
   end;
 
 implementation
@@ -97,20 +95,12 @@ begin
   TStateGame(Core.GetState(Core.FindState(SIDGame))).ClearBricks;
 end;
 
-function TStateGameEnd.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
+procedure TStateGameEnd.OnEvent(var Event: TCoreEvent);
 begin
-  if (Event = meDown) or (Event = meUp) then Core.SwitchState(SIDMenu);
-end;
-
-function TStateGameEnd.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
-begin
-  Core.SwitchState(SIDMenu);
-end;
-
-function TStateGameEnd.SysNotify(Notify: TSysNotify): Boolean;
-begin
-  Result:=inherited SysNotify(Notify);
-  if Notify=snMinimize then Core.SwitchState(SIDMenu);
+  if ((Event is TMouseEvent) and ((Event as TMouseEvent).EvType in [meDown, meUp])) or (Event is TKeyEvent) or
+     ((Event is TSysNotify) and ((Event as TSysNotify).Notify = snMinimized)) then
+    Core.SwitchState(SIDMenu);
+  inherited;
 end;
 
 function TStateGameEnd.GetName: string;

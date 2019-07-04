@@ -37,7 +37,7 @@ type
     procedure Draw; override;
     function  Activate: Cardinal; override;
     procedure Deactivate; override;
-    function  SysNotify(Notify: TSysNotify): Boolean; override;
+    procedure OnEvent(var Event: TCoreEvent); override;
     function LoadCache: Boolean;
     procedure SetCache(Enabled: Boolean);
     procedure ClearCache;
@@ -185,10 +185,10 @@ begin
   {$IFDEF VSE_CONSOLE}ConsoleInterface.Blocking := true;{$ENDIF}
 end;
 
-function TStateStart.SysNotify(Notify: TSysNotify): Boolean;
+procedure TStateStart.OnEvent(var Event: TCoreEvent);
 begin
-  Result:=inherited SysNotify(Notify);
-  if Notify=snMinimize then Result:=true;
+  if (Event is TSysNotify) and ((Event as TSysNotify).Notify = snMinimized) then Exit;
+  inherited;
 end;
 
 function TStateStart.LoadCache: Boolean;

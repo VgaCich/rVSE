@@ -37,7 +37,7 @@ type
     constructor Create; override; //internally used
     destructor Destroy; override; //internally used
     class function Name: string; override; //internally used
-    function  SysNotify(Notify: TSysNotify): Boolean; override; //internally used
+    procedure OnEvent(var Event: TCoreEvent); override;
     procedure Enter; //Enter 2D mode
     procedure Leave; //Leave 2D mode
     function  MapCursor(const Cursor: TPoint): TPoint; //Map cursor to virtual screen
@@ -106,10 +106,10 @@ begin
   Result := 'Render2D';
 end;
 
-function TRender2D.SysNotify(Notify: TSysNotify): Boolean;
+procedure TRender2D.OnEvent(var Event: TCoreEvent);
 begin
-  Result := inherited SysNotify(Notify);
-  if Notify = snResolutionChanged then
+  inherited;
+  if (Event is TSysNotify) and ((Event as TSysNotify).Notify = snResolutionChanged) then
     ResolutionChanged;
 end;
 

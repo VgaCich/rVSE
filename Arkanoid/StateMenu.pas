@@ -18,7 +18,7 @@ type
     procedure ExitClick(Btn: PBtn);
   public
     constructor Create;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean; override;
     procedure ResumeEnable(Enable: Boolean);
   end;
   TDiffMenu=class(TAlignedForm)
@@ -26,7 +26,7 @@ type
     procedure BtnClick(Btn: PBtn);
   public
     constructor Create;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean; override;
   end;
   TScores = class(TAlignedForm)
   protected
@@ -36,7 +36,7 @@ type
     procedure DrawForm(State: TBtnState); override;
   public
     constructor Create;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean; override;
   end;
   TOptions=class(TOptionsForm)
   protected
@@ -137,7 +137,7 @@ begin
   Button[FResumeButton].Enabled:=false;
 end;
 
-function TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 begin
   Result := false;
   if (Key=VK_ESCAPE) and (Event=keUp) then
@@ -212,7 +212,7 @@ begin
   CreateMenu(Self, 30, 50, 140, 30, 20, DiffMenuItems);
 end;
 
-function TDiffMenu.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TDiffMenu.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 begin
   Result := false;
   if (Key=VK_ESCAPE) and (Event=keUp) then
@@ -264,7 +264,7 @@ begin
     FScores[i] := Settings.Int[SScores, IntToStr(i)];
 end;
 
-function TScores.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TScores.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 begin
   Result := false;
   if (Key=VK_ESCAPE) and (Event=keUp) then

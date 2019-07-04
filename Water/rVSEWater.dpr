@@ -25,7 +25,7 @@ type
     procedure Draw; override;
     procedure Update; override;
     function  Activate: Cardinal; override;
-    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
+    procedure OnEvent(var Event: TCoreEvent); override;
   end;
 
 {$R MemPak.res}
@@ -175,17 +175,18 @@ begin
   Core.MouseCapture:=true;
 end;
 
-function TStateMain.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
+procedure TStateMain.OnEvent(var Event: TCoreEvent);
 const
   MSens=0.5;
 begin
-  if Event=meMove then
-  begin
-    FAngle.Y:=FAngle.Y+X*MSens;
-    FAngle.X:=FAngle.X+Y*MSens;
-    if FAngle.X<-90 then FAngle.X:=-90;
-    if FAngle.X>90 then FAngle.X:=90;
-  end;
+  if (Event is TMouseEvent) and ((Event as TMouseEvent).EvType=meMove) then
+    with (Event as TMouseEvent).Cursor do
+    begin
+      FAngle.Y:=FAngle.Y+X*MSens;
+      FAngle.X:=FAngle.X+Y*MSens;
+      if FAngle.X<-90 then FAngle.X:=-90;
+      if FAngle.X>90 then FAngle.X:=90;
+    end;
 end;
 
 function TStateMain.GetName: string;

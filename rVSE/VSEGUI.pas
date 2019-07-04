@@ -103,8 +103,9 @@ type
     procedure Draw; //Draw form
     procedure Update; dynamic; //Update form
     procedure Close; //Free form safely
-    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; dynamic; //Process mouse event
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; dynamic; //Process key event
+    function Event(Event: TCoreEvent): Boolean; //Process event
+    function MouseEvent(Button: Integer; Event: TMouseEvents; Cursor: TPoint): Boolean; dynamic; //Process mouse event
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean; dynamic; //Process key event
     function CharEvent(C: Char): Boolean; dynamic; //Process char event
     property Button[Index: Integer]: PBtn read GetButton; //Buttons array
     property Lbl[Index: Integer]: PLbl read GetLabel; //Labels array
@@ -402,7 +403,6 @@ end;
 
 procedure TGUIForm.Update;
 var
-  Cursor: TPoint;
   FormRec: PFormRec;
 begin
   if FClose then
@@ -424,11 +424,22 @@ begin
   FClose := true;
 end;
 
-function TGUIForm.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
-var
-  Cursor: TPoint;
+function TGUIForm.Event(Event: TCoreEvent): Boolean;
 begin
-  Cursor := Point(X, Y);
+  if Event is TKeyEvent then
+    with Event as TKeyEvent do
+      Result := KeyEvent(Key, EvType)
+  else if Event is TMouseEvent then
+    with Event as TMouseEvent do
+      Result := MouseEvent(Button, EvType, Cursor)
+  else if Event is TCharEvent then
+    Result := CharEvent((Event as TCharEvent).Chr)
+  else
+    Result := false;
+end;
+
+function TGUIForm.MouseEvent(Button: Integer; Event: TMouseEvents; Cursor: TPoint): Boolean;
+begin
   MapCursor(Cursor);
   Result := PointInRect(Cursor, Rect(0, 0, FWidth, FHeight));
   FActive := BtnAt(Cursor);
@@ -463,7 +474,7 @@ begin
   end;
 end;
 
-function TGUIForm.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TGUIForm.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 begin
   Result := false;
   if (Event = keDown) then

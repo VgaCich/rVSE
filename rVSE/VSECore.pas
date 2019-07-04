@@ -9,6 +9,101 @@ uses
   VSEOpenGLExt, VSEImageCodec {$IFDEF VSE_LOG}, VSELog{$IFNDEF VSE_NOSYSINFO}, VSESysInfo{$ENDIF}{$ENDIF};
 
 type
+  //Events
+  TCoreEvent = class // Base event class
+  private
+    FSender: TObject;
+    {$IFDEF VSE_LOG}function GetDump: string; virtual;{$ENDIF}
+  public
+    constructor Create(Sender: TObject = nil);
+    property Sender: TObject read FSender; //Event sender
+    {$IFDEF VSE_LOG}property Dump: string read GetDump;{$ENDIF}
+  end;
+  TMouseEvents=(meDown, meUp, meMove, meWheel); //Mouse events: button pressed, button release, mouse moving, mouse wheel
+  TMouseEvent = class(TCoreEvent) //Mouse event
+  private
+    FButton: Integer;
+    FEvType: TMouseEvents;
+    FCursor: TPoint;
+    {$IFDEF VSE_LOG}function GetDump: string; override;{$ENDIF}
+  public
+    constructor Create(Sender: TObject; Button: Integer; EvType: TMouseEvents; Cursor: TPoint);
+    property Button: Integer read FButton; //Mouse button number or wheel click if Event=meWheel
+    property EvType: TMouseEvents read FEvType; //Event type
+    property Cursor: TPoint read FCursor; //Mouse cursor coordinates or cursor coordinates delta if Core.MouseCapture=true
+  end;
+  TKeyEvents=(keDown, keUp); //Keyboard events: key pressed, key released
+  TKeyEvent = class(TCoreEvent) //Keyboard event
+  private
+    FKey: Integer;
+    FEvType: TKeyEvents;
+    {$IFDEF VSE_LOG}function GetDump: string; override;{$ENDIF}
+  public
+    constructor Create(Sender: TObject; Key: Integer; EvType: TKeyEvents);
+    property Key: Integer read FKey; //Virtual key code
+    property EvType: TKeyEvents read FEvType; //Event type
+  end;
+  TCharEvent = class(TCoreEvent) //Keyboard character event
+  private
+    FChr: Char;
+    {$IFDEF VSE_LOG}function GetDump: string; override;{$ENDIF}
+  public
+    constructor Create(Sender: TObject; Chr: Char);
+    property Chr: Char read FChr;
+  end;
+  TSysNotifies=(  //System notifies:
+    snMinimized, //Application minimized
+    snMaximized, //Application maximized
+    snUpdateOverload, //Update Overload Detection triggered
+    snPause, //Engine paused
+    snResume, //Engine resumed
+    snResolutionChanged, //Resolution changed
+    snStateChanged, //State changed
+    snLogSysInfo //Write system info to log
+  );
+  TSysNotify = class(TCoreEvent) //System notify
+  private
+    FNotify: TSysNotifies;
+    {$IFDEF VSE_LOG}function GetDump: string; override;{$ENDIF}
+  public
+    constructor Create(Sender: TObject; Notify: TSysNotifies);
+    property Notify: TSysNotifies read FNotify; //Notification code
+  end;
+  PStream = ^TStream;
+  TGetFileEvent = class(TCoreEvent)
+  private
+    FFileName: string;
+    FResult: PStream;
+    procedure SetResult(Result: TStream);
+    {$IFDEF VSE_LOG}function GetDump: string; override;{$ENDIF}
+  public
+    constructor Create(Sender: TObject; const FileName: string; Result: PStream);
+    property FileName: string read FFileName;
+    property Result: TStream write SetResult;
+  end;
+
+  TCoreModule=class
+  public
+    procedure Draw; virtual; //Draw handler
+    procedure Update; virtual; //Update handler
+    procedure OnEvent(var Event: TCoreEvent); virtual; //Events handler; FreeAndNil event to stop furhter dispatching
+  end;
+  TGameState = class(TCoreModule) //Base state class
+  protected
+    function GetName: string; virtual; abstract; //Must return state name
+  public
+    procedure OnEvent(var Event: TCoreEvent); override;
+    function  Activate: Cardinal; virtual; //Activate handler (triggered on switching to state), must return updates interval
+    procedure Deactivate; virtual; //Deactiovate handler (triggered on switching from state)
+    property  Name: string read GetName; //State name
+  end;
+  TModule = class(TCoreModule) //Base engine module class
+  public
+    constructor Create; virtual;
+    class function Name: string; virtual; abstract; //Must return module name
+  end;
+  CModule=class of TModule;
+
   TStopState=( //Engine stop codes
     StopNormal, //Engine stopped normally
     StopDefault, //Engine stopped by something other than StopEngine
@@ -20,42 +115,6 @@ type
     StopDisplayModeError, //Engine stopped due to error when setting display mode
     StopUserError //Engine stopped by user code due to error
   );
-  TSysNotify=(  //System notifies:
-    snMinimize, //Application minimized, return false to pause or true to continue working
-    snMaximize, //Application maximized
-    snUpdateOverload, //Update Overload Detection triggered, return true to disable default handler (resets update timer)
-    snPause, //Engine paused
-    snResume, //Engine resumed
-    snResolutionChanged, //Resolution changed
-    snStateChanged, //State changed
-    snLogSysInfo //Write system info to log
-  );
-  TMouseEvent=(meDown, meUp, meMove, meWheel); //Mouse event: button pressed, button release, mouse moving, mouse wheel
-  TKeyEvent=(keDown, keUp); //Keyboard event: key pressed, key released
-  TOnGetFile=function(const FileName: string): TStream of object; //GetFile extension handler
-  TCoreModule=class
-  public
-    procedure Draw; virtual; //Draw event
-    procedure Update; virtual; //Update event
-    //Return 'true' from input event handler to prevent further dispatching
-    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; virtual; //Mouse event; Button - mouse button number or wheel click if Event=meWheel; X, Y - cursor coordinates or cursor coordinates delta if Core.MouseCapture=true
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; virtual; //Keyboard event; Key - VK key code
-    function CharEvent(C: Char): Boolean; virtual; //Char event (char of pressed key in current layout)
-    function SysNotify(Notify: TSysNotify): Boolean; virtual; //System notify event, return value only from TGameState
-  end;
-  TGameState = class(TCoreModule) //Base state class
-  protected
-    function GetName: string; virtual; abstract; //Must returns state name
-  public
-    function  Activate: Cardinal; virtual; //Activate event (triggered on switching to state), must return updates interval
-    procedure Deactivate; virtual; //Deactiovate event (triggered on switching from state)
-    property  Name: string read GetName; //State name
-  end;
-  TModule = class(TCoreModule) //Base engine module class
-  public
-    constructor Create; virtual;
-    class function Name: string; virtual; abstract; //Module name
-  end;
   TCore=class
   private
     FHandle: THandle;
@@ -69,7 +128,6 @@ type
     FHPETFreq: Int64;
     FStates: array of TGameState;
     FModules: array of TModule;
-    FOnGetFile: TOnGetFile;
     FState, FSwitchTo: Cardinal;
     FCurState: TGameState;
     FPrevStateName: string;
@@ -98,14 +156,14 @@ type
     procedure SaveSettings;
     procedure Update;
     procedure Resume;
-    procedure MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
-    procedure KeyEvent(Key: Integer; Event: TKeyEvent);
+    procedure MouseEvent(Button: Integer; Event: TMouseEvents; X, Y: Integer);
+    procedure KeyEvent(Key: Integer; Event: TKeyEvents);
     procedure CharEvent(C: Char);
-    function  SendNotify(Notify: TSysNotify): Boolean;
   public
     constructor Create(WndHandle: THandle); //internally used
     destructor Destroy; override; //internally used
     procedure StopEngine(StopState: TStopState = StopNormal); //Stop engine with stop code StopState and quit
+    procedure SendEvent(Event: TCoreEvent; ToModules: Boolean = true; ToState: Boolean = true); //Send event to modules & current state
     {State manager}
     function  AddState(State: TGameState): Cardinal; //Add state object, returns state index
     function  ReplaceState(OrigState: Cardinal; NewState: TGameState): Boolean; //Replace state at index OrigState with state object NewState; returns true if success
@@ -133,7 +191,7 @@ type
     property Fullscreen: Boolean read FFullscreen write SetFullscreen; //Fullscreen mode
     property VSync: Boolean read GetVSync write SetVSync; //Vertical synchronization
     property Minimized: Boolean read FMinimized; //Engine window minimized
-    property Paused: Boolean read FPaused; //Engine paused
+    property Paused: Boolean read FPaused write FPaused; //Engine paused; do not write
     property KeyPressed[Index: Byte]: Boolean read GetKeyPressed; //True if Key pressed
     property MouseCapture: Boolean read FMouseCapture write SetMouseCapture; //Mouse capture mode
     property MouseCursor: TPoint read GetMouseCursor; //Mouse cursor coordinates relative to engine window
@@ -145,8 +203,8 @@ type
     property FPS: Cardinal read FFPS; //Current FPS
     property UpdateInterval: Cardinal read FUpdInt write FUpdInt; //Current state updates interval
     property UpdateOverloadThreshold: Cardinal read FUpdOverloadThreshold write FUpdOverloadThreshold; //Update Overload Detection threshold, overloaded update cycles before triggering
-    property OnGetFile: TOnGetFile read FOnGetFile write FOnGetFile;
   end;
+
   TSettings=class
   private
     FFirstRun: Boolean;
@@ -168,7 +226,7 @@ type
     property Int[const Section, Name: string]: Integer read GetInt write SetInt; //Read/write Integer value
     property Str[const Section, Name: string]: string read GetStr write SetStr; //Read/write String value
   end;
-  CModule=class of TModule;
+
   TInitStates=procedure;
   TInitSettings=record
     InitStates: TInitStates; //Init states procedure pointer
@@ -208,11 +266,11 @@ const
   InvalidState = $FFFFFFFF; //Non-existing state index
   StopCodeNames: array[TStopState] of string =
     ('Normal', 'Default', 'Need Restart', 'Init Error', 'Internal Error', 'User Exception', 'Display Mode Error', 'User Error');
-  SysNotifyNames: array[TSysNotify] of string =
+  SysNotifyNames: array[TSysNotifies] of string =
     ('snMinimized', 'snMaximized', 'snUpdateOverload', 'snPause', 'snResume', 'snResolutionChanged', 'snStateChanged', 'snLogSysInfo');
-  MouseEventNames: array[TMouseEvent] of string =
+  MouseEventNames: array[TMouseEvents] of string =
     ('meDown', 'meUp', 'meMove', 'meWheel');
-  KeyEventNames: array[TKeyEvent] of string =
+  KeyEventNames: array[TKeyEvents] of string =
     ('keDown', 'keUp');
   VSECaptVer = 'reduced VS Engine 1.0';
   SSectionSettings = 'Settings';
@@ -273,7 +331,109 @@ begin
   Core.FFramesCount:=0;
 end;
 
-{TCoreModule}
+{ TCoreEvent }
+
+constructor TCoreEvent.Create(Sender: TObject);
+begin
+  inherited Create;
+  FSender := Sender;
+end;
+
+{$IFDEF VSE_LOG}
+function TCoreEvent.GetDump: string;
+begin
+  Result := ClassName;
+end;
+{$ENDIF}
+
+{ TMouseEvent }
+
+constructor TMouseEvent.Create(Sender: TObject; Button: Integer; EvType: TMouseEvents; Cursor: TPoint);
+begin
+  inherited Create(Sender);
+  FButton := Button;
+  FEvType := EvType;
+  FCursor := Cursor;
+end;
+
+{$IFDEF VSE_LOG}
+function TMouseEvent.GetDump: string;
+begin
+  Result := Format('%s(Btn=%d Ev=%s X=%d Y=%d)', [string(ClassName), FButton, MouseEventNames[FEvType], Cursor.X, Cursor.Y]);
+end;
+{$ENDIF}
+
+{ TKeyEvent }
+
+constructor TKeyEvent.Create(Sender: TObject; Key: Integer; EvType: TKeyEvents);
+begin
+  inherited Create(Sender);
+  FKey := Key;
+  FEvType := EvType;
+end;
+
+{$IFDEF VSE_LOG}
+function TKeyEvent.GetDump: string;
+begin
+  Result := Format('%s(Key=%d Ev=%s)', [string(ClassName), FKey, KeyEventNames[FEvType]]);
+end;
+{$ENDIF}
+
+{ TCharEvent }
+
+constructor TCharEvent.Create(Sender: TObject; Chr: Char);
+begin
+  inherited Create(Sender);
+  FChr := Chr;
+end;
+
+{$IFDEF VSE_LOG}
+function TCharEvent.GetDump: string;
+begin
+  Result := Format('%s(Chr=0x%02x)', [string(ClassName), Ord(FChr)]);
+end;
+{$ENDIF}
+
+{ TSysNotify }
+
+constructor TSysNotify.Create(Sender: TObject; Notify: TSysNotifies);
+begin
+  inherited Create(Sender);
+  FNotify := Notify;
+end;
+
+{$IFDEF VSE_LOG}
+function TSysNotify.GetDump: string;
+begin
+  Result := Format('%s(Notify=%s)', [string(ClassName), SysNotifyNames[FNotify]]);
+end;
+{$ENDIF}
+
+{ TGetFileEvent }
+
+constructor TGetFileEvent.Create(Sender: TObject; const FileName: string; Result: PStream);
+begin
+  inherited Create(Sender);
+  FFileName := FileName;
+  FResult := Result;
+end;
+
+procedure TGetFileEvent.SetResult(Result: TStream);
+begin
+  if not Assigned(FResult) or not Assigned(Result) then Exit;
+  if Assigned(FResult^) then
+    FreeAndNil(FResult^);
+  FResult^ := Result;
+end;
+
+{$IFDEF VSE_LOG}
+function TGetFileEvent.GetDump: string;
+begin
+  Result := Format('%s(File="%s")', [string(ClassName), FFileName]);
+end;
+{$ENDIF}
+
+{ TCoreModule }
 
 procedure TCoreModule.Draw;
 begin
@@ -285,27 +445,22 @@ begin
 
 end;
 
-function TCoreModule.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
+procedure TCoreModule.OnEvent(var Event: TCoreEvent);
 begin
-  Result := false;
+
 end;
 
-function TCoreModule.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
-begin
-  Result := false;
-end;
+{ TGameState }
 
-function TCoreModule.CharEvent(C: Char): Boolean;
+procedure TGameState.OnEvent(var Event: TCoreEvent);
 begin
-  Result := false;
+  inherited;
+  if (Event is TSysNotify) then
+    case (Event as TSysNotify).Notify of
+      snUpdateOverload: Core.ResetUpdateTimer; //Override to implement your own UpdateOverload handler
+      snMinimized: Core.Paused := true; //Override to disable core pausing on minimizing window
+    end;
 end;
-
-function TCoreModule.SysNotify(Notify: TSysNotify): Boolean;
-begin
-  Result := false;
-end;
-
-{TGameState}
 
 function  TGameState.Activate: Cardinal;
 begin
@@ -317,14 +472,14 @@ begin
 
 end;
 
-{TModule}
+{ TModule }
 
 constructor TModule.Create;
 begin
   inherited;
 end;
 
-{TCore}
+{ TCore }
 
 constructor TCore.Create(WndHandle: THandle);
 begin
@@ -414,7 +569,7 @@ begin
   end;
   {$IF Defined(VSE_LOG) and not Defined(VSE_NOSYSINFO)}
   if LogSysInfo then
-    SendNotify(snLogSysInfo);
+    SendEvent(TSysNotify.Create(Self, snLogSysInfo), true, false);
   {$IFEND}
   SetResolution(InitSettings.ResolutionX, InitSettings.ResolutionY, InitSettings.RefreshRate, InitSettings.Fullscreen, false);
   VSync:=InitSettings.VSync;
@@ -478,12 +633,12 @@ begin
         gleGoBack;
         SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
       end;
-      FPaused:=not SendNotify(snMinimize);
+      SendEvent(TSysNotify.Create(Self, snMinimized));
       if FPaused then
       begin
         if FNeedSwitch
           then State:=FSwitchTo;
-        SendNotify(snPause);
+        SendEvent(TSysNotify.Create(Self, snPause));
         if not FFullscreen
           then SendMessage(FHandle, WM_SYSCOMMAND, SC_MINIMIZE, 0);
         Exit;
@@ -503,12 +658,7 @@ begin
         Cursor.Y:=Cursor.Y-FResolutionY div 2;
         ResetMouse;
         if not FInhibitUpdate then
-        try
-          FCurState.MouseEvent(0, meMove, Cursor.X, Cursor.Y);
-        except
-          {$IFDEF VSE_LOG}LogException(Format('in state %s.MouseEvent(0, %s, %d, %d)', [FCurState.Name, MouseEventNames[meMove], Cursor.X, Cursor.Y]));{$ENDIF}
-          {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
-        end;
+          SendEvent(TMouseEvent.Create(Self, 0, meMove, Cursor), false);
       end;
       if not FInhibitUpdate then
         for i:=1 to T div FUpdInt do
@@ -524,11 +674,10 @@ begin
           begin
             Inc(FUpdOverloadCount);
             if FUpdOverloadCount>FUpdOverloadThreshold then
-              if not SendNotify(snUpdateOverload) then
-              begin
-                {$IFDEF VSE_LOG}Log(llWarning, 'Update overload in state "'+FCurState.Name+'"');{$ENDIF}
-                ResetUpdateTimer;
-              end;
+            begin
+              SendEvent(TSysNotify.Create(Self, snUpdateOverload), false);
+              {$IFDEF VSE_LOG}Log(llWarning, 'Update overload in state "'+FCurState.Name+'"');{$ENDIF}
+            end;
           end
             else if FUpdOverloadCount>0 then Dec(FUpdOverloadCount);
         end;
@@ -563,55 +712,35 @@ begin
     FMinimized:=false;
     if FPaused then ResetUpdateTimer;
     FPaused:=false;
-    SendNotify(snResume);
-    SendNotify(snMaximize);
+    SendEvent(TSysNotify.Create(Self, snResume));
+    SendEvent(TSysNotify.Create(Self, snMaximized));
   except
     {$IFDEF VSE_LOG}LogException('in TCore.Resume');{$ENDIF}
     StopEngine(StopInternalError);
   end;
 end;
 
-procedure TCore.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer);
+procedure TCore.MouseEvent(Button: Integer; Event: TMouseEvents; X, Y: Integer);
 var
-  P: TPoint;
-  i: Integer;
+  Pos: TPoint;
 begin
   try
+    Pos:=Point(X, Y);
     if (Event=meWheel) and not Fullscreen then
-    begin
-      P:=Point(X, Y);
-      ScreenToClient(Handle, P);
-      X:=P.X;
-      Y:=P.Y;
-    end;
+      ScreenToClient(Handle, Pos);
     if Event=meDown
       then SetCapture(FHandle)
       else if Event=meUp
         then ReleaseCapture;
     if (FMouseCapture and (Event=meMove)) or FPaused then Exit;
-    for i:=0 to High(FModules) do
-    try
-      if FModules[i].MouseEvent(Button, Event, X, Y) then Exit;
-    except
-      {$IFDEF VSE_LOG}LogException(Format('in module %s.MouseEvent(%d, %s, %d, %d)', [FModules[i].Name, Button, MouseEventNames[Event], X, Y]));{$ENDIF}
-      {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
-    end;
-    if FCurState<>nil then
-    try
-      FCurState.MouseEvent(Button, Event, X, Y);
-    except
-      {$IFDEF VSE_LOG}LogException(Format('in state %s.MouseEvent(%d, %s, %d, %d)', [FCurState.Name, Button, MouseEventNames[Event], X, Y]));{$ENDIF}
-      {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
-    end;
+    SendEvent(TMouseEvent.Create(Self, Button, Event, Pos));
   except
     {$IFDEF VSE_LOG}LogException(Format('in TCore.MouseEvent(%d, %s, %d, %d)', [Button, MouseEventNames[Event], X, Y]));{$ENDIF}
     StopEngine(StopInternalError);
   end;
 end;
 
-procedure TCore.KeyEvent(Key: Integer; Event: TKeyEvent);
-var
-  i: Integer;
+procedure TCore.KeyEvent(Key: Integer; Event: TKeyEvents);
 begin
   try
     if FPaused then Exit;
@@ -629,20 +758,7 @@ begin
       Exit;
     end;
     {$ENDIF}
-    for i:=0 to High(FModules) do
-    try
-      if FModules[i].KeyEvent(Key, Event) then Exit;
-    except
-      {$IFDEF VSE_LOG}LogException(Format('in module %s.KeyEvent(%d, %s)', [FModules[i].Name, Key, KeyEventNames[Event]]));{$ENDIF}
-      {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
-    end;
-    if FCurState<>nil then
-    try
-      FCurState.KeyEvent(Key, Event);
-    except
-      {$IFDEF VSE_LOG}LogException(Format('in state %s.KeyEvent(%d, %s)', [FCurState.Name, Key, KeyEventNames[Event]]));{$ENDIF}
-      {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
-    end;
+    SendEvent(TKeyEvent.Create(Self, Key, Event));
   except
     {$IFDEF VSE_LOG}LogException(Format('in TCore.KeyEvent(%d, %s)', [Key, KeyEventNames[Event]]));{$ENDIF}
     StopEngine(StopInternalError);
@@ -650,49 +766,13 @@ begin
 end;
 
 procedure TCore.CharEvent(C: Char);
-var
-  i: Integer;
 begin
   try
     if FPaused then Exit;
-    for i:=0 to High(FModules) do
-    try
-      if FModules[i].CharEvent(C) then Exit;
-    except
-      {$IFDEF VSE_LOG}LogException('in module '+FModules[i].Name+'.CharEvent(#'+IntToStr(Ord(C))+')');{$ENDIF}
-      {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
-    end;
-    if FCurState<>nil then
-    try
-      FCurState.CharEvent(C);
-    except
-      {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.CharEvent(#'+IntToStr(Ord(C))+')');{$ENDIF}
-      {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
-    end;
+    SendEvent(TCharEvent.Create(Self, C));
   except
     {$IFDEF VSE_LOG}LogException('in TCore.CharEvent(#'+IntToStr(Ord(C))+')');{$ENDIF}
     StopEngine(StopInternalError);
-  end;
-end;
-
-function TCore.SendNotify(Notify: TSysNotify): Boolean;
-var
-  i: Integer;
-begin
-  Result:=false;
-  for i:=0 to High(FModules) do
-  try
-    FModules[i].SysNotify(Notify);
-  except
-    {$IFDEF VSE_LOG}LogException('in module '+FModules[i].Name+'.SysNotify('+SysNotifyNames[Notify]+')');{$ENDIF}
-    {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
-  end;
-  if FCurState<>nil then
-  try
-    Result:=FCurState.SysNotify(Notify);
-  except
-    {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.SysNotify('+SysNotifyNames[Notify]+')');{$ENDIF}
-    {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
   end;
 end;
 
@@ -703,6 +783,36 @@ begin
   {$IFDEF VSE_LOG}LogF(llInfo, 'Stopping engine with code %d (%s)', [Ord(StopState), StopCodeNames[StopState]]);{$ENDIF}
   VSEStopState:=StopState;
   PostMessage(Handle, UM_STOPENGINE, 0, 0);
+end;
+
+procedure TCore.SendEvent(Event: TCoreEvent; ToModules, ToState: Boolean);
+var
+  i: Integer;
+  EventDump: string;
+begin
+  if not Assigned(Event) then Exit;
+  try
+    {$IFDEF VSE_LOG}EventDump := Event.Dump;{$ENDIF}
+    if ToModules then
+      for i:=0 to High(FModules) do
+      try
+        if Assigned(Event) then
+          FModules[i].OnEvent(Event)
+        else Break;
+      except
+        {$IFDEF VSE_LOG}LogException(Format('in module %s.Event(%s)', [FModules[i].Name, EventDump]));{$ENDIF}
+        {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
+      end;
+    if ToState and Assigned(Event) and Assigned(FCurState) then
+    try
+      FCurState.OnEvent(Event);
+    except
+      {$IFDEF VSE_LOG}LogException(Format('in state %s.Event(%s)', [FCurState.Name, EventDump]));{$ENDIF}
+      {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
+    end;
+  finally
+    FreeAndNil(Event);
+  end;
 end;
 
 function TCore.AddState(State: TGameState): Cardinal;
@@ -815,7 +925,7 @@ begin
     end;
   end
   else SetWindowPos(FHandle, 0, (Screen.Width-FResolutionX) div 2, (Screen.Height-FResolutionY) div 2, 0, 0, SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE);
-  SendNotify(snResolutionCHanged);
+  SendEvent(TSysNotify.Create(Self, snResolutionChanged));
 end;
 
 procedure TCore.MakeScreenshot(Name: string; Format: TImageFormat; Numerate: Boolean = true);
@@ -857,8 +967,7 @@ begin
   Result:=nil;
   if FileExists(InitSettings.DataDir+FileName) then
     Result:=TFileStream.Create(InitSettings.DataDir+FileName, fmOpenRead or fmShareDenyWrite)
-  else if Assigned(FOnGetFIle) then
-    Result:=FOnGetFile(FileName);
+  else SendEvent(TGetFileEvent.Create(Self, FileName, @Result), true, false);
 end;
 
 function TCore.GetFileText(const FileName: string): TStringList;
@@ -931,7 +1040,7 @@ begin
     end;
     FPrevStateName:=FCurState.Name;
   end;
-  SendNotify(snStateChanged);
+  SendEvent(TSysNotify.Create(Self, snStateChanged), true, false);
   FState:=Value;
   FCurState:=FStates[Value];
   try

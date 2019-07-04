@@ -25,7 +25,7 @@ type
     procedure Draw; override;
     procedure Update; override;
     function Activate: Cardinal; override;
-    function SysNotify(Notify: TSysNotify): Boolean;
+    procedure OnEvent(var Event: TCoreEvent); override;
     property LevelName: string read FLevelName write FLevelName;
   end;
 
@@ -78,10 +78,10 @@ begin
   SetStage(Delay, '');
 end;
 
-function TStateLoad.SysNotify(Notify: TSysNotify): Boolean;
+procedure TStateLoad.OnEvent(var Event: TCoreEvent);
 begin
-  Result:=inherited SysNotify(Notify);
-  if Notify=snMinimize then Result:=true;
+  if (Event is TSysNotify) and ((Event as TSysNotify).Notify = snMinimized) then Exit;
+  inherited;
 end;
 
 function TStateLoad.GetName: string;

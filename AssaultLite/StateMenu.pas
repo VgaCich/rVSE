@@ -17,7 +17,7 @@ type
     procedure ExitClick(Btn: PBtn);
   public
     constructor Create;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean; override;
     procedure ResumeEnable(Enable: Boolean);
   end;
   TOptions=class(TOptionsForm)
@@ -92,9 +92,8 @@ begin
   Button[FResumeButton].Enabled:=false;
 end;
 
-function TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TMainMenu.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 begin
-  Result := false;
   if (Key=VK_ESCAPE) and (Event=keUp) then
   begin
     if Self.Button[FResumeButton].Enabled then

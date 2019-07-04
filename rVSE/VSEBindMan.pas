@@ -31,6 +31,7 @@ type
     FScrollStateClicks: Integer;
     FScrollStateUp: Boolean;
     {$IFDEF VSE_CONSOLE}FCmdBindings: array of record Key: Byte; Cmd: string; end; {$ENDIF}
+    function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
     procedure ResetEvents;
     function GetBindActive(Name: string): Boolean;
     function FindBinding(Name: string; NoLogLost: Boolean = false): Integer;
@@ -44,9 +45,7 @@ type
     destructor Destroy; override;
     class function Name: string; override;
     procedure Update; override;
-    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
-    function  SysNotify(Notify: TSysNotify): Boolean; override; 
+    procedure OnEvent(var Event: TCoreEvent); override;
     procedure AddBinding(const Name_, Description_: string; Key_: Byte); //Add binding Name with default key Key
     procedure AddBindings(const Bindings: array of TBindingRec); //Add several bindings
     function  GetBindKeyName(const BindName: string): string; //Get name of binded to BindName key
@@ -325,42 +324,46 @@ begin
     end;
 end;
 
-function TBindMan.SysNotify(Notify: TSysNotify): Boolean;
-begin
-  Result:=inherited SysNotify(Notify);
-  if Notify=snStateChanged then
-    ResetEvents;
-end;
-
-function TBindMan.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
+procedure TBindMan.OnEvent(var Event: TCoreEvent);
 const
-  EvMap: array[meDown..meUp] of TKeyEvent = (keDown, keUp);
+  EvMap: array[meDown..meUp] of TKeyEvents = (keDown, keUp);
 var
-  Key: Integer;
+  Key, Btn: Integer;
 begin
-  Result:=false; //no blocking of mouse events to prevent interference with GUI
-  if Event in [meDown, meUp] then
-    KeyEvent(MBtnMap[Button], EvMap[Event]);
-  if Event=meWheel then
-  begin
-    if Button>=0
-      then Key:=VK_MWHEELUP
-    else begin
-      Key:=VK_MWHEELDOWN;
-      Button:=-Button;
-    end;
-    FScrollStateClicks:=Button+1;
-    FScrollStateUp:=Key=VK_MWHEELUP;
-    while Button>0 do
+  if Event is TMouseEvent then
+    with Event as TMouseEvent do
     begin
-      KeyEvent(Key, keDown);
-      KeyEvent(Key, keUp);
-      Dec(Button);
-    end;
-  end;
+      if EvType in [meDown, meUp] then
+        KeyEvent(MBtnMap[Button], EvMap[EvType]);
+      if EvType=meWheel then
+      begin
+        Btn := Abs(Button);
+        if Button >= 0
+          then Key := VK_MWHEELUP
+        else
+          Key := VK_MWHEELDOWN;
+        FScrollStateClicks := Btn + 1;
+        FScrollStateUp := Key = VK_MWHEELUP;
+        while Btn > 0 do
+        begin
+          KeyEvent(Key, keDown);
+          KeyEvent(Key, keUp);
+          Dec(Btn);
+        end;
+      end;
+    end
+  else if Event is TKeyEvent then
+    with Event as TKeyEvent do
+    begin
+      if KeyEvent(Key, EvType) then
+        FreeAndNil(Event);
+    end
+  else if (Event is TSysNotify) and ((Event as TSysNotify).Notify = snStateChanged) then
+    ResetEvents
+  else inherited;
 end;
 
-function TBindMan.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+function TBindMan.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 const
   EvMap: array[keDown..keUp] of TBindEvent = (beDown, beUp);
 var

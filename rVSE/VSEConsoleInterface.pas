@@ -32,9 +32,7 @@ type
     class function Name: string; override;
     procedure Draw; override;
     procedure Update; override;
-    function MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean; override;
-    function KeyEvent(Key: Integer; Event: TKeyEvent): Boolean; override;
-    function CharEvent(C: Char): Boolean; override;
+    procedure OnEvent(var Event: TCoreEvent); override;
     procedure SetColors(const Colors: TConsoleColorSet);
     procedure SetFont(const Name: string; Bold: Boolean = true);
     property Active: Boolean read FActive write SetActive; //Console interface is opened
@@ -196,12 +194,7 @@ begin
     Core.InhibitUpdate := true;
 end;
 
-function TConsoleInterface.MouseEvent(Button: Integer; Event: TMouseEvent; X, Y: Integer): Boolean;
-begin
-  Result := FActive and FBlocking;
-end;
-
-function TConsoleInterface.KeyEvent(Key: Integer; Event: TKeyEvent): Boolean;
+procedure TConsoleInterface.OnEvent(var Event: TCoreEvent);
 var
   List: TStringList;
   i: Integer;
@@ -214,95 +207,101 @@ var
   end;
 
 begin
-  if not FActive then
+  if FActive and (Event is TMouseEvent) and FBlocking then
+    FreeAndNil(Event)
+  else if FActive and (Event is TCharEvent) then
   begin
-    if (Event = keUp) and (Key = VK_TILDE) then Active := true;
-    Result := FActive;
-    Exit;
-  end;
-  Result := true;
-  if (Event = keDown) then
-  begin
-    case Key of
-      VK_PRIOR: FLogPosition := Max(FLogPosition - DisplayLines + 1, 0);
-      VK_NEXT: FLogPosition := Min(FLogPosition + DisplayLines - 1, LogEndPosition);
-      VK_LEFT: FCursor := Max(FCursor - 1, 1);
-      VK_RIGHT: FCursor := Min(FCursor + 1, Length(FCommandLine) + 1);
-      VK_UP: if Core.KeyPressed[VK_CONTROL]
-        then FLogPosition := Max(FLogPosition - 1, 0)
-        else begin
-          FCmdHistoryIndex := Max(FCmdHistoryIndex - 1, 0);
-          SetCommandLine(FCmdHistory[FCmdHistoryIndex]);
-        end;
-      VK_DOWN: if Core.KeyPressed[VK_CONTROL]
-        then FLogPosition := Min(FLogPosition + 1, LogEndPosition)
-        else begin
-          FCmdHistoryIndex := Min(FCmdHistoryIndex + 1, FCmdHistory.Count - 1);
-          SetCommandLine(FCmdHistory[FCmdHistoryIndex]);
-        end;
-      VK_DELETE: Delete(FCommandLine, FCursor, 1);
-      VK_BACK: if FCursor > 1 then
-        begin
-          Delete(FCommandLine, FCursor - 1, 1);
-          FCursor := Max(FCursor - 1, 1);
-        end;
-    end;
+    with Event as TCharEvent do
+      if Chr in [#31..#95, #97..#126, #128..#255] then
+      begin
+        Insert(Chr, FCommandLine, FCursor);
+        Inc(FCursor);
+      end;
+    FreeAndNil(Event);
   end
-  else begin
-    case Key of
-      VK_TAB: if FCommandLine <> '' then
-        begin
-          List := Console.GetCommands(Trim(FCommandLine));
-          try
-            if List.Count = 1
-              then SetCommandLine(List[0] + ' ')
-            else if List.Count > 1 then
-              for i := 0 to List.Count - 1 do
-                Console.WriteLn('    ' + List[i]);
-          finally
-            FAN(List);
-          end;
+  else if Event is TKeyEvent then
+    with Event as TKeyEvent do
+    begin
+      if not FActive then
+      begin
+        if (EvType = keUp) and (Key = VK_TILDE) then Active := true;
+      end
+      else if (EvType = keDown) then
+      begin
+        case Key of
+          VK_PRIOR: FLogPosition := Max(FLogPosition - DisplayLines + 1, 0);
+          VK_NEXT: FLogPosition := Min(FLogPosition + DisplayLines - 1, LogEndPosition);
+          VK_LEFT: FCursor := Max(FCursor - 1, 1);
+          VK_RIGHT: FCursor := Min(FCursor + 1, Length(FCommandLine) + 1);
+          VK_UP: if Core.KeyPressed[VK_CONTROL]
+            then FLogPosition := Max(FLogPosition - 1, 0)
+            else begin
+              FCmdHistoryIndex := Max(FCmdHistoryIndex - 1, 0);
+              SetCommandLine(FCmdHistory[FCmdHistoryIndex]);
+            end;
+          VK_DOWN: if Core.KeyPressed[VK_CONTROL]
+            then FLogPosition := Min(FLogPosition + 1, LogEndPosition)
+            else begin
+              FCmdHistoryIndex := Min(FCmdHistoryIndex + 1, FCmdHistory.Count - 1);
+              SetCommandLine(FCmdHistory[FCmdHistoryIndex]);
+            end;
+          VK_DELETE: Delete(FCommandLine, FCursor, 1);
+          VK_BACK: if FCursor > 1 then
+            begin
+              Delete(FCommandLine, FCursor - 1, 1);
+              FCursor := Max(FCursor - 1, 1);
+            end;
         end;
-      VK_HOME: if Core.KeyPressed[VK_CONTROL]
-        then FLogPosition := 0
-        else FCursor := 1;
-      VK_END: if Core.KeyPressed[VK_CONTROL]
-        then FLogPosition := LogEndPosition
-        else FCursor := Length(FCommandLine) + 1;
-      VK_INSERT:
-        begin
-          S := GetClipboardText;
-          Insert(S, FCommandLine, FCursor);
-          Inc(FCursor, Length(S)); 
+      end
+      else begin
+        case Key of
+          VK_TAB: if FCommandLine <> '' then
+            begin
+              List := Console.GetCommands(Trim(FCommandLine));
+              try
+                if List.Count = 1
+                  then SetCommandLine(List[0] + ' ')
+                else if List.Count > 1 then
+                  for i := 0 to List.Count - 1 do
+                    Console.WriteLn('    ' + List[i]);
+              finally
+                FAN(List);
+              end;
+            end;
+          VK_HOME: if Core.KeyPressed[VK_CONTROL]
+            then FLogPosition := 0
+            else FCursor := 1;
+          VK_END: if Core.KeyPressed[VK_CONTROL]
+            then FLogPosition := LogEndPosition
+            else FCursor := Length(FCommandLine) + 1;
+          VK_INSERT:
+            begin
+              S := GetClipboardText;
+              Insert(S, FCommandLine, FCursor);
+              Inc(FCursor, Length(S)); 
+            end;
+          VK_ESCAPE: if FLogPosition <> LogEndPosition
+            then FLogPosition := LogEndPosition
+            else SetCommandLine('');
+          VK_RETURN:
+            begin
+              Console.WriteLn('>' + FCommandLine);
+              if FCommandLine <> '' then
+              begin
+                FCmdHistory.Add(FCommandLine);
+                if FCmdHistory.Count > 32 then FCmdHistory.Delete(0);
+                FCmdHistoryIndex := FCmdHistory.Count;
+                Console.Execute(FCommandLine);
+                SetCommandLine('');
+              end;
+            end;
+          VK_TILDE: if not Core.KeyPressed[VK_SHIFT] then Active := false;
         end;
-      VK_ESCAPE: if FLogPosition <> LogEndPosition
-        then FLogPosition := LogEndPosition
-        else SetCommandLine('');
-      VK_RETURN:
-        begin
-          Console.WriteLn('>' + FCommandLine);
-          if FCommandLine <> '' then
-          begin
-            FCmdHistory.Add(FCommandLine);
-            if FCmdHistory.Count > 32 then FCmdHistory.Delete(0);
-            FCmdHistoryIndex := FCmdHistory.Count;
-            Console.Execute(FCommandLine);
-            SetCommandLine('');
-          end;
-        end;
-      VK_TILDE: if not Core.KeyPressed[VK_SHIFT] then Active := false;
-    end;
-  end;
-end;
-
-function TConsoleInterface.CharEvent(C: Char): Boolean;
-begin
-  Result := FActive;
-  if FActive and (C in [#31..#95, #97..#126, #128..#255]) then
-  begin
-    Insert(C, FCommandLine, FCursor);
-    Inc(FCursor);
-  end;
+      end;
+      if FActive then
+        FreeAndNil(Event);
+    end
+  else inherited;
 end;
 
 procedure TConsoleInterface.SetActive(Value: Boolean);
