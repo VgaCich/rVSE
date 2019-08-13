@@ -166,13 +166,13 @@ begin
   inherited;
   VectorClear(Spd);
   {$IFDEF VSE_CONSOLE}if not ConsoleInterface.Active then begin{$ENDIF}
-  if BindMan.BindActive['Fwd'] then Spd.Y:=Spd.Y+1;
-  if BindMan.BindActive['Bwd'] then Spd.Y:=Spd.Y-1;
-  if BindMan.BindActive['SLeft'] then Spd.X:=Spd.X+1;
-  if BindMan.BindActive['SRight'] then Spd.X:=Spd.X-1;
+  if BindMan['Fwd'] then Spd.Y:=Spd.Y+1;
+  if BindMan['Bwd'] then Spd.Y:=Spd.Y-1;
+  if BindMan['SLeft'] then Spd.X:=Spd.X+1;
+  if BindMan['SRight'] then Spd.X:=Spd.X-1;
   VectorNormalize(Spd);
-  if BindMan.BindActive['SpdDn'] then VectorScale(Spd, 0.2);
-  if not BindMan.BindActive['SpdUp'] then VectorScale(Spd, 0.2);
+  if BindMan['SpdDn'] then VectorScale(Spd, 0.2);
+  if not BindMan['SpdUp'] then VectorScale(Spd, 0.2);
   {$IFDEF VSE_CONSOLE}end;{$ENDIF}
   FCamera.Move(Spd, Vector2D(CamBorder), Vector2D(FTerrain.Width-CamBorder, FTerrain.Height-CamBorder), true);
   FCamera.Height:=FTerrain.Altitude(FCamera.Eye.X, FCamera.Eye.Z)+4;

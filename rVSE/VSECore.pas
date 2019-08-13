@@ -11,7 +11,7 @@ uses
 type
   //Events
   TCoreEvent = class // Base event class
-  private
+  protected
     FSender: TObject;
     {$IFDEF VSE_LOG}function GetDump: string; virtual;{$ENDIF}
   public
@@ -21,7 +21,7 @@ type
   end;
   TMouseEvents=(meDown, meUp, meMove, meWheel); //Mouse events: button pressed, button release, mouse moving, mouse wheel
   TMouseEvent = class(TCoreEvent) //Mouse event
-  private
+  protected
     FButton: Integer;
     FEvType: TMouseEvents;
     FCursor: TPoint;
@@ -34,7 +34,7 @@ type
   end;
   TKeyEvents=(keDown, keUp); //Keyboard events: key pressed, key released
   TKeyEvent = class(TCoreEvent) //Keyboard event
-  private
+  protected
     FKey: Integer;
     FEvType: TKeyEvents;
     {$IFDEF VSE_LOG}function GetDump: string; override;{$ENDIF}
@@ -44,7 +44,7 @@ type
     property EvType: TKeyEvents read FEvType; //Event type
   end;
   TCharEvent = class(TCoreEvent) //Keyboard character event
-  private
+  protected
     FChr: Char;
     {$IFDEF VSE_LOG}function GetDump: string; override;{$ENDIF}
   public
@@ -62,7 +62,7 @@ type
     snLogSysInfo //Write system info to log
   );
   TSysNotify = class(TCoreEvent) //System notify
-  private
+  protected
     FNotify: TSysNotifies;
     {$IFDEF VSE_LOG}function GetDump: string; override;{$ENDIF}
   public
@@ -71,7 +71,7 @@ type
   end;
   PStream = ^TStream;
   TGetFileEvent = class(TCoreEvent)
-  private
+  protected
     FFileName: string;
     FResult: PStream;
     procedure SetResult(Result: TStream);
@@ -115,6 +115,8 @@ type
     StopDisplayModeError, //Engine stopped due to error when setting display mode
     StopUserError //Engine stopped by user code due to error
   );
+  TEventReceiver=(erModule, erState);
+  TEventReceivers=set of TEventReceiver;
   TCore=class
   private
     FHandle: THandle;
@@ -163,7 +165,7 @@ type
     constructor Create(WndHandle: THandle); //internally used
     destructor Destroy; override; //internally used
     procedure StopEngine(StopState: TStopState = StopNormal); //Stop engine with stop code StopState and quit
-    procedure SendEvent(Event: TCoreEvent; ToModules: Boolean = true; ToState: Boolean = true); //Send event to modules & current state
+    procedure SendEvent(Event: TCoreEvent; Receivers: TEventReceivers = [erModule, erState]); //Send event
     {State manager}
     function  AddState(State: TGameState): Cardinal; //Add state object, returns state index
     function  ReplaceState(OrigState: Cardinal; NewState: TGameState): Boolean; //Replace state at index OrigState with state object NewState; returns true if success
@@ -569,7 +571,7 @@ begin
   end;
   {$IF Defined(VSE_LOG) and not Defined(VSE_NOSYSINFO)}
   if LogSysInfo then
-    SendEvent(TSysNotify.Create(Self, snLogSysInfo), true, false);
+    SendEvent(TSysNotify.Create(Self, snLogSysInfo), [erModule]);
   {$IFEND}
   SetResolution(InitSettings.ResolutionX, InitSettings.ResolutionY, InitSettings.RefreshRate, InitSettings.Fullscreen, false);
   VSync:=InitSettings.VSync;
@@ -658,7 +660,7 @@ begin
         Cursor.Y:=Cursor.Y-FResolutionY div 2;
         ResetMouse;
         if not FInhibitUpdate then
-          SendEvent(TMouseEvent.Create(Self, 0, meMove, Cursor), false);
+          SendEvent(TMouseEvent.Create(Self, 0, meMove, Cursor), [erState]);
       end;
       if not FInhibitUpdate then
         for i:=1 to T div FUpdInt do
@@ -675,7 +677,7 @@ begin
             Inc(FUpdOverloadCount);
             if FUpdOverloadCount>FUpdOverloadThreshold then
             begin
-              SendEvent(TSysNotify.Create(Self, snUpdateOverload), false);
+              SendEvent(TSysNotify.Create(Self, snUpdateOverload), [erState]);
               {$IFDEF VSE_LOG}Log(llWarning, 'Update overload in state "'+FCurState.Name+'"');{$ENDIF}
             end;
           end
@@ -785,7 +787,7 @@ begin
   PostMessage(Handle, UM_STOPENGINE, 0, 0);
 end;
 
-procedure TCore.SendEvent(Event: TCoreEvent; ToModules, ToState: Boolean);
+procedure TCore.SendEvent(Event: TCoreEvent; Receivers: TEventReceivers);
 var
   i: Integer;
   EventDump: string;
@@ -793,7 +795,7 @@ begin
   if not Assigned(Event) then Exit;
   try
     {$IFDEF VSE_LOG}EventDump := Event.Dump;{$ENDIF}
-    if ToModules then
+    if erModule in Receivers then
       for i:=0 to High(FModules) do
       try
         if Assigned(Event) then
@@ -803,7 +805,7 @@ begin
         {$IFDEF VSE_LOG}LogException(Format('in module %s.Event(%s)', [FModules[i].Name, EventDump]));{$ENDIF}
         {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
       end;
-    if ToState and Assigned(Event) and Assigned(FCurState) then
+    if (erState in Receivers) and Assigned(Event) and Assigned(FCurState) then
     try
       FCurState.OnEvent(Event);
     except
@@ -967,7 +969,7 @@ begin
   Result:=nil;
   if FileExists(InitSettings.DataDir+FileName) then
     Result:=TFileStream.Create(InitSettings.DataDir+FileName, fmOpenRead or fmShareDenyWrite)
-  else SendEvent(TGetFileEvent.Create(Self, FileName, @Result), true, false);
+  else SendEvent(TGetFileEvent.Create(Self, FileName, @Result), [erModule]);
 end;
 
 function TCore.GetFileText(const FileName: string): TStringList;
@@ -1040,7 +1042,7 @@ begin
     end;
     FPrevStateName:=FCurState.Name;
   end;
-  SendEvent(TSysNotify.Create(Self, snStateChanged), true, false);
+  SendEvent(TSysNotify.Create(Self, snStateChanged), [erModule]);
   FState:=Value;
   FCurState:=FStates[Value];
   try

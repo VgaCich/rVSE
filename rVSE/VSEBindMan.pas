@@ -7,12 +7,16 @@ uses
   {$IFDEF VSE_CONSOLE}, VSEConsole{$ENDIF}{$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 type
-  TBindEvent=(beNone, beDown, beUp);
-  PEventQueue=^TEventQueue;
-  TEventQueue=record
-    Next: PEventQueue;
-    Event: TBindEvent;
-    Age: Byte;
+  TBindEvents=(beDown, beUp);
+  TBindEvent=class(TCoreEvent)
+  protected
+    FName: string;
+    FEvType: TBindEvents;
+    {$IFDEF VSE_LOG}function GetDump: string; override;{$ENDIF}
+  public
+    constructor Create(Sender: TObject; const Name: string; EvType: TBindEvents);
+    property Name: string read FName;
+    property EvType: TBindEvents read FEvType;
   end;
   TBindingRec=record
     Name, Description: string; //Name and description of binding
@@ -21,21 +25,17 @@ type
   TBinding=record
     Name, Description: string;
     Key, DefKey: Byte;
-    Events: PEventQueue;
   end;
   TBindings = array of TBinding;
   TBindMan=class(TModule)
   private
     FBindings: TBindings;
-    FQueuePool: array of TEventQueue;
     FScrollStateClicks: Integer;
     FScrollStateUp: Boolean;
     {$IFDEF VSE_CONSOLE}FCmdBindings: array of record Key: Byte; Cmd: string; end; {$ENDIF}
     function KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
-    procedure ResetEvents;
-    function GetBindActive(Name: string): Boolean;
+    function GetActive(Name: string): Boolean;
     function FindBinding(Name: string; NoLogLost: Boolean = false): Integer;
-    function NewEvent(Event_: TBindEvent): PEventQueue;
     {$IFDEF VSE_CONSOLE}
     function BindHandler(Sender: TObject; Args: array of const): Boolean;
     function BindCmdHandler(Sender: TObject; Args: array of const): Boolean;
@@ -46,18 +46,17 @@ type
     class function Name: string; override;
     procedure Update; override;
     procedure OnEvent(var Event: TCoreEvent); override;
-    procedure AddBinding(const Name_, Description_: string; Key_: Byte); //Add binding Name with default key Key
+    procedure AddBinding(const Name, Description: string; Key: Byte); //Add binding Name with default key Key
     procedure AddBindings(const Bindings: array of TBindingRec); //Add several bindings
     function  GetBindKeyName(const BindName: string): string; //Get name of binded to BindName key
-    function  GetBindEvent(const Name: string): TBindEvent; //Get oldest event from queue for binding, returns beNone if no events
     procedure ResetKeys; //Reset all keys to default
     procedure SaveBindings; //Save bindings to ini
-    property  BindActive[Name: string]: Boolean read GetBindActive; //True if binded key pressed, mouse wheel up/down cannot be pressed, only events
+    property  Active[Name: string]: Boolean read GetActive; default; //True if binded key pressed
     property  Bindings: TBindings read FBindings; //Raw bindings info array
   end;
 
 function KeyToStr(Key: Integer): string; //Get name for key code
-function ProcessKeyTags(const S: string): string; //Replaces tags $BindName$ by bind BindMane key name, $$ by $
+function ProcessKeyTags(const S: string): string; //Replaces tags $BindName$ by binded key name, $$ by $
 
 var
   BindMan: TBindMan; //Global variable for accessing to Bindings Manager
@@ -69,12 +68,11 @@ const
   VK_MWHEELUP=VK_F23; //Mouse wheel up
   VK_MWHEELDOWN=VK_F24; //Mouse wheel down
   MBtnMap: array[mbLeft..mbX2] of Integer = (VK_LBUTTON, VK_RBUTTON, VK_MBUTTON, VK_XBUTTON4, VK_XBUTTON5);
+  BindEventNames: array[TBindEvents] of string = ('beDown', 'beUp');
 
 implementation
 
 const
-  MaxEventAge=5;
-  DeadEvent=255;
   TagDelim='$';
 
 var
@@ -170,11 +168,23 @@ begin
   Result:=Result+Copy(S, CurPos+1, MaxInt);
 end;
 
+{ TBindEvent }
+
+constructor TBindEvent.Create(Sender: TObject; const Name: string; EvType: TBindEvents);
+begin
+  inherited Create(Sender);
+  FName := Name;
+  FEvType := EvType;
+end;
+
+{$IFDEF VSE_LOG}function TBindEvent.GetDump: string;
+begin
+  Result := Format('%s(Name=%s Ev=%s)', [string(ClassName), FName, BindEventNames[FEvType]]);
+end;{$ENDIF}
+
 { TBindMan }
 
 constructor TBindMan.Create;
-var
-  i: Integer;
 begin
   inherited Create;
   BindMan:=Self;
@@ -182,9 +192,6 @@ begin
   Console['bind name=s ?key=s']:=BindHandler;
   Console['bindcmd key=s ?cmd=s*']:=BindCmdHandler;
   {$ENDIF}
-  SetLength(FQueuePool, 512*MaxEventAge);
-  for i:=0 to High(FQueuePool) do
-    FQueuePool[i].Age:=DeadEvent;
 end;
 
 destructor TBindMan.Destroy;
@@ -192,7 +199,6 @@ begin
   BindMan:=nil;
   SaveBindings;
   Finalize(FBindings);
-  Finalize(FQueuePool);
   inherited Destroy;
 end;
 
@@ -215,7 +221,7 @@ begin
   {$IFDEF VSE_LOG}if not NoLogLost then Log(llWarning, 'BindMan: Bind "'+Name+'" not found');{$ENDIF}
 end;
 
-function TBindMan.GetBindActive(Name: string): Boolean;
+function TBindMan.GetActive(Name: string): Boolean;
 var
   i: Integer;
 begin
@@ -235,21 +241,6 @@ begin
     end;
 end;
 
-function TBindMan.GetBindEvent(const Name: string): TBindEvent;
-var
-  i: Integer;
-begin
-  Result:=beNone;
-  i:=FindBinding(Name);
-  if (i>-1) and Assigned(FBindings[i].Events) then
-    with FBindings[i] do
-    begin
-      Result:=Events^.Event;
-      Events^.Age:=DeadEvent;
-      Events:=Events^.Next;
-    end;
-end;
-
 procedure TBindMan.ResetKeys;
 var
   i: Integer;
@@ -259,27 +250,24 @@ begin
       Key:=DefKey;
 end;
 
-procedure TBindMan.AddBinding(const Name_, Description_: string; Key_: Byte);
+procedure TBindMan.AddBinding(const Name, Description: string; Key: Byte);
 var
   Idx: Integer;
 begin
-  Idx:=FindBinding(Name_, true);
+  Idx:=FindBinding(Name, true);
   if Idx<0 then
   begin
     SetLength(FBindings, Length(FBindings)+1);
     Idx:=High(FBindings);
   end;
+  FBindings[Idx].Name:=Name;
+  FBindings[Idx].Description:=Description;
+  FBindings[Idx].DefKey:=Key;
   with FBindings[Idx] do
-  begin
-    Name:=Name_;
-    Description:=Description_;
-    DefKey:=Key_;
     if Settings.Str[SSectionBindings, Name]<>'' then
       Key:=Settings.Int[SSectionBindings, Name]
     else
       Key:=DefKey;
-    Events:=nil;
-  end;
 end;
 
 procedure TBindMan.AddBindings(const Bindings: array of TBindingRec);
@@ -302,26 +290,8 @@ begin
 end;
 
 procedure TBindMan.Update;
-var
-  i: Integer;
-  Event: PEventQueue;
 begin
   if FScrollStateClicks>0 then Dec(FScrollStateClicks);
-  for i:=0 to High(FBindings) do
-    with FBindings[i] do
-    begin
-      while Assigned(Events) and (Events^.Age>=MaxEventAge) do
-      begin
-        Events^.Age:=DeadEvent;
-        Events:=Events^.Next;
-      end;
-      Event:=Events;
-      while Assigned(Event) do
-      begin
-        Inc(Event^.Age);
-        Event:=Event^.Next;
-      end;
-    end;
 end;
 
 procedure TBindMan.OnEvent(var Event: TCoreEvent);
@@ -359,32 +329,24 @@ begin
         FreeAndNil(Event);
     end
   else if (Event is TSysNotify) and ((Event as TSysNotify).Notify = snStateChanged) then
-    ResetEvents
+    FScrollStateClicks := 0
   else inherited;
 end;
 
 function TBindMan.KeyEvent(Key: Integer; Event: TKeyEvents): Boolean;
 const
-  EvMap: array[keDown..keUp] of TBindEvent = (beDown, beUp);
+  EvMap: array[keDown..keUp] of TBindEvents = (beDown, beUp);
 var
   i: Integer;
-  Ev: PEventQueue;
 begin
   Result:=false;
   for i:=0 to High(FBindings) do
     if FBindings[i].Key=Key then
-      with FBindings[i] do
-      begin
-        if Assigned(Events) then
-        begin
-          Ev:=Events;
-          while Assigned(Ev^.Next) do Ev:=Ev^.Next;
-          Ev^.Next:=NewEvent(EvMap[Event]);
-        end
-          else Events:=NewEvent(EvMap[Event]);
-        Result:=true;
-        Break;
-      end;
+    begin
+      Core.SendEvent(TBindEvent.Create(Self, FBindings[i].Name, EvMap[Event]), [erState]);
+      Result:=true;
+      Break;
+    end;
   {$IFDEF VSE_CONSOLE}
   if Event=keUp then
     for i:=0 to High(FCmdBindings) do
@@ -395,40 +357,6 @@ begin
         Break;
       end;
   {$ENDIF}
-end;
-
-function TBindMan.NewEvent(Event_: TBindEvent): PEventQueue;
-var
-  i: Integer;
-begin
-  Result:=nil;
-  for i:=0 to High(FQueuePool) do
-    if FQueuePool[i].Age=DeadEvent then
-    begin
-      Result:=@FQueuePool[i];
-      with Result^ do
-      begin
-        Event:=Event_;
-        Next:=nil;
-        Age:=0;
-      end;
-      Exit;
-    end;
-  {$IFDEF VSE_LOG}Log(llError, 'BindMan: Event pool overflow');{$ENDIF}
-end;
-
-procedure TBindMan.ResetEvents;
-var
-  i: Integer;
-begin
-  FScrollStateClicks:=0;
-  for i:=0 to High(FBindings) do
-    with FBindings[i] do
-      while Assigned(Events) do
-      begin
-        Events^.Age:=DeadEvent;
-        Events:=Events^.Next;
-      end;
 end;
 
 procedure TBindMan.SaveBindings;
