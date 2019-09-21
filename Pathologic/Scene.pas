@@ -204,7 +204,7 @@ function TScene.ObjectAt(X, Y: Integer): TGameObject;
 var
   StencilValue: Byte;
 begin
-  glReadPixels(X, Core.ResolutionY - Y - 1, 1, 1, GL_STENCIL_INDEX, GL_BYTE, @StencilValue);
+  glReadPixels(X, Integer(Core.ResolutionY) - Y - 1, 1, 1, GL_STENCIL_INDEX, GL_BYTE, @StencilValue);
   Result := Objects[StencilValue - StencilObjShift];
 end;
 

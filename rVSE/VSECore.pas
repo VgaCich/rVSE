@@ -6,7 +6,7 @@ interface
 
 uses
   Windows, Messages, MMSystem, AvL, avlMath, avlUtils, OpenGL, oglExtensions,
-  VSEOpenGLExt, VSEImageCodec {$IFDEF VSE_LOG}, VSELog{$IFNDEF VSE_NOSYSINFO}, VSESysInfo{$ENDIF}{$ENDIF};
+  VSEOpenGLExt, VSEImageCodec {$IFDEF VSE_LOG}, VSELog{$ENDIF};
 
 type
   //Events
@@ -308,6 +308,7 @@ var
   Mutex: Integer=0;
   VSEStopState: TStopState=StopNormal;
   Modules: array of CModule;
+  {$IFNDEF VSE_NOSYSINFO}SysInfoLogged: Boolean = false;{$ENDIF}
 
 procedure LogErrorAndShowMessage(Msg: string);
 begin
@@ -569,10 +570,13 @@ begin
     {$IFDEF VSE_LOG}LogException('in module '+Modules[i].Name+'.Create');{$ENDIF}
     Core.StopEngine(StopInitError);
   end;
-  {$IF Defined(VSE_LOG) and not Defined(VSE_NOSYSINFO)}
-  if LogSysInfo then
+  {$IFNDEF VSE_NOSYSINFO}
+  if not SysInfoLogged then
+  begin
     SendEvent(TSysNotify.Create(Self, snLogSysInfo), [erModule]);
-  {$IFEND}
+    SysInfoLogged := true;
+  end;
+  {$ENDIF}
   SetResolution(InitSettings.ResolutionX, InitSettings.ResolutionY, InitSettings.RefreshRate, InitSettings.Fullscreen, false);
   VSync:=InitSettings.VSync;
   {$IFDEF VSE_LOG}Log(llInfo, 'States initialization');{$ENDIF}

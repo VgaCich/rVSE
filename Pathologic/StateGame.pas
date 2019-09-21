@@ -128,11 +128,11 @@ begin
   with Core do
     FCamera.Move(Vector2D(
       Move[
-        BindMan.BindActive[BindCamLeft] or PointInRect(MouseCursor, Rect(0, 0, MoveBorder, ResolutionY)),
-        BindMan.BindActive[BindCamRight] or PointInRect(MouseCursor, Rect(ResolutionX - MoveBorder, 0, ResolutionX, ResolutionY))],
+        BindMan[BindCamLeft] or PointInRect(MouseCursor, Rect(0, 0, MoveBorder, ResolutionY)),
+        BindMan[BindCamRight] or PointInRect(MouseCursor, Rect(ResolutionX - MoveBorder, 0, ResolutionX, ResolutionY))],
       Move[
-        BindMan.BindActive[BindCamFwd] or PointInRect(MouseCursor, Rect(0, 0, ResolutionX, MoveBorder)),
-        BindMan.BindActive[BindCamBwd] or PointInRect(MouseCursor, Rect(0, ResolutionY - MoveBorder, ResolutionX, ResolutionY))]),
+        BindMan[BindCamFwd] or PointInRect(MouseCursor, Rect(0, 0, ResolutionX, MoveBorder)),
+        BindMan[BindCamBwd] or PointInRect(MouseCursor, Rect(0, ResolutionY - MoveBorder, ResolutionX, ResolutionY))]),
       MapBounds.Min, MapBounds.Max);
   if Assigned(FGame) then
   begin
