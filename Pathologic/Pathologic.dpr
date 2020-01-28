@@ -2,7 +2,7 @@ program Pathologic;
 
 uses
   {$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows, AvL, avlUtils, avlEventBus,
-  VSECore, VSESysInfo, VSEMemPak, VSETexMan, {$IFDEF VSE_CONSOLE}VSEConsoleInterface,{$ENDIF}
+  VSECore, VSESysInfo, VSEMemPak, VSETexMan, VSERender2D, {$IFDEF VSE_CONSOLE}VSEConsoleInterface,{$ENDIF}
   StateStart, StateMenu, StateGame, GameData;
 
 {$R *.res}
@@ -30,6 +30,7 @@ begin
 end;
 
 begin
+  FontCharSet := RUSSIAN_CHARSET;
   InitSettings.InitStates := InitStates;
   InitSettings.Caption := 'Pathologic';
   InitSettings.Version := '1.0';

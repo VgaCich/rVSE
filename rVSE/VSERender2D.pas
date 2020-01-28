@@ -68,6 +68,8 @@ type
 
 var
   Render2D: TRender2D; //Render2D interface
+  FontCharSet: Cardinal = DEFAULT_CHARSET;
+  FontScale: Single = 4 / 3;
 
 const
   InvalidFont: Cardinal = $FFFFFFFF;
@@ -377,6 +379,7 @@ end;
 procedure TRender2D.CreateFontTex(Font: Cardinal);
 const
   Weight: array[Boolean] of Integer = (400, 700);
+  Margin = 32;
 var
   i: Integer;
   FNT: HFONT;
@@ -387,41 +390,46 @@ var
   Data: PByteArray;
   CS: TSize;
   s, t: Single;
-  CharSize, FontTexSize: Integer;
+  CharSize, FontTexSize: TPoint;
 begin
-  with FFonts[Font]^do
+  with FFonts[Font]^ do
   try
-    FNT := Windows.CreateFont(-MulDiv(Size, Ceil(FVSScale * GetDeviceCaps(Core.DC, LOGPIXELSY)), 72),
-      0, 0, 0, Weight[Bold], 0, 0, 0, RUSSIAN_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, NONANTIALIASED_QUALITY, 0, PChar(Name));
-    FontTexSize := 128;
-    CharSize := MulDiv(Size, Ceil(FVSScale * GetDeviceCaps(Core.DC, LOGPIXELSY)), 72) * 16 + 64;
-    while (FontTexSize < CharSize) and (FontTexSize <= glMaxTextureSize) do
-      FontTexSize := FontTexSize * 2;
+    MDC := CreateCompatibleDC(Core.DC);
+    FNT := Windows.CreateFont(-Ceil(FontScale * FVSScale * Size), 0, 0, 0, Weight[Bold],
+      0, 0, 0, FontCharSet, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, NONANTIALIASED_QUALITY, 0, PChar(Name));
+    SelectObject(MDC, FNT);
+    CharSize := Point(0, 0);
+    for i := 0 to 255 do
+    begin
+      GetTextExtentPoint32(MDC, @Char(i), 1, CS);
+      CharSize.X := Max(CharSize.X, CS.cx);
+      CharSize.Y := Max(CharSize.Y, CS.cy);
+    end;
+    FontTexSize := Point(Max(128, Min(CeilPOT(16 * CharSize.X + Margin), glMaxTextureSize)),
+                         Max(128, Min(CeilPOT(16 * CharSize.Y + Margin), glMaxTextureSize)));
     ZeroMemory(@BI, SizeOf(BI));
     with BI.bmiHeader do
     begin
       biSize := SizeOf(BITMAPINFOHEADER);
-      biWidth := FontTexSize;
-      biHeight := FontTexSize;
+      biWidth := FontTexSize.X;
+      biHeight := FontTexSize.Y;
       biPlanes := 1;
       biBitCount := 24;
       biSizeImage := biWidth * biHeight * biBitCount div 8;
     end;
-    MDC := CreateCompatibleDC(Core.DC);
     BMP := CreateDIBSection(MDC, BI, DIB_RGB_COLORS, Pointer(Pix), 0, 0);
-    ZeroMemory(Pix, FontTexSize * FontTexSize * 3);
+    ZeroMemory(Pix, FontTexSize.X * FontTexSize.Y * 3);
     SelectObject(MDC, BMP);
-    SelectObject(MDC, FNT);
     SetBkMode(MDC, TRANSPARENT);
     SetTextColor(MDC, $FFFFFF);
     for i := 0 to 255 do
-      Windows.TextOut(MDC, i mod 16 * (FontTexSize div 16), i div 16 * (FontTexSize div 16), @Char(i), 1);
-    GetMem(Data, FontTexSize * FontTexSize);
-    for i := 0 to FontTexSize * FontTexSize - 1 do
+      Windows.TextOut(MDC, i mod 16 * (FontTexSize.X div 16), i div 16 * (FontTexSize.Y div 16), @Char(i), 1);
+    GetMem(Data, FontTexSize.X * FontTexSize.Y);
+    for i := 0 to FontTexSize.X * FontTexSize.Y - 1 do
       Data[i] := Pix[i * 3];
     glBindTexture(GL_TEXTURE_2D, Tex);
     glPixelStore(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, FontTexSize, FontTexSize, 0, GL_ALPHA, GL_UNSIGNED_BYTE, Data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, FontTexSize.X, FontTexSize.Y, 0, GL_ALPHA, GL_UNSIGNED_BYTE, Data);
     Height := 0;
     for i := 0 to 255 do
     begin
@@ -434,11 +442,11 @@ begin
       glBegin(GL_QUADS);
       glTexCoord2f(s, 1 - t);
       glVertex2f(0, 0);
-      glTexCoord2f(s + CS.cx / FontTexSize, 1 - t);
+      glTexCoord2f(s + CS.cx / FontTexSize.X, 1 - t);
       glVertex2f(CS.cx / FVSScale, 0);
-      glTexCoord2f(s + CS.cx / FontTexSize, 1 - t - CS.cy / FontTexSize);
+      glTexCoord2f(s + CS.cx / FontTexSize.X, 1 - t - CS.cy / FontTexSize.Y);
       glVertex2f(CS.cx / FVSScale, CS.cy / FVSScale);
-      glTexCoord2f(s, 1 - t - CS.cy / FontTexSize);
+      glTexCoord2f(s, 1 - t - CS.cy / FontTexSize.Y);
       glVertex2f(0, CS.cy / FVSScale);
       glEnd;
       glTranslatef(Width[i], 0, 0);
