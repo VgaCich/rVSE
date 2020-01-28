@@ -317,15 +317,10 @@ begin
 end;
 
 procedure LogException(Comment: string);
-var
-  Handle: THandle;
 begin
   Comment:=Format('Exception "%s" at $%s with message "%s" %s', [string(ExceptObject.ClassName), IntToHex(Cardinal(ExceptAddr), 8), Exception(ExceptObject).Message, Comment]);
   {$IFDEF VSE_LOG}Log(llError, Comment);{$ENDIF}
-  {$IFNDEF VSE_DEBUG}
-  if Assigned(Core) then Handle:=Core.Handle else Handle:=0;
-  MessageBox(Handle, PChar(Comment), PChar(InitSettings.Caption), MB_ICONERROR)
-  {$ENDIF}
+  {$IFNDEF VSE_DEBUG}MessageBox(0, PChar(Comment), PChar(InitSettings.Caption), MB_ICONERROR);{$ENDIF}
 end;
 
 procedure UpdateFPS(uID, uMsg, dwUser, dw1, dw2: Cardinal); stdcall;
@@ -517,16 +512,17 @@ begin
     Name:=FStates[i].Name;
     FAN(FStates[i]);
   except
-    {$IFDEF VSE_LOG}LogException('in state '+Name+'.Free');{$ENDIF}
+    LogException('in state '+Name+'.Free');
   end;
   Finalize(FStates);
   for i:=High(FModules) downto 0 do
   try
+    if not Assigned(FModules[i]) then Continue;
     Name:=FModules[i].Name;
     {$IFDEF VSE_LOG}Log(llInfo, 'Finalizing module '+Name);{$ENDIF}
     FAN(FModules[i]);
   except
-    {$IFDEF VSE_LOG}LogException('in module '+Name+'.Free');{$ENDIF}
+    LogException('in module '+Name+'.Free');
   end;
   Finalize(FModules);
   {$IFDEF VSE_CONSOLE}FAN(Console);{$ENDIF}
@@ -566,17 +562,18 @@ begin
   try
     {$IFDEF VSE_LOG}Log(llInfo, 'Initializing module '+Modules[i].Name);{$ENDIF}
     FModules[i]:=Modules[i].Create;
+    if not Assigned(FModules[i]) then raise Exception.Create('Can''t initialize module '+Modules[i].Name);
   except
-    {$IFDEF VSE_LOG}LogException('in module '+Modules[i].Name+'.Create');{$ENDIF}
+    LogException('in module '+Modules[i].Name+'.Create');
     Core.StopEngine(StopInitError);
   end;
-  {$IFNDEF VSE_NOSYSINFO}
+  {$IF Defined(VSE_LOG) and not Defined(VSE_NOSYSINFO)}
   if not SysInfoLogged then
   begin
     SendEvent(TSysNotify.Create(Self, snLogSysInfo), [erModule]);
     SysInfoLogged := true;
   end;
-  {$ENDIF}
+  {$IFEND}
   SetResolution(InitSettings.ResolutionX, InitSettings.ResolutionY, InitSettings.RefreshRate, InitSettings.Fullscreen, false);
   VSync:=InitSettings.VSync;
   {$IFDEF VSE_LOG}Log(llInfo, 'States initialization');{$ENDIF}
@@ -585,7 +582,7 @@ begin
     InitSettings.InitStates;
     {$IFDEF VSE_LOG}Log(llInfo, 'States initialized');{$ENDIF}
   except
-    {$IFDEF VSE_LOG}LogException('in InitStates');{$ENDIF}
+    LogException('in InitStates');
     Core.StopEngine(StopUserException);
   end;
   glShadeModel(GL_SMOOTH);
@@ -626,7 +623,7 @@ begin
     try
       FModules[i].Update;
     except
-      {$IFDEF VSE_LOG}LogException(Format('in module %s.Update', [FModules[i].Name]));{$ENDIF}
+      LogException(Format('in module %s.Update', [FModules[i].Name]));
       {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
     end;
     if FPaused then Exit;
@@ -673,7 +670,7 @@ begin
           try
             FCurState.Update;
           except
-            {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Update');{$ENDIF}
+            LogException('in state '+FCurState.Name+'.Update');
             {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
           end;
           if Time-UpdTime>FUpdInt then
@@ -691,7 +688,7 @@ begin
       try
         FCurState.Draw;
       except
-        {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Draw');{$ENDIF}
+        LogException('in state '+FCurState.Name+'.Draw');
         {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
       end;
     end;
@@ -699,13 +696,13 @@ begin
     try
       FModules[i].Draw;
     except
-      {$IFDEF VSE_LOG}LogException(Format('in module %s.Draw', [FModules[i].Name]));{$ENDIF}
+      LogException(Format('in module %s.Draw', [FModules[i].Name]));
       {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
     end;
     SwapBuffers(FDC);
     Inc(FFramesCount);
   except
-    {$IFDEF VSE_LOG}LogException('in TCore.Update');{$ENDIF}
+    LogException('in TCore.Update');
     StopEngine(StopInternalError);
   end;
 end;
@@ -721,7 +718,7 @@ begin
     SendEvent(TSysNotify.Create(Self, snResume));
     SendEvent(TSysNotify.Create(Self, snMaximized));
   except
-    {$IFDEF VSE_LOG}LogException('in TCore.Resume');{$ENDIF}
+    LogException('in TCore.Resume');
     StopEngine(StopInternalError);
   end;
 end;
@@ -741,7 +738,7 @@ begin
     if (FMouseCapture and (Event=meMove)) or FPaused then Exit;
     SendEvent(TMouseEvent.Create(Self, Button, Event, Pos));
   except
-    {$IFDEF VSE_LOG}LogException(Format('in TCore.MouseEvent(%d, %s, %d, %d)', [Button, MouseEventNames[Event], X, Y]));{$ENDIF}
+    LogException(Format('in TCore.MouseEvent(%d, %s, %d, %d)', [Button, MouseEventNames[Event], X, Y]));
     StopEngine(StopInternalError);
   end;
 end;
@@ -766,7 +763,7 @@ begin
     {$ENDIF}
     SendEvent(TKeyEvent.Create(Self, Key, Event));
   except
-    {$IFDEF VSE_LOG}LogException(Format('in TCore.KeyEvent(%d, %s)', [Key, KeyEventNames[Event]]));{$ENDIF}
+    LogException(Format('in TCore.KeyEvent(%d, %s)', [Key, KeyEventNames[Event]]));
     StopEngine(StopInternalError);
   end;
 end;
@@ -777,7 +774,7 @@ begin
     if FPaused then Exit;
     SendEvent(TCharEvent.Create(Self, C));
   except
-    {$IFDEF VSE_LOG}LogException('in TCore.CharEvent(#'+IntToStr(Ord(C))+')');{$ENDIF}
+    LogException('in TCore.CharEvent(#'+IntToStr(Ord(C))+')');
     StopEngine(StopInternalError);
   end;
 end;
@@ -806,14 +803,14 @@ begin
           FModules[i].OnEvent(Event)
         else Break;
       except
-        {$IFDEF VSE_LOG}LogException(Format('in module %s.Event(%s)', [FModules[i].Name, EventDump]));{$ENDIF}
+        LogException(Format('in module %s.Event(%s)', [FModules[i].Name, EventDump]));
         {$IFNDEF VSE_DEBUG}StopEngine(StopInternalError);{$ENDIF}
       end;
     if (erState in Receivers) and Assigned(Event) and Assigned(FCurState) then
     try
       FCurState.OnEvent(Event);
     except
-      {$IFDEF VSE_LOG}LogException(Format('in state %s.Event(%s)', [FCurState.Name, EventDump]));{$ENDIF}
+      LogException(Format('in state %s.Event(%s)', [FCurState.Name, EventDump]));
       {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
     end;
   finally
@@ -1041,7 +1038,7 @@ begin
     try
       FCurState.Deactivate;
     except
-      {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Deactivate');{$ENDIF}
+      LogException('in state '+FCurState.Name+'.Deactivate');
       {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
     end;
     FPrevStateName:=FCurState.Name;
@@ -1053,7 +1050,7 @@ begin
     FUpdInt:=FCurState.Activate;
   except
     if FUpdInt<=1 then FUpdInt:=50;
-    {$IFDEF VSE_LOG}LogException('in state '+FCurState.Name+'.Activate');{$ENDIF}
+    LogException('in state '+FCurState.Name+'.Activate');
     {$IFNDEF VSE_DEBUG}StopEngine(StopUserException);{$ENDIF}
   end;
 end;
@@ -1274,7 +1271,7 @@ begin
             Core.StartEngine;
             {$IFDEF VSE_LOG}Log(llInfo, 'Engine created');{$ENDIF}
           except
-            {$IFDEF VSE_LOG}LogException('while initializing engine');{$ENDIF}
+            LogException('while initializing engine');
             VSEStopState:=StopInitError;
             SendMessage(hWnd, UM_STOPENGINE, 0, 0);
           end;
@@ -1304,7 +1301,7 @@ begin
           FAN(Core);
           {$IFDEF VSE_LOG}Log(llInfo, 'Engine destroyed');{$ENDIF}
         except
-          {$IFDEF VSE_LOG}LogException('while destroying engine');{$ENDIF}
+          LogException('while destroying engine');
           VSEStopState:=StopInternalError;
         end;
         PostQuitMessage(Integer(VSEStopState));
@@ -1335,7 +1332,7 @@ begin
         end;
         Result:=0;
       except
-        {$IFDEF VSE_LOG}LogException('while resizing window');{$ENDIF}
+        LogException('while resizing window');
         {$IFNDEF VSE_DEBUG}Core.StopEngine(StopInternalError);{$ENDIF}
       end;
     UM_STOPENGINE: DestroyWindow(hWnd);  
@@ -1419,7 +1416,7 @@ begin
     end;
     Result:=TStopState(Msg.wParam);
   except
-    {$IFDEF VSE_LOG}LogException('in main loop');{$ENDIF}
+    LogException('in main loop');
     Result:=StopInternalError;
   end;
   {$IFDEF VSE_LOG}

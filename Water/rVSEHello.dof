@@ -96,7 +96,7 @@ PackageDLLOutputDir=
 PackageDCPOutputDir=
 SearchPath=$(DELPHI)\lib\sysdcu;..\rVSE
 Packages=vcl;rtl;vclactnband;vclx;dbrtl;adortl;vcldb;bdertl;vcldbx;dbexpress;vclie;xmlrtl;inet;inetdbbde;inetdbxpress;dsnap;VclSmp;dbxcds;soaprtl;ibxpress;dclOfficeXP;vclshlctrls;DelphiX_for5
-Conditionals=VSE_NO_INI;VSE_ESC_EXIT
+Conditionals=VSE_NO_INI;VSE_ESC_EXIT;VSE_NO_LOG_SYSINFO
 DebugSourceDirs=
 UsePackages=0
 [Parameters]
