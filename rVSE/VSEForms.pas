@@ -17,8 +17,9 @@ type
   end;
   TOptionsForm = class(TAlignedForm)
   protected
-    FLResolution, FLRefreshRate, FLColorDepth, FCFullscreen, FCVSync,
-      FCurrentResolution, FCurrentRefreshRate, FColorDepth, FBOK, FBCancel: Integer;
+    FLResolution, FLRefreshRate, FLColorDepth, FLResolutionCap, FLRefreshRateCap,
+      FLColorDepthCap, FCFullscreen, FCVSync, FCurrentResolution, FCurrentRefreshRate,
+      FColorDepth, FBOK, FBCancel: Integer;
     FResolutions: TResolutions;
     FNeedRestart: Boolean;
     FRestartMessage, FRestartYes, FRestartNo: string;
@@ -195,13 +196,13 @@ begin
     Y := 38;
     Width := 190;
     Caption := 'Resolution';
-    AddLabel(Lbl);
+    FLResolutionCap := AddLabel(Lbl);
     Y := 88;
     Caption := 'Refresh rate';
-    AddLabel(Lbl);
+    FLRefreshRateCap := AddLabel(Lbl);
     Y := 138;
     Caption := 'Color depth';
-    AddLabel(Lbl);
+    FLColorDepthCap := AddLabel(Lbl);
   end;
   FNeedRestart := false;
   FColorDepth := Core.ColorDepth;

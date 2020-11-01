@@ -190,6 +190,9 @@ begin
   end;
   Button[FBOK].Caption := 'ОК';
   Button[FBCancel].Caption := 'Отмена';
+  Self.Lbl[FLResolutionCap].Caption := 'Разрешение экрана';
+  Self.Lbl[FLRefreshRateCap].Caption := 'Частота обновления';
+  Self.Lbl[FLColorDepthCap].Caption := 'Глубина цвета';
   FRestartMessage := 'Выбранные настройки требуют перезапуска игры. Перезапустить сейчас?';
   FRestartYes := 'Да';
   FRestartNo := 'Нет';
