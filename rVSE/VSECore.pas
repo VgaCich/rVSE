@@ -137,6 +137,8 @@ type
     FKeyState: TKeyboardState;
     FSavedMousePos: TPoint;
     procedure SetFullscreen(Value: Boolean);
+    function  GetCaption: string;
+    procedure SetCaption(const Value: string);
     function  GetVSync: Boolean;
     procedure SetVSync(Value: Boolean);
     procedure SetState(Value: Cardinal);
@@ -183,6 +185,7 @@ type
     function GetFile(const FileName: string): TStream; //Get file as stream
     function GetFileText(const FileName: string): TStringList; //Get text file as TStringList
     ///
+    property Caption: string read GetCaption write SetCaption;
     property Handle: THandle read FHandle; //Engine window handle
     property DC: HDC read FDC; //Engine window GDI device context
     property RC: HGLRC read FRC; //Engine window OpenGL rendering context
@@ -903,6 +906,7 @@ end;
 procedure TCore.SetResolution(ResolutionX, ResolutionY, RefreshRate: Cardinal; Fullscreen: Boolean; CanReset: Boolean = true);
 var
   OldResX, OldResY, OldRefresh: Cardinal;
+  R: TRect;
 begin
   //TODO: Переделать нахуй
   OldResX:=FResolutionX;
@@ -927,7 +931,10 @@ begin
         end;
     end;
   end
-  else SetWindowPos(FHandle, 0, (Screen.Width-FResolutionX) div 2, (Screen.Height-FResolutionY) div 2, 0, 0, SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE);
+  else begin
+    GetWindowRect(FHandle, R);
+    SetWindowPos(FHandle, 0, (Screen.Width-R.Right+R.Left) div 2, (Screen.Height-R.Bottom+R.Top) div 2, 0, 0, SWP_NOSIZE or SWP_NOZORDER or SWP_NOACTIVATE);
+  end;
   SendEvent(TSysNotify.Create(Self, snResolutionChanged));
 end;
 
@@ -1010,6 +1017,17 @@ begin
     SetWindowLong(FHandle, GWL_STYLE, WindowedWindowStyle);
     SetWindowPos(FHandle, HWND_NOTOPMOST, (Screen.Width-FResolutionX) div 2, (Screen.Height-FResolutionY) div 2, 0, 0, SWP_NOSIZE or SWP_FRAMECHANGED or SWP_SHOWWINDOW);
   end;
+end;
+
+function TCore.GetCaption: string;
+begin
+  SetLength(Result, GetWindowTextLength(FHandle));
+  SetLength(Result, GetWindowText(FHandle, PChar(Result), Length(Result)));
+end;
+
+procedure TCore.SetCaption(const Value: string);
+begin
+  SetWindowText(FHandle, PChar(Value));
 end;
 
 function TCore.GetVSync: Boolean;
