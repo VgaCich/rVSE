@@ -87,7 +87,7 @@ begin
       if Assigned(OnLoad) then
         Synchronize(OnLoad);
     except
-      {$IFDEF VSE_LOG}LogException('when loading ' + TexName);{$ENDIF}
+      {$IFDEF VSE_LOG}LogException('when loading ' + TexName, true);{$ENDIF}
     end;
   finally
     List.Free;

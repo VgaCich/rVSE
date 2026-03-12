@@ -3,7 +3,7 @@ unit VSEImageCodec;
 interface
 
 uses
-  Windows, AvL, avlUtils, GDIPAPI, avlIStreamAdapter{$IFDEF VSE_LOG}, VSELog{$ENDIF};
+  Windows, AvL, avlUtils, GDIPAPI, avlIStreamAdapter;
 
 type
   TImageFormat = (ifBMP, ifJPEG, ifGIF, ifPNG, ifTIFF); // Image formats
@@ -52,6 +52,8 @@ const
   SUnknownPixelFormat = 'Image.LoadImage: unknown pixel format';
   SCantGetImageProperties = 'Image.LoadImage: can''t get image properties';
   SLoadCantCreateGDIBitmap = 'Image.LoadImage: can''t create GDI+ bitmap (Status=%d)';
+  SInputDataNotAssigned = 'Image.Load: input data not assigned';
+  SOutputDataNotAssigned = 'Image.Save: output data not assigned';
   BitDepths: array[TPixelFormat] of Integer = (8, 24, 32, 32);
   PixelFormats: array[TPixelFormat] of Integer = (PixelFormat8bppIndexed, PixelFormat24bppRGB, 0, PixelFormat32bppARGB);
   RawMagic: Cardinal = $57415249;
@@ -132,14 +134,7 @@ var
   Status: TStatus;
 begin
   Status := GdipCreateBitmapFromFile(PWideChar(WideString(FileName)), Bitmap);
-  {$IFDEF VSE_LOG}try{$ENDIF}
-    LoadImage(Bitmap, Status);
-  {$IFDEF VSE_LOG}
-  except
-    LogF(llError, 'Image.Load(%s): Exception "%s"', [FileName, Exception(ExceptObject).Message]);
-    raise;
-  end;
-  {$ENDIF}
+  LoadImage(Bitmap, Status);
 end;
 
 procedure TImage.Load(Mem: Pointer; Size: Cardinal);
@@ -149,19 +144,14 @@ var
   Glob: HGLOBAL;
   Stream: IStream;
 begin
+  if not Assigned(Mem) or (Size = 0) then
+    raise Exception.Create(SInputDataNotAssigned);
   Glob := CreateIStreamOnMemory(Mem, Size, Stream);
   try
     if (Glob <> 0) and Assigned(Stream) then
     begin
       Status := GdipCreateBitmapFromStream(Stream, Bitmap);
-      {$IFDEF VSE_LOG}try{$ENDIF}
-        LoadImage(Bitmap, Status);
-      {$IFDEF VSE_LOG}
-      except
-        LogF(llError, 'Image.Load($%x, %d): Exception "%s"', [Mem, Size, Exception(ExceptObject).Message]);
-        raise;
-      end;
-      {$ENDIF}
+      LoadImage(Bitmap, Status);
     end;
   finally
     if Glob <> 0 then GlobalFree(Glob);
@@ -174,16 +164,11 @@ var
   Status: TStatus;
   StreamAdapter: IStream;
 begin
+  if not Assigned(Stream) then
+    raise Exception.Create(SInputDataNotAssigned);
   TIStreamAdapter.Create(Stream).GetInterface(IStream, StreamAdapter);
   Status := GdipCreateBitmapFromStream(StreamAdapter, Bitmap);
-  {$IFDEF VSE_LOG}try{$ENDIF}
   LoadImage(Bitmap, Status);
-  {$IFDEF VSE_LOG}
-  except
-    LogF(llError, 'Image.Load(TStream($%x)): Exception "%s"', [Integer(Stream), Exception(ExceptObject).Message]);
-    raise;
-  end;
-  {$ENDIF}
 end;
 
 procedure TImage.LoadImage(Bitmap: Pointer; Status: TStatus);
@@ -252,6 +237,7 @@ var
   Magic: Cardinal;
 begin
   Result := false;
+  if not Assigned(Stream) then Exit;
   if (Stream.Read(Magic, SizeOf(Magic)) < SizeOf(Magic)) or (Magic <> RawMagic) then Exit;
   Stream.Read(FWidth, SizeOf(FWidth));
   Stream.Read(FHeight, SizeOf(FHeight));
@@ -266,26 +252,14 @@ end;
 
 procedure TImage.Save(const FileName: string; ImageFormat: TImageFormat; Quality: Cardinal);
 begin
-  {$IFDEF VSE_LOG}try{$ENDIF}
   SaveImage(SaveToFileFunction, PWideChar(WideString(FileName)), ImageFormat, Quality);
-  {$IFDEF VSE_LOG}
-  except
-    LogF(llError, 'Image.Load(%s): Exception "%s"', [FileName, Exception(ExceptObject).Message]);
-    raise;
-  end;
-  {$ENDIF}
 end;
 
 procedure TImage.Save(Stream: TStream; ImageFormat: TImageFormat; Quality: Cardinal);
 begin
-  {$IFDEF VSE_LOG}try{$ENDIF}
+  if not Assigned(Stream) then
+    raise Exception.Create(SOutputDataNotAssigned);
   SaveImage(SaveToStreamFunction, Pointer(Stream), ImageFormat, Quality);
-  {$IFDEF VSE_LOG}
-  except
-    LogF(llError, 'Image.Save(TStream($%x)): Exception "%s"', [Integer(Stream), Exception(ExceptObject).Message]);
-    raise;
-  end;
-  {$ENDIF}
 end;
 
 procedure TImage.SaveImage(SaveFunction: TSaveFunction; UserData: Pointer; ImageFormat: TImageFormat; Quality: Cardinal);
@@ -329,6 +303,7 @@ end;
 
 procedure TImage.SaveRaw(Stream: TStream);
 begin
+  if not Assigned(Stream) then Exit;
   Stream.Write(RawMagic, SizeOf(RawMagic));
   Stream.Write(FWidth, SizeOf(FWidth));
   Stream.Write(FHeight, SizeOf(FHeight));

@@ -95,14 +95,18 @@ function TTexMan.AddTexture(const Name: string; Stream: TStream; Clamp, MipMap: 
 var
   Image: TImage;
 begin
-  Image:=TImage.Create;
   try
-    Image.Load(Stream);
-    Result:=AddTexture(Name, Image, Clamp, MipMap);
-  finally
-    Image.Free;
-    if FreeStream then
-      Stream.Free;
+    Image:=TImage.Create;
+    try
+      Image.Load(Stream);
+      Result:=AddTexture(Name, Image, Clamp, MipMap);
+    finally
+      Image.Free;
+      if FreeStream then
+        Stream.Free;
+    end;
+  except
+    LogException('in TTexMan.AddTexture', true);
   end;
 end;
 

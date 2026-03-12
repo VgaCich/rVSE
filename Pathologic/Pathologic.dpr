@@ -14,6 +14,7 @@ begin
     Result := TexMan.AddTexture(Name, Core.GetFile(GetTexFileName(Name)), true, true, true);
     TexMan.SetFilter(Result, tfAnisotropic);
   except
+    LogException('in LoadTexture', true);
     Result := 0;
   end;
 end;

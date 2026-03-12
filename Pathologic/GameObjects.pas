@@ -410,8 +410,8 @@ procedure TDeck.Shuffle;
 var
   i: Integer;
 begin
-  for i := 0 to 10 * Count - 1 do
-    Swap(Random(Count), Random(Count));
+  for i := Count - 1 downto 1 do
+    Swap(i, Random(i + 1));
 end;
 
 function TDeck.Take(Index: Integer): TCard;

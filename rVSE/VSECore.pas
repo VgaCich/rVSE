@@ -247,7 +247,7 @@ type
   end;
 
 function VSEStart: TStopState;  //Start engine, returns engine stop code
-procedure LogException(Comment: string); //Writes current exception info to log, followed by Comment. Call only in except block
+procedure LogException(Comment: string; NoMsg: Boolean = false); //Writes current exception info to log, followed by Comment and shows MessageBox if VSE_DEBUG not defined and NoMsg=false. Call only in except block
 procedure RegisterModule(Module: CModule); //Register engine module
 
 var
@@ -319,11 +319,11 @@ begin
   MessageBox(0, PChar(Msg), PChar(InitSettings.Caption), MB_ICONERROR);
 end;
 
-procedure LogException(Comment: string);
+procedure LogException(Comment: string; NoMsg: Boolean = false);
 begin
-  Comment:=Format('Exception "%s" at $%s with message "%s" %s', [string(ExceptObject.ClassName), IntToHex(Cardinal(ExceptAddr), 8), Exception(ExceptObject).Message, Comment]);
+  Comment:=Format('Exception "%s" at $%08X with message "%s" %s', [string(ExceptObject.ClassName), ExceptAddr, Exception(ExceptObject).Message, Comment]);
   {$IFDEF VSE_LOG}Log(llError, Comment);{$ENDIF}
-  {$IFNDEF VSE_DEBUG}MessageBox(0, PChar(Comment), PChar(InitSettings.Caption), MB_ICONERROR);{$ENDIF}
+  {$IFNDEF VSE_DEBUG}if not NoMsg then MessageBox(0, PChar(Comment), PChar(InitSettings.Caption), MB_ICONERROR);{$ENDIF}
 end;
 
 procedure UpdateFPS(uID, uMsg, dwUser, dw1, dw2: Cardinal); stdcall;
@@ -515,7 +515,7 @@ begin
     Name:=FStates[i].Name;
     FAN(FStates[i]);
   except
-    LogException('in state '+Name+'.Free');
+    LogException('in state '+Name+'.Free', true);
   end;
   Finalize(FStates);
   for i:=High(FModules) downto 0 do
@@ -525,7 +525,7 @@ begin
     {$IFDEF VSE_LOG}Log(llInfo, 'Finalizing module '+Name);{$ENDIF}
     FAN(FModules[i]);
   except
-    LogException('in module '+Name+'.Free');
+    LogException('in module '+Name+'.Free', true);
   end;
   Finalize(FModules);
   {$IFDEF VSE_CONSOLE}FAN(Console);{$ENDIF}
@@ -953,17 +953,21 @@ begin
       end;
   end
     else Name:=ExePath+Name+ImageFormatExtension[Format];
-  Image:=TImage.Create(FResolutionX, FResolutionY, pfBGR24bit, Ceil(FResolutionX*3/4)*4);
   try
-    glPixelStore(GL_PACK_ALIGNMENT, 4);
-    glReadPixels(0, 0, FResolutionX, FResolutionY, GL_BGR, GL_UNSIGNED_BYTE, Image.Pixels);
-    if Format = ifJPEG
-      then Quality := 95
-      else Quality := 0;
-    Image.Save(Name, Format, Quality);
-    {$IFDEF VSE_LOG}Log(llInfo, 'Screenshot saved to "'+Name+'"'){$ENDIF};
-  finally
-    Image.Free;
+    Image:=TImage.Create(FResolutionX, FResolutionY, pfBGR24bit, Ceil(FResolutionX*3/4)*4);
+    try
+      glPixelStore(GL_PACK_ALIGNMENT, 4);
+      glReadPixels(0, 0, FResolutionX, FResolutionY, GL_BGR, GL_UNSIGNED_BYTE, Image.Pixels);
+      if Format = ifJPEG
+        then Quality := 95
+        else Quality := 0;
+      Image.Save(Name, Format, Quality);
+      {$IFDEF VSE_LOG}Log(llInfo, 'Screenshot saved to "'+Name+'"'){$ENDIF};
+    finally
+      Image.Free;
+    end;
+  except
+    LogException('in TCore.MakeScreenshot', true);
   end;
 end;
 
@@ -1319,7 +1323,7 @@ begin
           FAN(Core);
           {$IFDEF VSE_LOG}Log(llInfo, 'Engine destroyed');{$ENDIF}
         except
-          LogException('while destroying engine');
+          LogException('while destroying engine', true);
           VSEStopState:=StopInternalError;
         end;
         PostQuitMessage(Integer(VSEStopState));

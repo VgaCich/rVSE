@@ -47,11 +47,11 @@ type
   end;
 
 
+{$IFDEF VSE_DEBUG}
 const
-  {$IFDEF VSE_DEBUG}
   IDLogPoints = 'LogPoints';
   IDPlayerSelect = 'PlayerSelect';
-  {$ENDIF}
+{$ENDIF}
 
 implementation
 

@@ -42,9 +42,8 @@ begin
   FForm := TCharSelectForm.Create(Player.Objects);
   (FForm as TCharSelectForm).OnSelect := CharSelected;
   EventBus.SendEvent(SceneShowTitleMessage, Self, ['Размести персонажа', 1, Player]);
-  {$IFDEF VSE_DEBUG}
+  //Debug
   Player.Game.ActivePlayer := Player;
-  {$ENDIF} 
 end;
 
 destructor TPlaceCharacterAction.Destroy;
@@ -103,9 +102,8 @@ begin
   EventBus.SendEvent(SceneShowTitleMessage, Self, ['Выбери квартал', 1, Player]);
   EventBus.AddListener(SceneOnQuarterHighlight, HighlightQuarter);
   EventBus.AddListener(GameOnMouseEvent, MouseEvent);
-  {$IFDEF VSE_DEBUG}
+  //Debug
   Player.Game.ActivePlayer := Player;
-  {$ENDIF} 
 end;
 
 destructor TSelectQuarterAction.Destroy;

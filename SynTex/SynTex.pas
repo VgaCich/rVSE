@@ -108,7 +108,7 @@ end;
 
 procedure LogException(const Comment: string);
 begin
-  Log('Exception "'+ExceptObject.ClassName+'" at '+IntToHex(Cardinal(ExceptAddr), 8)+' with message "'+Exception(ExceptObject).Message+'" '+Comment);
+  Log(Format('Exception "%s" at $%08X with message "%s" %s', [string(ExceptObject.ClassName), ExceptAddr, Exception(ExceptObject).Message, Comment]));
 end;
 {$ENDIF}
 
