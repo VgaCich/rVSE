@@ -326,7 +326,7 @@ var
   i: TConsoleColors;
 begin
   for i := Low(TConsoleColors) to High(TConsoleColors) do
-    FColors[i] := DefColors[i];
+    FColors[i] := Colors[i];
 end;
 
 procedure TConsoleInterface.SetFont(const Name: string; Bold: Boolean);
