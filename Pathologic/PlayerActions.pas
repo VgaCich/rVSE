@@ -99,6 +99,7 @@ end;
 constructor TSelectQuarterAction.Create(Player: TPlayer; Criteria: TQuarterSelectCriteria);
 begin
   inherited Create(Player);
+  FCriteria := Criteria;
   EventBus.SendEvent(SceneShowTitleMessage, Self, ['Выбери квартал', 1, Player]);
   EventBus.AddListener(SceneOnQuarterHighlight, HighlightQuarter);
   EventBus.AddListener(GameOnMouseEvent, MouseEvent);

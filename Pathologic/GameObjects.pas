@@ -393,7 +393,10 @@ begin
   inherited Create;
   i := 0;
   while Assigned(Objects.ObjOfType[T, i]) do
+  begin
     Add(Objects.ObjOfType[T, i]);
+    Inc(i);
+  end;
 end;
 
 procedure TDeck.Shuffle;
