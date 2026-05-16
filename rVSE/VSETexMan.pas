@@ -148,12 +148,14 @@ begin
   if MipMap then
   begin
     glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    gluBuild2DMipmaps(GL_TEXTURE_2D, Comps, Width, Height, Format, GL_UNSIGNED_BYTE, Data)
+    if Assigned(Data) then
+      gluBuild2DMipmaps(GL_TEXTURE_2D, Comps, Width, Height, Format, GL_UNSIGNED_BYTE, Data)
   end
   else begin
     glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-    glTexImage2D(GL_TEXTURE_2D, 0, Comps, Width, Height, 0, Format, GL_UNSIGNED_BYTE, Data);
+    if Assigned(Data) then
+      glTexImage2D(GL_TEXTURE_2D, 0, Comps, Width, Height, 0, Format, GL_UNSIGNED_BYTE, Data);
   end;
 end;
 

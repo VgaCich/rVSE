@@ -286,13 +286,13 @@ begin
     Exit;
   X := Round(X * FVSScale) / FVSScale;
   Y := Round(Y * FVSScale) / FVSScale;
-  glPushAttrib(GL_COLOR_BUFFER_BIT or GL_TEXTURE_BIT or GL_LIST_BIT);
+  glPushAttrib(GL_COLOR_BUFFER_BIT or GL_ENABLE_BIT or GL_TEXTURE_BIT or GL_LIST_BIT);
   glDisable(GL_CULL_FACE);
   glEnable(GL_ALPHA_TEST);
   glAlphaFunc(GL_GEQUAL, 0.1);
+  TexMan.Bind(FFonts[Font]^.Tex, 0);
   glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
   glListBase(FFonts[Font]^.List);
-  TexMan.Bind(FFonts[Font]^.Tex, 0);
   glPushMatrix;
   glTranslatef(X, Y, 0);
   for i := 1 to Length(Text) do
@@ -380,6 +380,13 @@ procedure TRender2D.CreateFontTex(Font: Cardinal);
 const
   Weight: array[Boolean] of Integer = (400, 700);
   Margin = 32;
+  {$IFDEF VSE_LUMALPHA_TEXT}
+  PxSize = 2;
+  TexFmt = GL_LUMINANCE_ALPHA;
+  {$ELSE}
+  PxSize = 1;
+  TexFmt = GL_ALPHA;
+  {$ENDIF}
 var
   i: Integer;
   FNT: HFONT;
@@ -424,12 +431,19 @@ begin
     SetTextColor(MDC, $FFFFFF);
     for i := 0 to 255 do
       Windows.TextOut(MDC, i mod 16 * (FontTexSize.X div 16), i div 16 * (FontTexSize.Y div 16), @Char(i), 1);
-    GetMem(Data, FontTexSize.X * FontTexSize.Y);
+    GetMem(Data, PxSize * FontTexSize.X * FontTexSize.Y);
     for i := 0 to FontTexSize.X * FontTexSize.Y - 1 do
-      Data[i] := Pix[i * 3];
+    {$IFDEF VSE_LUMALPHA_TEXT}
+    begin
+      Data[2 * i] := 255;
+      Data[2 * i + 1] := Pix[3 * i];
+    end;
+    {$ELSE}
+      Data[i] := Pix[3 * i];
+    {$ENDIF}
     glBindTexture(GL_TEXTURE_2D, Tex);
     glPixelStore(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, FontTexSize.X, FontTexSize.Y, 0, GL_ALPHA, GL_UNSIGNED_BYTE, Data);
+    glTexImage2D(GL_TEXTURE_2D, 0, TexFmt, FontTexSize.X, FontTexSize.Y, 0, TexFmt, GL_UNSIGNED_BYTE, Data);
     Height := 0;
     for i := 0 to 255 do
     begin
@@ -452,6 +466,7 @@ begin
       glTranslatef(Width[i], 0, 0);
       glEndList;
     end;
+    glBindTexture(GL_TEXTURE_2D, 0);
   finally
     FreeMem(Data);
     DeleteObject(FNT);

@@ -957,7 +957,8 @@ begin
     Image:=TImage.Create(FResolutionX, FResolutionY, pfBGR24bit, Ceil(FResolutionX*3/4)*4);
     try
       glPixelStore(GL_PACK_ALIGNMENT, 4);
-      glReadPixels(0, 0, FResolutionX, FResolutionY, GL_BGR, GL_UNSIGNED_BYTE, Image.Pixels);
+      glReadPixels(0, 0, FResolutionX, FResolutionY, GL_RGB, GL_UNSIGNED_BYTE, Image.Pixels);
+      Image.SwapRGB;
       if Format = ifJPEG
         then Quality := 95
         else Quality := 0;

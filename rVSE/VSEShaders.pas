@@ -190,7 +190,8 @@ destructor TShader.Destroy;
 begin
   if Assigned(FVariables) then FVariables.ClearList;
   FAN(FVariables);
-  glDeleteObjectARB(FHandle);
+  if GL_ARB_shading_language_100 then
+    glDeleteObjectARB(FHandle);
   inherited Destroy;
 end;
 

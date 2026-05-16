@@ -30,6 +30,7 @@ type
     procedure Save(Stream: TStream; ImageFormat: TImageFormat; Quality: Cardinal = 0); overload; // Save image to stream in specified format
     procedure SaveRaw(Stream: TStream); // Save raw image data
     procedure Pack; // Remove rows alignment
+    procedure SwapRGB; //Converts between RGB(A) & BGR(A)
     property Width: Cardinal read FWidth; // Image width
     property Height: Cardinal read FHeight; // Image height
     property Stride: Integer read FStride; // Image stride - size of row in bytes, including alignment
@@ -321,6 +322,26 @@ begin
     for i := 1 to FHeight - 1 do
       Move(IncPtr(FPixels, i * FStride)^, IncPtr(FPixels, i * RowSize)^, RowSize);
   FStride := RowSize;
+end;
+
+procedure TImage.SwapRGB;
+var
+  i, j: Integer;
+  p: PByteArray;
+  t: Byte;
+begin
+  if not Assigned(FPixels) or not (BitDepths[FPixelFormat] in [24, 32]) then Exit;
+  for i := 0 to FHeight - 1 do
+  begin
+    p := IncPtr(FPixels, i * FStride);
+    for j := 0 to FWidth - 1 do
+    begin
+      t := p[0];
+      p[0] := p[2];
+      p[2] := t;
+      p := IncPtr(p, BitDepths[FPixelFormat] div 8);
+    end;
+  end;
 end;
 
 procedure TImage.SetPixels(Value: PByteArray);

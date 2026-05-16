@@ -8,4 +8,5 @@ VSE_ESC_EXIT - принудительный выход по escape
 VSE_USE_SNAPSHOT_KEY - сохранение скриншота по нажатию кнопки Print Screen
 VSE_USE_ALT_ENTER - переключение фуллскрина по Alt-Enter
 VSE_USE_MEMPAK_PAS - помещать данные мемпака в секцию переменных
-FORMS_NO_BINDMAN - не подключать модуль BindMan в VSEForms (отключет BindManCfgForm и обработку bind-тэгов в TextView)
+VSE_LUMALPHA_TEXT - использовать в текстовом движке текстуру формата GL_LUMINANCE_ALPHA вместо GL_ALPHA (нужно для некоторых кривых дров - например, GLDirect 5.0)
+FORMS_NO_BINDMAN - не подключать модуль BindMan в VSEForms (отключает BindManCfgForm и обработку bind-тэгов в TextView)
