@@ -1,4 +1,4 @@
-program VSEHello;
+program VSELines;
 
 uses
   {$IFDEF VER150}SysSfIni, {$ENDIF}{$IFDEF DEBUGMEM}FastMM4,{$ENDIF} Windows,

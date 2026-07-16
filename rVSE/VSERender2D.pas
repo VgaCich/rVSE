@@ -13,33 +13,41 @@ type
     Width: array [0..255] of Single;
     Height: Integer;
     Size: Integer;
-    Bold: Boolean;
+    Bold, AutoUpdate: Boolean;
     Name: string;
   end;
   PFloatRect = ^TFloatRect;
   TFloatRect = packed record
     Left, Top, Right, Bottom: Single;
   end;
+  TVirtualScreen = class
+  private
+    FWidth: Integer;
+    FHeight: Integer;
+    FScale, FPadding: Single;
+    FPaddingVertical: Boolean;
+    function GetBounds: TFloatRect;
+  public
+    constructor Create(ViewportWidth, ViewportHeight, Width, Height: Integer);
+    procedure RescaleFont(Font: Cardinal);
+    property Width: Integer read FWidth;
+    property Height: Integer read FHeight;
+    property Bounds: TFloatRect read GetBounds;
+  end;
   TRender2D = class(TModule)
   private
-    FVSWidth: Integer;
-    FVSHeight: Integer;
-    FVSScale, FVSPadding: Single;
-    FVSPaddingVertical: Boolean;
-    FEnters: Integer;
+    FEnters: array of TVirtualScreen;
     FFonts: array of PFont;
-    function  GetVSBounds: TFloatRect;
-    procedure SetVSWidth(Value: Integer);
-    procedure SetVSHeight(Value: Integer);
-    procedure ResolutionChanged;
-    procedure CreateFontTex(Font: Cardinal);
+    FMainScreen, FScreen: TVirtualScreen;
+    procedure CreateFontTex(Screen: TVirtualScreen; Font: Cardinal);
   public
     constructor Create; override; //internally used
     destructor Destroy; override; //internally used
     class function Name: string; override; //internally used
     procedure OnEvent(var Event: TCoreEvent); override;
-    procedure Enter; //Enter 2D mode
+    procedure Enter(Screen: TVirtualScreen = nil); //Enter 2D mode with specified virtual screen; sets main screen as current if Screen = nil
     procedure Leave; //Leave 2D mode
+    procedure SetMainScreen(Width, Height: Integer); //Set size of main virtual screen
     function  MapCursor(const Cursor: TPoint): TPoint; //Map cursor to virtual screen
     procedure Move(X, Y: Single; Relative: Boolean = true); //Move origin
     procedure SetScissor(Left, Top, Width, Height: Single); //Set scissor window
@@ -55,15 +63,12 @@ type
     procedure DrawRect(Left, Top, Width, Height, TexLeft, TexTop, TexWidth, TexHeight: Single); overload; //Draw rectangle with texture coordinates
     procedure DrawRect(const Rect, TexRect: TRect; TexSize: Integer); overload;
     //Font engine
-    function  CreateFont(Name: string; Size: Integer; Bold: Boolean=false): Cardinal; //Create font; Name - font name, Size - font size, Bold - normal/bold font; returns font ID
-    procedure TextOut(Font: Cardinal; X, Y: Single; const Text: string); //Draw text; Font - font ID, X, Y - coordinates of left upper corner of text, Text - text for draw
+    function  CreateFont(Name: string; Size: Integer; Bold: Boolean=false; AutoUpdate: Boolean = true): Cardinal; //Create font; Name - font name, Size - font size, Bold - normal/bold font, AutoUpdate: regenerate textures on resolution changes; returns font ID
+    procedure DrawText(Font: Cardinal; X, Y: Single; const Text: string); //Draw text; Font - font ID, X, Y - coordinates of left upper corner of text, Text - text for draw
     function  TextWidth(Font: Cardinal; const Text: string): Integer; //Length of space, needed for drawing text
     function  CharWidth(Font: Cardinal; C: Char): Single; //Exact character width
     function  TextHeight(Font: Cardinal): Integer; //Height of space, needed for drawing text
-    //Virtual screen
-    property VSWidth: Integer read FVSWidth write SetVSWidth; //Virtual screen width
-    property VSHeight: Integer read FVSHeight write SetVSHeight; //Virtual screen height
-    property VSBounds: TFloatRect read GetVSBounds; //Virtual screen bounds
+    property  Screen: TVirtualScreen read FScreen; //current Virtual screen
   end;
 
 var
@@ -79,13 +84,53 @@ implementation
 uses
   VSETexMan;
 
+constructor TVirtualScreen.Create(ViewportWidth, ViewportHeight, Width, Height: Integer);
+begin
+  inherited Create;
+  FWidth := Width;
+  FHeight := Height;
+  FPaddingVertical := Width / Height > ViewportWidth / ViewportHeight;
+  if FPaddingVertical then
+  begin
+    FScale := ViewportWidth / Width;
+    FPadding := (ViewportHeight / FScale - Height) / 2;
+  end
+  else begin
+    FScale := ViewportHeight / Height;
+    FPadding := (ViewportWidth / FScale - Width) / 2;
+  end;
+end;
+
+procedure TVirtualScreen.RescaleFont(Font: Cardinal);
+begin
+  Render2D.CreateFontTex(Self, Font);
+end;
+
+function TVirtualScreen.GetBounds: TFloatRect;
+begin
+  with Result do
+    if FPaddingVertical then
+    begin
+      Left := 0;
+      Top := -FPadding;
+      Right := FWidth;
+      Bottom := FHeight + FPadding;
+    end
+    else begin
+      Left := -FPadding;
+      Top := 0;
+      Right := FWidth + FPadding;
+      Bottom := FHeight;
+    end;
+end;
+
 constructor TRender2D.Create;
 begin
   inherited;
   Render2D := Self;
-  FVSWidth := 800;
-  FVSHeight := 600;
-  ResolutionChanged;
+  FMainScreen := TVirtualScreen.Create(1, 1, 1, 1);
+  SetMainScreen(800, 600);
+  FScreen := FMainScreen;
 end;
 
 destructor TRender2D.Destroy;
@@ -93,6 +138,7 @@ var
   i: Integer;
 begin
   Render2D := nil;
+  while Length(FEnters) > 0 do Leave;
   {$IFDEF VSE_LOG}LogF(llInfo, 'Render2D: Freeing %d fonts', [Length(FFonts)]);{$ENDIF}
   for i := 0 to High(FFonts) do
   begin
@@ -100,6 +146,8 @@ begin
     Dispose(FFonts[i]);
   end;
   Finalize(FFonts);
+  Finalize(FEnters);
+  FMainScreen.Free;
   inherited;
 end;
 
@@ -112,16 +160,23 @@ procedure TRender2D.OnEvent(var Event: TCoreEvent);
 begin
   inherited;
   if (Event is TSysNotify) and ((Event as TSysNotify).Notify = snResolutionChanged) then
-    ResolutionChanged;
+    with FMainScreen do SetMainScreen(Width, Height);
 end;
 
-procedure TRender2D.Enter;
+procedure TRender2D.Enter(Screen: TVirtualScreen = nil);
+var
+  Entry: Integer;
 begin
-  Inc(FEnters);
-  if FEnters > 1 then Exit;
+  if Screen = nil then
+    Screen := FMainScreen;
+  Entry := Length(FEnters);
+  SetLength(FEnters, Entry + 1);
+  FEnters[Entry] := Screen;
+  if (Entry > 0) and (FEnters[Entry - 1] = Screen) then Exit;
+  FScreen := Screen;
   glPushAttrib(GL_ENABLE_BIT or GL_POINT_BIT or GL_LINE_BIT or GL_LIGHTING_BIT or GL_CURRENT_BIT or GL_COLOR_BUFFER_BIT or GL_TEXTURE_BIT or GL_SCISSOR_BIT or GL_TRANSFORM_BIT);
   glePushMatrix;
-  with VSBounds do
+  with Screen.Bounds do
     gleOrthoMatrix2(Left, Top, Right, Bottom);
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_LIGHTING);
@@ -133,41 +188,72 @@ begin
 end;
 
 procedure TRender2D.Leave;
+var
+  Entry: Integer;
 begin
-  FEnters := Max(FEnters - 1, 0);
-  if FEnters > 0 then Exit;
-  glePopMatrix;
-  glPopAttrib;
+  if Length(FEnters) = 0 then Exit;
+  Entry := High(FEnters);
+  if (Entry = 0) or (FEnters[Entry] <> FEnters[Entry - 1]) then
+  begin
+    glePopMatrix;
+    glPopAttrib;
+  end;
+  SetLength(FEnters, Entry);
+  if Entry > 0 then
+    FScreen := FEnters[Entry - 1]
+  else
+    FScreen := FMainScreen;
+end;
+
+procedure TRender2D.SetMainScreen(Width, Height: Integer);
+var
+  i: Integer;
+begin
+  FMainScreen.Create(Core.ResolutionX, Core.ResolutionY, Width, Height);
+  for i := 0 to High(FFonts) do
+    if FFonts[i]^.AutoUpdate then
+      CreateFontTex(FMainScreen, i);
 end;
 
 function TRender2D.MapCursor(const Cursor: TPoint): TPoint;
 begin
-  if FVSPaddingVertical then
-  begin
-    Result.X := Round(Cursor.X / FVSScale);
-    Result.Y := Round(Cursor.Y / FVSScale - FVSPadding);
-  end
-  else begin
-    Result.X := Round(Cursor.X / FVSScale - FVSPadding);
-    Result.Y := Round(Cursor.Y / FVSScale);
-  end;
+  if FScreen.FPaddingVertical then
+    with FScreen, Cursor do
+    begin
+      Result.X := Round(X / FScale);
+      Result.Y := Round(Y / FScale - FPadding);
+    end
+  else
+    with FScreen, Cursor do
+    begin
+      Result.X := Round(X / FScale - FPadding);
+      Result.Y := Round(Y / FScale);
+    end;
 end;
 
 procedure TRender2D.Move(X, Y: Single; Relative: Boolean);
 begin
   if not Relative then
     glLoadIdentity;
-  glTranslate(Round(X * FVSScale) / FVSScale, Round(Y * FVSScale) / FVSScale, 0);
+  with FScreen do
+    glTranslate(Round(X * FScale) / FScale, Round(Y * FScale) / FScale, 0);
 end;
 
 procedure TRender2D.SetScissor(Left, Top, Width, Height: Single);
+var
+  ResY: Integer;
 begin
-  if FVSPaddingVertical then
-    Top := Top + FVSPadding
-  else
-    Left := Left + FVSPadding;
-  glEnable(GL_SCISSOR_TEST);
-  glScissor(Round(Left * FVSScale), Core.ResolutionY - Round((Top + Height) * FVSScale) - 1, Round(Width * FVSScale), Round(Height * FVSScale));
+  with FScreen do
+  begin
+    with FScreen.Bounds do
+      ResY := Round(FScale * (Bottom - Top));
+    if FPaddingVertical then
+      Top := Top + FPadding
+    else
+      Left := Left + FPadding;
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(Round(Left * FScale), ResY - Round((Top + Height) * FScale) - 1, Round(Width * FScale), Round(Height * FScale));
+  end;
 end;
 
 procedure TRender2D.RemoveScissor;
@@ -253,7 +339,7 @@ begin
              Left / TexSize, Top / TexSize, (Right - Left) / TexSize, (Bottom - Top) / TexSize);
 end;
 
-function TRender2D.CreateFont(Name: string; Size: Integer; Bold: Boolean): Cardinal;
+function TRender2D.CreateFont(Name: string; Size: Integer; Bold, AutoUpdate: Boolean): Cardinal;
 const
   BoolStr: array[Boolean] of Char = ('N', 'B');
 var
@@ -272,20 +358,24 @@ begin
   New(FFonts[Result]);
   FFonts[Result]^.Size := Size;
   FFonts[Result]^.Bold := Bold;
+  FFonts[Result]^.AutoUpdate := AutoUpdate;
   FFonts[Result]^.Name := Name;
   FFonts[Result]^.Tex := TexMan.AddTexture('__FONT_' + Name + IntToStr(Size) + BoolStr[Bold], nil, 1, 1, GL_ALPHA8, GL_ALPHA, true, false);
   FFonts[Result]^.List := glGenLists(256);
-  CreateFontTex(Result);
+  CreateFontTex(FScreen, Result);
 end;
 
-procedure TRender2D.TextOut(Font: Cardinal; X, Y: Single; const Text: string);
+procedure TRender2D.DrawText(Font: Cardinal; X, Y: Single; const Text: string);
 var
   i: Integer;
 begin
   if (Font >= Cardinal(Length(FFonts))) or (FFonts[Font] = nil) then
     Exit;
-  X := Round(X * FVSScale) / FVSScale;
-  Y := Round(Y * FVSScale) / FVSScale;
+  with FScreen do
+  begin
+    X := Round(X * FScale) / FScale;
+    Y := Round(Y * FScale) / FScale;
+  end;
   glPushAttrib(GL_COLOR_BUFFER_BIT or GL_ENABLE_BIT or GL_TEXTURE_BIT or GL_LIST_BIT);
   glDisable(GL_CULL_FACE);
   glEnable(GL_ALPHA_TEST);
@@ -327,56 +417,7 @@ begin
   Result := FFonts[Font]^.Height;
 end;
 
-function TRender2D.GetVSBounds: TFloatRect;
-begin
-  with Result do
-    if FVSPaddingVertical then
-    begin
-      Left := 0;
-      Top := -FVSPadding;
-      Right := FVSWidth;
-      Bottom := FVSHeight + FVSPadding;
-    end
-    else begin
-      Left := -FVSPadding;
-      Top := 0;
-      Right := FVSWidth + FVSPadding;
-      Bottom := FVSHeight;
-    end;
-end;
-
-procedure TRender2D.SetVSWidth(Value: Integer);
-begin
-  if Value <= 0 then Exit;
-  FVSWidth := Value;
-  ResolutionChanged;
-end;
-
-procedure TRender2D.SetVSHeight(Value: Integer);
-begin
-  if Value <= 0 then Exit;
-  FVSHeight := Value;
-  ResolutionChanged;
-end;
-
-procedure TRender2D.ResolutionChanged;
-var
-  i: Integer;
-begin
-  FVSPaddingVertical := FVSWidth / FVSHeight > Core.ResolutionX / Core.ResolutionY;
-  if FVSPaddingVertical then
-  begin
-    FVSScale := Core.ResolutionX / FVSWidth;
-    FVSPadding := (Core.ResolutionY / FVSScale - FVSHeight) / 2;
-  end
-  else begin
-    FVSScale := Core.ResolutionY / FVSHeight;
-    FVSPadding := (Core.ResolutionX / FVSScale - FVSWidth) / 2;
-  end;
-  for i := 0 to High(FFonts) do CreateFontTex(i);
-end;
-
-procedure TRender2D.CreateFontTex(Font: Cardinal);
+procedure TRender2D.CreateFontTex(Screen: TVirtualScreen; Font: Cardinal);
 const
   Weight: array[Boolean] of Integer = (400, 700);
   Margin = 32;
@@ -402,7 +443,7 @@ begin
   with FFonts[Font]^ do
   try
     MDC := CreateCompatibleDC(Core.DC);
-    FNT := Windows.CreateFont(-Ceil(FontScale * FVSScale * Size), 0, 0, 0, Weight[Bold],
+    FNT := Windows.CreateFont(-Ceil(FontScale * Screen.FScale * Size), 0, 0, 0, Weight[Bold],
       0, 0, 0, FontCharSet, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, NONANTIALIASED_QUALITY, 0, PChar(Name));
     SelectObject(MDC, FNT);
     CharSize := Point(0, 0);
@@ -451,17 +492,17 @@ begin
       s := (i mod 16) / 16;
       t := (i div 16) / 16;
       GetTextExtentPoint32(MDC, @Char(i), 1, CS);
-      Width[i] := CS.cx / FVSScale;
-      Height := Max(Ceil(CS.cy / FVSScale), Height);
+      Width[i] := CS.cx / Screen.FScale;
+      Height := Max(Ceil(CS.cy / Screen.FScale), Height);
       glBegin(GL_QUADS);
       glTexCoord2f(s, 1 - t);
       glVertex2f(0, 0);
       glTexCoord2f(s + CS.cx / FontTexSize.X, 1 - t);
-      glVertex2f(CS.cx / FVSScale, 0);
+      glVertex2f(CS.cx / Screen.FScale, 0);
       glTexCoord2f(s + CS.cx / FontTexSize.X, 1 - t - CS.cy / FontTexSize.Y);
-      glVertex2f(CS.cx / FVSScale, CS.cy / FVSScale);
+      glVertex2f(CS.cx / Screen.FScale, CS.cy / Screen.FScale);
       glTexCoord2f(s, 1 - t - CS.cy / FontTexSize.Y);
-      glVertex2f(0, CS.cy / FVSScale);
+      glVertex2f(0, CS.cy / Screen.FScale);
       glEnd;
       glTranslatef(Width[i], 0, 0);
       glEndList;

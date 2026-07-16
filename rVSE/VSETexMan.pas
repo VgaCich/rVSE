@@ -149,7 +149,8 @@ begin
   begin
     glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     if Assigned(Data) then
-      gluBuild2DMipmaps(GL_TEXTURE_2D, Comps, Width, Height, Format, GL_UNSIGNED_BYTE, Data)
+      gluBuild2DMipmaps(GL_TEXTURE_2D, Comps, Width, Height, Format, GL_UNSIGNED_BYTE, Data);
+    glTexParameter(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, Integer(GL_TRUE));
   end
   else begin
     glTexParameter(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -157,6 +158,7 @@ begin
     if Assigned(Data) then
       glTexImage2D(GL_TEXTURE_2D, 0, Comps, Width, Height, 0, Format, GL_UNSIGNED_BYTE, Data);
   end;
+  {$IFDEF VSE_LOG}if not Assigned(Data) and (Copy(Name, 1, 2) <> '__') then LogF(llWarning, 'TexMan: texture "%s" added, but not uploaded (data=nil)', [Name]);{$ENDIF}
 end;
 
 function TTexMan.GetTex(const Name: string; IgnoreLostTex: Boolean = false): Cardinal;
@@ -305,7 +307,6 @@ begin
     Color:=TexColor;
     Depth:=TexDepth;
     Bind(TexColor);
-    glTexParameter(GL_TEXTURE, GL_GENERATE_MIPMAP, Integer(GL_TRUE));
     Unbind;
     if Method=rttFBO then
     begin
