@@ -536,7 +536,7 @@ begin
   gleColor(clFormBorder);
   Render2D.DrawRectBorder(0, 0, FWidth, FHeight);
   gleColor(clFormCaptText);
-  Render2D.TextOut(Font, (FWidth - Render2D.TextWidth(Font, FCaption)) div 2, (FCaptHeight - Render2D.TextHeight(Font)) div 2, FCaption);
+  with Render2D do DrawText(Font, (FWidth - TextWidth(Font, FCaption)) div 2, (FCaptHeight - TextHeight(Font)) div 2, FCaption);
 end;
 
 procedure TGUIForm.DrawButton(const Btn: TBtn; State: TBtnState);
@@ -568,7 +568,7 @@ begin
   while (Text <> '') and (Render2D.TextWidth(Font, Text) + TextX > Btn.Width) do
     Delete(Text, Length(Text), 1);
   SetColor(State, BtnText, Btn.Enabled);
-  Render2D.TextOut(Font, Btn.X + TextX, Btn.Y + TextY, Text);
+  Render2D.DrawText(Font, Btn.X + TextX, Btn.Y + TextY, Text);
   if bsTabStop in State then
   begin
     glLineStipple(1, $F0F0);
@@ -604,7 +604,7 @@ begin
       laCenter: TextX := X + (Width - Render2D.TextWidth(Font, Text)) div 2;
       laRight: TextX := X + Width - Render2D.TextWidth(Font, Text);
     end;
-    Render2D.TextOut(Font, TextX, Y, Text);
+    Render2D.DrawText(Font, TextX, Y, Text);
   end;
 end;
 

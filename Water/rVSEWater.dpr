@@ -140,13 +140,13 @@ begin
   end;
   Render2D.Enter;
   FPS:='FPS: '+IntToStr(Core.FPS);
-  with Render2D do
-    TextOut(FFont, Floor(VSBounds.Right)-TextWidth(FFont, FPS), Ceil(VSBounds.Top), FPS);
+  with Render2D, Render2D.Screen.Bounds do
+    DrawText(FFont, Right-TextWidth(FFont, FPS), Top, FPS);
   if FDebugInfo then
-    with Render2D do
+    with Render2D, Render2D.Screen.Bounds do
     begin
-      TextOut(FFont, Ceil(VSBounds.Left), Ceil(VSBounds.Top), Format('Pos: %s %s %s', [FloatToStr2(FPos.X, 4, 2), FloatToStr2(FPos.Y, 4, 2), FloatToStr2(FPos.Z, 4, 2)]));
-      TextOut(FFont, Ceil(VSBounds.Left), Ceil(VSBounds.Top)+20, Format('Angle: %s %s %s', [FloatToStr2(FAngle.X, 4, 2), FloatToStr2(FAngle.Y, 4, 2), FloatToStr2(FAngle.Z, 4, 2)]));
+      DrawText(FFont, Left, Top, Format('Pos: %s %s %s', [FloatToStr2(FPos.X, 4, 2), FloatToStr2(FPos.Y, 4, 2), FloatToStr2(FPos.Z, 4, 2)]));
+      DrawText(FFont, Left, Top+20, Format('Angle: %s %s %s', [FloatToStr2(FAngle.X, 4, 2), FloatToStr2(FAngle.Y, 4, 2), FloatToStr2(FAngle.Z, 4, 2)]));
     end;
   Render2D.Leave;
 end;

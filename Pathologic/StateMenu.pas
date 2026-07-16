@@ -75,8 +75,8 @@ begin
     TexMan.Bind(BgTex);
     Render2D.Enter;
     gleColor(clWhite);
-    with Render2D do
-      DrawRect(0, 0, VSWidth, VSHeight, 0, 0, 1, 1);
+    with Render2D, Render2D.Screen do
+      DrawRect(0, 0, Width, Height, 0, 0, 1, 1);
     Render2D.Leave;
     TexMan.Unbind;
   end;

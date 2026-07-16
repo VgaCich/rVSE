@@ -102,17 +102,17 @@ begin
   begin
     Render2D.Enter;
     gleColor(clWhite);
-    with Render2D.VSBounds do
+    with Render2D, Render2D.Screen.Bounds do
     begin
-      Render2D.TextOut(FFont, Left + 5, Top + 5, 'FPS: ' + IntToStr(Core.FPS));
+      DrawText(FFont, Left + 5, Top + 5, 'FPS: ' + IntToStr(Core.FPS));
       with FCamera.Eye do
-        Render2D.TextOut(FFont, Left + 5, Top + 25, Format('Pos=%s, %s, %s',
+        DrawText(FFont, Left + 5, Top + 25, Format('Pos=%s, %s, %s',
           [FloatToStr2(X, 4, 2), FloatToStr2(Y, 4, 2), FloatToStr2(Z, 4, 2)]));
       with FCamera do
-        Render2D.TextOut(FFont, Left + 5, Top + 45, Format('Angles=%s, %s',
+        DrawText(FFont, Left + 5, Top + 45, Format('Angles=%s, %s',
           [FloatToStr2(Angle.X, 4, 2), FloatToStr2(Angle.Y, 4, 2)]));
       with FMouse3D do
-        Render2D.TextOut(FFont, Left + 5, Top + 65, Format('Mouse=%s, %s, %s',
+        DrawText(FFont, Left + 5, Top + 65, Format('Mouse=%s, %s, %s',
          [FloatToStr2(X, 4, 2), FloatToStr2(Y, 4, 2), FloatToStr2(Z, 4, 2)]));
     end;
     Render2D.Leave;

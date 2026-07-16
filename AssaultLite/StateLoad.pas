@@ -54,11 +54,14 @@ begin
   inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
   S:=Format(SLoad, [FLevelName, FStageName]);
-  Render2D.Enter;
-  gleColor(clLime);
-  Render2D.TextOut(FFont, 400-Render2D.TextWidth(FFont, S)/2, 500, S);
-  Render2D.TextOut(FFont, 400-Render2D.TextWidth(FFont, STitle)/2, 250, STitle);
-  Render2D.Leave;
+  with Render2D do
+  begin
+    Enter;
+    gleColor(clLime);
+    DrawText(FFont, 400-TextWidth(FFont, S)/2, 500, S);
+    DrawText(FFont, 400-TextWidth(FFont, STitle)/2, 250, STitle);
+    Leave;
+  end;
 end;
 
 procedure TStateLoad.Update;

@@ -144,21 +144,22 @@ procedure TStateStart.Draw;
 begin
   inherited;
   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
-  Render2D.Enter;
-  gleColor(clLime);
-  Render2D.TextOut(FFont, 400-Render2D.TextWidth(FFont, SLoad)/2, 500, SLoad);
-  Render2D.TextOut(FFont, 400-Render2D.TextWidth(FFont, STitle)/2, 250, STitle);
-  glPushMatrix;
-  glTranslate(200, 230, 0);
-  glScalef(0.5, 0.5, 1);
-  Render2D.TextOut(FFont, 400-Render2D.TextWidth(FFont, SRVSE)/2, 430, SRVSE);
-  DrawSegs(300, 200, $426);
-  DrawSegs(400, 200, $2C0);
-  DrawSegs(500, 200, $079);
-  glScalef(0.7, 0.7, 1);
-  DrawSegs(300, 370, $473);
-  glPopMatrix;
-  Render2D.Leave;
+  with Render2D do
+  begin
+    Enter;
+    gleColor(clLime);
+    DrawText(FFont, 400-TextWidth(FFont, SLoad)/2, 500, SLoad);
+    DrawText(FFont, 400-TextWidth(FFont, STitle)/2, 250, STitle);
+    Move(200, 230);
+    glScalef(0.5, 0.5, 1);
+    DrawText(FFont, 400-TextWidth(FFont, SRVSE)/2, 430, SRVSE);
+    DrawSegs(300, 200, $426);
+    DrawSegs(400, 200, $2C0);
+    DrawSegs(500, 200, $079);
+    glScalef(0.7, 0.7, 1);
+    DrawSegs(300, 370, $473);
+    Leave;
+  end;
 end;
 
 function TStateStart.Activate: Cardinal;

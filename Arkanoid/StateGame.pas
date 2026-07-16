@@ -206,17 +206,17 @@ begin
   for i := 0 to High(FBricks) do
   FBricks[i].Draw;
   Render2D.Enter;
-  with Render2D.VSBounds do
+  with Render2D, Render2D.Screen.Bounds do
   begin
-    i := Round(Bottom - Render2D.TextHeight(FFont) - 5);
+    i := Round(Bottom - TextHeight(FFont) - 5);
     gleColor($80000000);
-    Render2D.DrawRect(Left, i, Right - Left, Bottom - i);
+    DrawRect(Left, i, Right - Left, Bottom - i);
     gleColor(clLime);
-    Render2D.TextOut(FFont, Left + 5, i, 'Level: ' + IntToStr(Level));
+    DrawText(FFont, Left + 5, i, 'Level: ' + IntToStr(Level));
     S := 'Score: ' + IntToStr(Score);
-    Render2D.TextOut(FFont, (Left + Right - Render2D.TextWidth(FFont, S)) / 2, i, S);
+    DrawText(FFont, (Left + Right - TextWidth(FFont, S)) / 2, i, S);
     S := 'Lives: ' + IntToStr(FBall.Lives);
-    Render2D.TextOut(FFont, Right - Render2D.TextWidth(FFont, S) - 5, i, S);
+    DrawText(FFont, Right - TextWidth(FFont, S) - 5, i, S);
   end;
   Render2D.Leave;
 end;

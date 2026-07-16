@@ -66,8 +66,7 @@ constructor TLogPointsForm.Create;
 var
   Btn: TBtn;
 begin
-  with Render2D.VSBounds do
-    inherited Create(0, 0, 150, 400);
+  inherited Create(0, 0, 150, 400);
   FCaption := 'Log points';
   Alignment := [faRight, faMiddle];
   FListFont := Render2D.CreateFont('Arial Narrow', 10, false);
@@ -149,7 +148,8 @@ begin
   gleColor(clText);
   for i := 0 to Min(16, High(FPoints)) do
     with Render2D, FPoints[Max(0, High(FPoints) - 16) + i] do
-      TextOut(FListFont, 12, 37 + 16 * i, Format('%s; %s; %s', [FloatToStr2(X, 1, 2), FloatToStr2(Y, 1, 2), FloatToStr2(Z, 1, 2)]));
+      DrawText(FListFont, 12, 37 + 16 * i,
+        Format('%s; %s; %s', [FloatToStr2(X, 1, 2), FloatToStr2(Y, 1, 2), FloatToStr2(Z, 1, 2)]));
   Render2D.RemoveScissor;    
 end;
 
@@ -220,8 +220,7 @@ var
   i: Integer;
   Btn: TBtn;
 begin
-  with Render2D.VSBounds do
-    inherited Create(0, 0, 125, 165);
+  inherited Create(0, 0, 125, 165);
   FCaption := 'Игрок';
   Alignment := [faRight, faTop];
   FGame := Game;

@@ -250,7 +250,7 @@ begin
     TexMan.Bind(FBgTex);
     Render2D.Enter;
     gleColor(clWhite);
-    with Render2D.VSBounds do
+    with Render2D.Screen.Bounds do
       Render2D.DrawRect(Left, Top, Right - Left, Bottom - Top, 0, 0, 1, 1);
     Render2D.Leave;
     TexMan.Unbind;

@@ -149,19 +149,19 @@ begin
   gleColor($80000000);
   Render2D.DrawRect(250, 240, 300, 240);
   gleColor(clLime);
-  with Render2D, Render2D.VSBounds do
-    TextOut(FFont, Right-TextWidth(FFont, SLoading), Bottom-TextHeight(FFont), SLoading);
-  Render2D.TextOut(FFont, 400-Render2D.TextWidth(FFont, GameTitle)/2, 250, GameTitle);
-  glPushMatrix;
+  with Render2D, Render2D.Screen.Bounds do
+  begin
+    DrawText(FFont, Right-TextWidth(FFont, SLoading), Bottom-TextHeight(FFont), SLoading);
+    DrawText(FFont, 400-TextWidth(FFont, GameTitle)/2, 250, GameTitle);
+  end;
   glTranslate(200, 230, 0);
   glScalef(0.5, 0.5, 1);
-  Render2D.TextOut(FFont, 400-Render2D.TextWidth(FFont, SRVSE)/2, 430, SRVSE);
+  with Render2D do DrawText(FFont, 400-TextWidth(FFont, SRVSE)/2, 430, SRVSE);
   DrawSegs(300, 200, $426);
   DrawSegs(400, 200, $2C0);
   DrawSegs(500, 200, $079);
   glScalef(0.7, 0.7, 1);
   DrawSegs(300, 370, $473);
-  glPopMatrix;
   Render2D.Leave;
 end;
 

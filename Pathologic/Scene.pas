@@ -128,10 +128,10 @@ begin
     begin
       H := Render2D.TextHeight(FInfoFont);
       gleColor($80000000);
-      with Render2D.VSBounds do
-        Render2D.DrawRect(X, Y - H, Render2D.TextWidth(FInfoFont, Profile.RuName) + 4, H);
+      with Render2D, Render2D.Screen.Bounds do
+        DrawRect(X, Y - H, TextWidth(FInfoFont, Profile.RuName) + 4, H);
       gleColor(clWhite);
-      Render2D.TextOut(FInfoFont, X + 2, Y - H, Profile.RuName);
+      Render2D.DrawText(FInfoFont, X + 2, Y - H, Profile.RuName);
     end;
   H := Render2D.TextHeight(FTitleFont);
   for i := 0 to High(FTitleMsgs) do
@@ -139,10 +139,10 @@ begin
       with FTitleMsgs[i] do
       begin
         gleColor($80000000);
-        with Render2D.VSBounds do
-          Render2D.DrawRect(Left, TitleMsgPos + i * (H + 5), Right - Left, H);
+        with Render2D, Render2D.Screen.Bounds do
+          DrawRect(Left, TitleMsgPos + i * (H + 5), Right - Left, H);
         gleColor(clWhite);
-        Render2D.TextOut(FTitleFont, Pos, TitleMsgPos + i * (H + 5), Msg);
+        Render2D.DrawText(FTitleFont, Pos, TitleMsgPos + i * (H + 5), Msg);
       end;
   Render2D.Leave;
 end;
@@ -183,7 +183,7 @@ procedure TScene.ShowTitleMessage(Sender: TObject; const Args: array of const);
 begin
   Assert((Length(Args) >= 2) and (Args[0].VType = vtAnsiString) and (Args[1].VType = vtInteger));
   Assert((Length(Args) = 2) or (Args[2].VType = vtObject));
-  with FTitleMsgs[Max(0, Min(Args[1].VInteger, High(FTitleMsgs)))], Render2D.VSBounds do
+  with FTitleMsgs[Max(0, Min(Args[1].VInteger, High(FTitleMsgs)))], Render2D.Screen.Bounds do
   begin
     Msg := string(Args[0].VAnsiString);
     if Length(Args) > 2 then

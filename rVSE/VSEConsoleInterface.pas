@@ -117,7 +117,7 @@ var
 begin
   if not FActive then Exit;
   Render2D.Enter;
-  with Render2D.VSBounds do
+  with Render2D.Screen.Bounds do
   begin
     ScreenWidth := Right - Left;
     ScreenHeight := Bottom - Top;
@@ -163,20 +163,20 @@ begin
       gleColor(FColors[clWarningLine])
     else
       gleColor(FColors[clNormalLine]);
-    Render2D.TextOut(FFont, 0, Temp * i, RemovePostfix(FLogCache[FLogPosition + i]));
+    Render2D.DrawText(FFont, 0, Temp * i, RemovePostfix(FLogCache[FLogPosition + i]));
   end;
   gleColor(FColors[clNormalLine]);
   Temp := 0.475 * ScreenHeight;
   CommandLineStart := Max(FCursor - FLineLength + 1, 0);
   Line := '>' + Copy(FCommandLine, CommandLineStart + 1, FLineLength - 1);
-  Render2D.TextOut(FFont, 0, Temp, Line);
+  Render2D.DrawText(FFont, 0, Temp, Line);
   if (Core.Time div 500) mod 2 = 0 then
-    Render2D.TextOut(FFont, Render2D.TextWidth(FFont, Copy(Line, 1, FCursor - CommandLineStart)), Temp, '_');
+    Render2D.DrawText(FFont, Render2D.TextWidth(FFont, Copy(Line, 1, FCursor - CommandLineStart)), Temp, '_');
   gleColor(FColors[clBackground]);
   Temp := ScreenWidth - 0.025 * ScreenHeight - 8 * CharWidth;
   Render2D.DrawRect(Temp, 0, 8 * CharWidth - 1, 0.025 * ScreenHeight);
   gleColor(FColors[clFPS]);
-  Render2D.TextOut(FFont, Temp, 0, 'FPS: ' + IntToStr(Core.FPS));
+  Render2D.DrawText(FFont, Temp, 0, 'FPS: ' + IntToStr(Core.FPS));
   glPopMatrix;
   Render2D.Leave;
 end;
@@ -311,7 +311,7 @@ begin
   begin
     if FCursor = 0 then
     begin
-      UpdateFont(Render2D.VSBounds.Bottom - Render2D.VSBounds.Top);
+      with Render2D.Screen.Bounds do UpdateFont(Bottom - Top);
       Console.WriteLn('Print "help" for help' + PostfixWarning);
     end;
     FLogPosition := LogEndPosition;

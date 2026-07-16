@@ -110,7 +110,7 @@ end;
 
 procedure TStateGameEnd.DrawLine(Font, Y: Integer; const Line: string);
 begin
-  Render2D.TextOut(Font, 400 - Render2D.TextWidth(Font, Line) / 2, Y, Line);
+  with Render2D do DrawText(Font, 400 - TextWidth(Font, Line) / 2, Y, Line);
 end;
 
 end.

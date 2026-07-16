@@ -84,7 +84,8 @@ var
   Lbl: TLbl;
   Btn: TBtn;
 begin
-  WndWidth := Min(Max(Render2D.TextWidth(GUIFont, Prompt) + 25, Length(Buttons) * (BtnWidth + 10) + 10), Render2D.VSWidth);
+  with Render2D do
+    WndWidth := Min(Max(TextWidth(GUIFont, Prompt) + 25, Length(Buttons) * (BtnWidth + 10) + 10), Screen.Width);
   inherited Create(0, 0, WndWidth, WndHeight);
   Alignment := [faCenter, faMiddle];
   FCaption := Caption;
@@ -592,7 +593,7 @@ begin
         S := Copy(S, 2, MaxInt);
         Inc(Left, (Width - Render2D.TextWidth(Font, S) - 20) div 2);
       end;
-      Render2D.TextOut(Font, Left, 35 + 16 * i, S);
+      Render2D.DrawText(Font, Left, 35 + 16 * i, S);
     end;
 end;
 

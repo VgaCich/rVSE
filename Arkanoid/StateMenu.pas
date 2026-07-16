@@ -92,7 +92,7 @@ begin
     TexMan.Bind(BgTex);
     Render2D.Enter;
     gleColor(clWhite);
-    with Render2D, Render2D.VSBounds do
+    with Render2D, Render2D.Screen.Bounds do
       DrawRect(Left, Top, Right - Left, Bottom - Top, 0, 0, 1, 1);
     Render2D.Leave;
     TexMan.Unbind;
@@ -284,7 +284,7 @@ begin
   LHeight := Render2D.TextHeight(Font) + 10;
   gleColor(clText);
   for i:= 0 to High(FScores) do
-    Render2D.TextOut(Font, 30, 40 + i * LHeight, IntToStr(i + 1) + ': ' + IntToStr(FScores[i]));
+    Render2D.DrawText(Font, 30, 40 + i * LHeight, IntToStr(i + 1) + ': ' + IntToStr(FScores[i]));
 end;
 
 procedure TScores.ClearClick(Btn: PBtn);

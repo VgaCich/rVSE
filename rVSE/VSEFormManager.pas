@@ -71,17 +71,17 @@ end;
 procedure TAlignedForm.Align;
 begin
   if faLeft in FAlignment then
-    Left := Round(Render2D.VSBounds.Left)
+    Left := Round(Render2D.Screen.Bounds.Left)
   else if faCenter in FAlignment then
-    Left := (Render2D.VSWidth - Width) div 2
+    Left := (Render2D.Screen.Width - Width) div 2
   else if faRight in FAlignment then
-    Left := Round(Render2D.VSBounds.Right) - Width;
+    Left := Round(Render2D.Screen.Bounds.Right) - Width;
   if faTop in FAlignment then
-    Top := Round(Render2D.VSBounds.Top)
+    Top := Round(Render2D.Screen.Bounds.Top)
   else if faMiddle in FAlignment then
-    Top := (Render2D.VSHeight - Height) div 2
+    Top := (Render2D.Screen.Height - Height) div 2
   else if faBottom in FAlignment then
-    Top := Round(Render2D.VSBounds.Bottom) - Height;
+    Top := Round(Render2D.Screen.Bounds.Bottom) - Height;
 end;
 
 procedure TAlignedForm.SetAlignment(Value: TFormAlignmentSet);
