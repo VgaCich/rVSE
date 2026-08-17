@@ -181,7 +181,10 @@ begin
       if not Assigned(FFormsSet) or not Assigned(FFormsSet.FirstForm) then Exit;
         if (EvType = keDown) and (Key = VK_TAB) and Core.KeyPressed[VK_CONTROL] then
         begin
-          FFormsSet.Pop(FFormsSet.LastForm);
+          Form := FFormsSet.LastForm;
+          while Assigned(Form) and (Form.Locked or (not Form.Visible) or (Form = FFormsSet.FirstForm)) do
+            Form := Form.Prev;
+          FFormsSet.Pop(Form);
           FreeAndNil(Event);
         end
         else

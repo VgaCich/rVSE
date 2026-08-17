@@ -353,6 +353,7 @@ begin
   if Assigned(FParentSet) then
     FParentSet.RemoveForm(Self);
   Finalize(FButtons);
+  Finalize(FLabels);
   Finalize(FRects);
 end;
 
